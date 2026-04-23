@@ -1,9 +1,11 @@
 # T‑Sim — Reboque oceânico (3D)  
 **Documentação técnica, fórmulas e manual do utilizador**
 
+*Este ficheiro vive em `documentos/` no repositório; o simulador e o dashboard permanecem na raiz (`..`).*
+
 **Autoria:** Jossian Brito \* TugLife Systems  
 
-Aplica-se ao simulador em **`reboqueoceanico242TSIM.html`** (ligação a partir de `index.html`: «Abrir simulador 3D»). O texto abaixo descreve o modelo *tal como implementado* no código; não substitui normas, planos de reboque ou manuais de bordo reais.
+Aplica-se ao simulador **`reboqueoceanico242TSIM.html`** na raiz do projeto (ligação a partir de `index.html`: «Abrir simulador 3D»). O texto abaixo descreve o modelo *tal como implementado* no código; não substitui normas, planos de reboque ou manuais de bordo reais.
 
 ---
 
@@ -187,7 +189,7 @@ Em mar com onda, a «tensão extrema» adiciona um termo oscilatório simplifica
 
 ### 10.1 Como abrir
 
-1. Abrir `index.html` no browser ou abrir directamente `reboqueoceanico242TSIM.html`.  
+1. Abrir `index.html` na raiz do projeto no browser ou abrir directamente `reboqueoceanico242TSIM.html`.  
 2. Garantir que scripts e CDN (Three.js, etc.) carregam (ligação Internet se usar CDN).  
 
 ### 10.2 Painéis principais (resumo)

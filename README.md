@@ -8,12 +8,13 @@ Repositório: [github.com/Jbvix/ts-sim](https://github.com/Jbvix/ts-sim)
 
 ## Conteúdo
 
-| Ficheiro | Descrição |
-|----------|------------|
+| Ficheiro / pasta | Descrição |
+|------------------|------------|
 | `index.html` | Dashboard, calculadora, tabela por velocidade, catenária (PixiJS) |
 | `reboqueoceanico242TSIM.html` | Simulador 3D (Three.js) — comboio, cabo, governo |
-| `melhores-praticas-imo.html` | Referências IMO/MSC, CCS, BKI (apoio) |
-| `DOCUMENTACAO_TSIM_REBOQUE.md` | Fórmulas, constantes, manual (Markdown) |
+| `documentos/melhores-praticas-imo.html` | Referências IMO/MSC, CCS, BKI (apoio) |
+| `documentos/DOCUMENTACAO_TSIM_REBOQUE.md` | Fórmulas, constantes, manual (Markdown) |
+| `documentos/*.pdf` | PDFs de referência (IMO, BKI, CCS, USN) |
 | `tools/` | Scripts de apoio (ex.: validação) |
 
 ## Requisitos
@@ -31,7 +32,7 @@ Abrir `index.html` no browser (ou `reboqueoceanico242TSIM.html`).
 3. **Publish directory:** `.` (raiz).
 4. *Deploy site* — o site fica em `https://<subdomínio>.netlify.app`.
 
-> PDFs de referência (guías IMO, BKI, USN) estão no repositório; o clone pode ser pesado.
+> PDFs de referência (guias IMO, BKI, CCS, USN) estão em `documentos/`; o clone pode ser pesado.
 
 ## Licença
 
