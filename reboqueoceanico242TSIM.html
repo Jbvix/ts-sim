@@ -13,30 +13,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/tw.min.css" />
   <!-- Importando Pixi.js v7 e html2canvas -->
   <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  
-  <script>
-    tailwind.config = {
-      darkMode: 'media',
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
-          animation: {
-            'float': 'float 6s ease-in-out infinite',
-          },
-          keyframes: {
-            float: {
-              '0%, 100%': { transform: 'translateY(0)' },
-              '50%': { transform: 'translateY(-5px)' },
-            }
-          }
-        }
-      }
-    }
-  </script>
   <style>
     /* Estilos base e Glassmorphism */
     body {
@@ -96,9 +76,14 @@
     /* Esconder scrollbar na nav mobile */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    /* Empilhamento: WebGL (base) < overlay UI (pointer-events: none) < aside/header */
+    /* Empilhamento: WebGL (base) < overlay UI (pointer-events: none) < aside/header.
+       O aside#sidebar é fixed (z-38): o main não pode ocupar a mesma faixa, senão a UI (ex. ASD) fica por baixo do trilho. */
     main#sim-container {
       isolation: isolate;
+      margin-left: 3.25rem; /* w-[3.25rem] do aside */
+      width: calc(100% - 3.25rem);
+      max-width: calc(100% - 3.25rem);
+      box-sizing: border-box;
     }
     canvas.sim-webgl-canvas {
       position: absolute;
@@ -320,6 +305,9 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
           <button type="button" class="sim-rail" data-panel-group="winch" title="Guincho e cabo" aria-pressed="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22V8"/><path d="M5 12H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4h-3"/><path d="M5 8a7 7 0 0 0 6 0 7 7 0 0 0-6 0Z"/></svg>
           </button>
+          <button type="button" class="sim-rail" data-panel-group="towline" title="Towline Safety (MBL, tensão, modo)" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22V8"/><path d="M5 12H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4h-3"/><circle cx="12" cy="5" r="3"/></svg>
+          </button>
           <button type="button" class="sim-rail" data-panel-group="asd" title="Governo ASD" aria-pressed="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -422,6 +410,26 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             <div class="control-row"><label>Estado do Cabo:</label><span id="cableStateValue">Catenária</span></div>
             <div class="control-row"><label>Variação Catenária (m/s):</label><span id="cableSagVariationValue">0.00</span></div>
             <div class="control-row"><label class="max-deployment-label">Vel. Máx. Lançamento (nós):</label><span id="maxDeploymentSpeedValue" class="max-deployment-value">5.0</span></div>
+            <div class="resize-handle"></div>
+        </div>
+
+        <div id="towlinePanel" class="panel hidden">
+            <div id="towHud">
+                <div class="row"><span>Cabo:</span><span class="val" id="towHudType"></span></div>
+                <div class="row">
+                    <span>Modo:</span>
+                    <select id="towHudModeSelect" style="background:#334;color:#e0e0e0;border:1px solid #556;border-radius:4px;padding:2px;font-family:inherit;font-size:inherit;flex-grow:1;">
+                        <option value="auto">AUTO</option>
+                        <option value="brake">BRAKE</option>
+                        <option value="pawl">PAWL</option>
+                    </select>
+                </div>
+                <div class="row"><span>Tensão:</span><span class="val" id="towHudT">0.0 kN</span></div>
+                <div class="row"><span>Util. MBL:</span><span class="val" id="towHudU">0%</span></div>
+                <div class="row"><span>Util. WLL:</span><span class="val" id="towHudUW">0%</span></div>
+                <div class="row"><span>dT/dt:</span><span class="val" id="towHudDT">0 kN/s</span></div>
+                <div class="row"><span>Estado:</span><span class="val" id="towHudState"><span class="pill ok">Seguro</span></span></div>
+            </div>
             <div class="resize-handle"></div>
         </div>
 
@@ -562,11 +570,12 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
       envPanel: 'Ambiente',
       vesselPanel: 'Navio, rebocador e desempenho',
       winchPanel: 'Guincho e cabo',
+      towlinePanel: 'Towline Safety',
       buoyPanel: 'Bóias',
       asdPanel: 'Governo ASD (rebocador)',
       twinSafetyPanel: 'TWIN e segurança',
     };
-    const ORDER = ['envPanel', 'vesselPanel', 'winchPanel', 'buoyPanel', 'asdPanel', 'twinSafetyPanel'];
+    const ORDER = ['envPanel', 'vesselPanel', 'winchPanel', 'towlinePanel', 'buoyPanel', 'asdPanel', 'twinSafetyPanel'];
     const root = document.getElementById('sim-float-root');
     if (!root) return;
     let zStack = 50;
@@ -713,7 +722,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
       attachResize(wrap, resize);
     });
 
-    const GROUP_TO_ID = { env: 'envPanel', vessel: 'vesselPanel', winch: 'winchPanel', asd: 'asdPanel', twinSafety: 'twinSafetyPanel', buoy: 'buoyPanel' };
+    const GROUP_TO_ID = { env: 'envPanel', vessel: 'vesselPanel', winch: 'winchPanel', towline: 'towlinePanel', asd: 'asdPanel', twinSafety: 'twinSafetyPanel', buoy: 'buoyPanel' };
 
     function syncRail() {
       document.querySelectorAll('.sim-rail').forEach((btn) => {
@@ -867,43 +876,31 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             ensureStyles(){
               if (document.getElementById('towHUDStyles')) return;
               const css = `
-                #towHud{position:fixed;right:12px;top:max(calc(4rem + 8px),calc(env(safe-area-inset-top) + 4.5rem));background:#1B263B;color:#E0E1DD;border:1px solid #415A77;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px 12px;font:500 14px/1.3 system-ui,Segoe UI,Roboto,Ubuntu,sans-serif;z-index:30;min-width:230px;max-height:min(65vh,26rem);overflow:auto;pointer-events:auto}
-                #towHud h4{margin:0 0 6px 0;font:700 15px system-ui}
+                #towHud{background:#1B263B;color:#E0E1DD;border:1px solid #415A77;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.2);padding:10px 12px;font:500 14px/1.3 system-ui,Segoe UI,Roboto,Ubuntu,sans-serif;min-width:0;width:100%;box-sizing:border-box;max-height:min(60vh,22rem);overflow:auto;pointer-events:auto}
                 #towHud .row{display:flex;justify-content:space-between;gap:10px;margin:4px 0}
                 #towHud .val{font-variant-numeric:tabular-nums}
                 #towHud .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid #415A77}
                 #towHud .ok{background:#0f5132;border-color:#0f5132;color:#d1e7dd}
                 #towHud .warn{background:#7a5d00;border-color:#7a5d00;color:#fff3cd}
                 #towHud .danger{background:#842029;border-color:#842029;color:#f8d7da}
-                @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(220,53,69,.55)}70%{box-shadow:0 0 0 16px rgba(220,53,69,0)}100%{box-shadow:0 0 0 0 rgba(220,53,69,0)}}
-                #towHud.surge{animation:pulse 1s ease-out infinite;border-color:#842029}
+                @keyframes towHudPulse{0%{box-shadow:0 0 0 0 rgba(220,53,69,.55)}70%{box-shadow:0 0 0 12px rgba(220,53,69,0)}100%{box-shadow:0 0 0 0 rgba(220,53,69,0)}}
+                #towHud.surge{animation:towHudPulse 1s ease-out infinite;border-color:#842029}
               `;
               const st = document.createElement('style'); st.id='towHUDStyles'; st.textContent = css; document.head.appendChild(st);
             },
-            // Garante que os elementos HTML do HUD sejam criados e adicionados à página uma única vez
+            _towHudWired: false,
+            // HUD no painel lateral (Towline Safety); conteúdo em #towlinePanel → #towHud
             ensureHUD(){
-              if (document.getElementById('towHud')) return;
-              const el = document.createElement('div'); el.id='towHud'; el.innerHTML = `
-                <h4>⚓ Towline Safety</h4>
-                <div class="row"><span>Cabo:</span><span class="val" id="towHudType"></span></div>
-                <div class="row">
-                    <span>Modo:</span>
-                    <select id="towHudModeSelect" style="background:#334;color:#e0e0e0;border:1px solid #556;border-radius:4px;padding:2px;font-family:inherit;font-size:inherit;flex-grow:1;">
-                        <option value="auto">AUTO</option>
-                        <option value="brake">BRAKE</option>
-                        <option value="pawl">PAWL</option>
-                    </select>
-                </div>
-                <div class="row"><span>Tensão:</span><span class="val" id="towHudT">0.0 kN</span></div>
-                <div class="row"><span>Util. MBL:</span><span class="val" id="towHudU">0%</span></div>
-                <div class="row"><span>Util. WLL:</span><span class="val" id="towHudUW">0%</span></div>
-                <div class="row"><span>dT/dt:</span><span class="val" id="towHudDT">0 kN/s</span></div>
-                <div class="row"><span>Estado:</span><span class="val" id="towHudState"><span class="pill ok">Seguro</span></span></div>
-              `;
-              document.body.appendChild(el);
-              const modeSelect = document.getElementById('towHudModeSelect');
-              modeSelect.value = this.mode;
-              modeSelect.addEventListener('change', (e) => window.setTowMode(e.target.value));
+              const el = document.getElementById('towHud');
+              if (!el) return;
+              if (!this._towHudWired) {
+                const modeSelect = document.getElementById('towHudModeSelect');
+                if (modeSelect) {
+                  modeSelect.value = this.mode;
+                  modeSelect.addEventListener('change', (e) => window.setTowMode(e.target.value));
+                }
+                this._towHudWired = true;
+              }
             },
             // Altera a cor da linha do cabo na cena 3D com base na utilização da MBL
             colorTowline(utilMBL){
@@ -930,7 +927,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
               uwEl.textContent = anom ? '—' : `${Math.min(999, Math.max(0, Math.round(utilWLL * 100)))}%`;
               dtEl.textContent = (this.dTdt/1000).toFixed(0) + ' kN/s';
               tyEl.textContent = this.cable.name;
-              hud.classList.toggle('surge', !!surge);
+              if (hud) hud.classList.toggle('surge', !!surge);
               if (anom) {
                 stEl.innerHTML = '<span class="pill danger" title="Tensão fora de faixa (erro numérico ou geometria incompatível)">Anomalia</span>';
                 return;
@@ -961,7 +958,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
           window.TowSafety = TowSafety;
           window.CableCatalog = CableCatalog;
           window.setCableType = (key)=>{ if (key === 'composite_heavy' && CableCatalog[key]) TowSafety.currentKey = key; };
-          window.setTowMode   = (m)=>{ if (['auto','brake','pawl'].includes(m)) TowSafety.mode = m; };
+          window.setTowMode   = (m)=>{ if (['auto','brake','pawl'].includes(m)) { TowSafety.mode = m; const s = document.getElementById('towHudModeSelect'); if (s) s.value = m; } };
 
           // ————————————————————————————————————————————
           // Versão de computeTowlineForces que retorna TensionN
@@ -1756,7 +1753,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         document.querySelectorAll('.sim-rail').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const g = btn.dataset.panelGroup;
-                if (g === 'winch' || g === 'vessel' || g === 'env' || g === 'asd' || g === 'twinSafety') clearPendingBuoyPick();
+                if (g === 'winch' || g === 'towline' || g === 'vessel' || g === 'env' || g === 'asd' || g === 'twinSafety') clearPendingBuoyPick();
                 if (window.__simFloat && window.__simFloat.openGroup) {
                     window.__simFloat.openGroup(g);
                 }

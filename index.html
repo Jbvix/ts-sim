@@ -13,30 +13,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/tw.min.css" />
   <!-- Importando Pixi.js v7 e html2canvas -->
   <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  
-  <script>
-    tailwind.config = {
-      darkMode: 'media',
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
-          animation: {
-            'float': 'float 6s ease-in-out infinite',
-          },
-          keyframes: {
-            float: {
-              '0%, 100%': { transform: 'translateY(0)' },
-              '50%': { transform: 'translateY(-5px)' },
-            }
-          }
-        }
-      }
-    }
-  </script>
   <style>
     html { overflow-x: hidden; }
     /* Estilos base e Glassmorphism */
@@ -235,8 +215,12 @@
           </h1>
         </div>
         
-        <!-- CTA Button -->
-        <div class="flex items-center gap-2 sm:gap-4 shrink-0">
+        <!-- CTA: simulador + export + menu -->
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <a href="reboqueoceanico242TSIM.html" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-sky-500/25 transition-colors hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900" title="Simulador 3D — comboio, cabo, ambiente e governo ASD">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span class="hidden sm:inline">Simulador 3D</span>
+          </a>
           <button id="btnExport" class="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-2 px-2 py-2" title="Exportar Snapshot da Simulação">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
             <span class="hidden xl:inline text-xs font-semibold">Snapshot</span>
@@ -562,7 +546,6 @@
                 <p>\[ H_{fundo} = \mu\,w'\,L_b \]</p>
                 <p class="text-xs text-slate-600 dark:text-slate-400 mt-3 leading-relaxed">A tração <strong>horizontal útil</strong> (o que a UI chama de <em>H</em> em kN) é \(H_{pull} = H - H_{fundo}\) com o \(H = w' a\) do trecho suspenso, em coerência com a catenária.</p>
               </div>
-              <p class="text-xs text-slate-500 mt-3 flex gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg> Para tracionar a embarcação rebocada, o rebocador precisa primeiro vencer essa força de atrito estático. No código <code class="text-[0.7rem]">quickCalc</code>, o comprimento <span class="font-mono">L_b</span> cumpre a geometria (bisecção) com um fecho aproximado que iguala o vão horizontal à combinação <span class="font-mono">(L_s,\,h,\,a)</span>; trecho <strong>sem</strong> toque: <code class="text-[0.7rem]">solve_a</code> (Newton) resolve \(2a\sinh(S/2a)=L_s\).</p>
             </div>
           </div>
         </div>
@@ -1332,7 +1315,8 @@
       backgroundAlpha: 0, // Transparente
       antialias: true,
       resolution: window.devicePixelRatio || 1,
-      autoDensity: true
+      autoDensity: true,
+      preserveDrawingBuffer: true, // toDataURL / snapshot (html2canvas) fiável
     });
     
     container.appendChild(app.view);
@@ -1710,30 +1694,66 @@
       });
     }
 
-    // Evento de Snapshot com html2canvas
+    // Evento de Snapshot com html2canvas (Pixi: preserveDrawingBuffer; clone simplifica CSS que parte gradientes)
     document.getElementById('btnExport').addEventListener('click', () => {
       const btn = document.getElementById('btnExport');
       const oldHTML = btn.innerHTML;
       btn.innerHTML = `<span class="animate-spin mr-2">⏳</span> Processando...`;
-      
-      // Assegurar que o canvas do Pixi está atualizado e sem transparência conflituosa
-      app.render(); 
-      
+
+      app.render();
+
       const captureArea = document.getElementById('capture-area');
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const kpiSolid = isDark ? '#38bdf8' : '#0284c7';
+
       html2canvas(captureArea, {
-        backgroundColor: null,
-        scale: 2 // Alta resolução
-      }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `TSIM_Snapshot_${new Date().toISOString().slice(0,10)}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-        btn.innerHTML = oldHTML;
-      }).catch(err => {
-        console.error('Erro ao gerar snapshot:', err);
-        btn.innerHTML = oldHTML;
-        alert("Erro ao exportar snapshot.");
-      });
+        backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+        scale: Math.min(2, window.devicePixelRatio || 1.5),
+        logging: false,
+        useCORS: true,
+        onclone: (clonedDoc) => {
+          clonedDoc.querySelectorAll('.glass-card, [class*="backdrop-blur"]').forEach((el) => {
+            el.style.backdropFilter = 'none';
+            el.style.webkitBackdropFilter = 'none';
+          });
+          clonedDoc.querySelectorAll('.kpi-value').forEach((el) => {
+            el.style.background = 'none';
+            el.style.webkitBackgroundClip = 'border-box';
+            el.style.backgroundClip = 'border-box';
+            el.style.webkitTextFillColor = 'currentColor';
+            el.style.color = kpiSolid;
+          });
+          const liveCanvas = document.querySelector('#pixi-container canvas');
+          const cloneCanvas = clonedDoc.querySelector('#pixi-container canvas');
+          if (liveCanvas && cloneCanvas && liveCanvas.width > 0 && liveCanvas.height > 0) {
+            try {
+              const dataUrl = liveCanvas.toDataURL('image/png');
+              const img = clonedDoc.createElement('img');
+              img.setAttribute('alt', '');
+              img.src = dataUrl;
+              img.className = cloneCanvas.className;
+              img.style.width = cloneCanvas.style.width || '100%';
+              img.style.height = cloneCanvas.style.height || 'auto';
+              img.style.maxWidth = '100%';
+              cloneCanvas.replaceWith(img);
+            } catch (e) {
+              console.warn('Snapshot: embutir canvas Pixi', e);
+            }
+          }
+        },
+      })
+        .then((canvas) => {
+          const link = document.createElement('a');
+          link.download = `TSIM_Snapshot_${new Date().toISOString().slice(0, 10)}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          btn.innerHTML = oldHTML;
+        })
+        .catch((err) => {
+          console.error('Erro ao gerar snapshot:', err);
+          btn.innerHTML = oldHTML;
+          alert('Erro ao exportar snapshot.');
+        });
     });
 
     // Animação de flutuação leve (água / embarcações)

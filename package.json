@@ -1,0 +1,10 @@
+{
+  "name": "reboque-oceanico-tsim",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/tailwind-input.css -o ./assets/tw.min.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

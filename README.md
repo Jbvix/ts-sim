@@ -6,6 +6,17 @@
 
 Repositório: [github.com/Jbvix/ts-sim](https://github.com/Jbvix/ts-sim)
 
+## Estilos (Tailwind CSS)
+
+O projeto deixou de usar o *Play CDN* (`cdn.tailwindcss.com`). O CSS minificado fica em **`assets/tw.min.css`** (gerado a partir de `src/tailwind-input.css` e `tailwind.config.js`). Se alterar classes Tailwind nos `.html`, regenere:
+
+```bash
+npm install
+npm run build:css
+```
+
+O *deploy* na Netlify executa `npm ci && npm run build:css` (ver `netlify.toml`).
+
 ## Conteúdo
 
 | Ficheiro / pasta | Descrição |
@@ -23,12 +34,12 @@ Repositório: [github.com/Jbvix/ts-sim](https://github.com/Jbvix/ts-sim)
 
 ## Desenvolvimento local
 
-Abrir `index.html` no browser (ou `reboqueoceanico242TSIM.html`).
+`npm install` e `npm run build:css` (uma vez, ou após mudar utilitários Tailwind). Depois abrir `index.html` no browser (ou `reboqueoceanico242TSIM.html`).
 
 ## Deploy (Netlify)
 
 1. [Netlify](https://app.netlify.com) → *Add new site* → *Import an existing project* → escolher **Jbvix/ts-sim** (GitHub).
-2. **Build command:** deixe vazio; o `netlify.toml` define `echo T-Sim static site` (site estático).
+2. **Build command:** o `netlify.toml` executa `npm ci && npm run build:css` (Tailwind + `assets/tw.min.css`).
 3. **Publish directory:** `.` (raiz).
 4. *Deploy site* — o site fica em `https://<subdomínio>.netlify.app`.
 
