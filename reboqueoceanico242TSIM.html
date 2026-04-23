@@ -109,83 +109,7 @@
       z-index: 0;
     }
   </style>
-</head>
-<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
-<header class="sticky top-0 z-50 glass-card rounded-none border-t-0 border-x-0 border-b border-slate-200 dark:border-slate-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between min-h-16 py-2 sm:py-0 sm:h-16">
-        <!-- Logo/Title -->
-        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div class="bg-gradient-to-tr from-sky-600 to-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-sky-500/30 shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M10 18h4"/><path d="M12 2v2"/><path d="m5 16 2-4"/><path d="m19 16-2-4"/><path d="m8 6 1 2"/><path d="m16 6-1 2"/></svg>
-          </div>
-          <div class="min-w-0">
-            <h1 class="text-base sm:text-xl font-bold tracking-tight leading-tight">T‑Sim <span class="font-normal opacity-60"><span class="sm:hidden">| Towing</span><span class="hidden sm:inline">| Towing Analytics</span></span></h1>
-            <p class="text-[9px] sm:text-xs text-slate-500 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate" title="Autoria">Autoria: Jossian Brito <span class="text-slate-400 dark:text-slate-500" aria-hidden="true">·</span> TugLife Systems</p>
-          </div>
-        </div>
-        
-        <!-- Navigation -->
-        <nav class="hidden lg:flex gap-6 text-sm font-medium">
-          <a href="index.html#visao" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Dinâmica</a>
-          <a href="index.html#formulas" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Fórmulas</a>
-          <a href="index.html#safety" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Safety</a>
-          <a href="index.html#manual" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Operação</a>
-        </nav>
-
-        <!-- CTA Button -->
-        <div class="flex items-center gap-4">
-          <a href="#calc" class="text-sm font-medium hover:text-sky-600 transition-colors lg:hidden">Calc</a>
-          <button id="btnExport" class="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-2 px-2 py-2" title="Exportar Snapshot da Simulação">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-            <span class="hidden xl:inline text-xs font-semibold">Snapshot</span>
-          </button>
-          <a href="index.html" class="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-md hover:shadow-lg flex items-center gap-2" title="Vista catenária e KPIs">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            <span class="hidden sm:inline">Dashboard</span>
-          </a>
-          <button id="btnMobileMenu" class="lg:hidden p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <div class="flex max-w-[1400px] mx-auto relative w-full">
-    
-    <!-- SIDEBAR (Esquerda) -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-[45] w-[min(100vw,22rem)] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800 transform -translate-x-full lg:translate-x-0 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] transition-transform duration-300 ease-in-out lg:z-[25] flex-shrink-0 flex flex-col min-h-0 min-w-0">
-      <div class="flex lg:hidden items-center justify-between gap-2 px-3 py-2 border-b border-slate-200/80 dark:border-slate-700/80">
-        <h2 class="font-bold text-sm text-slate-800 dark:text-slate-100">Controles</h2>
-        <button type="button" id="btnCloseMenu" class="p-2 text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-rose-500 transition-colors" aria-label="Fechar menu">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
-      </div>
-      <div class="flex flex-1 min-h-0 min-w-0">
-        <nav id="sim-tool-rail" class="flex w-[3.25rem] shrink-0 flex-col gap-1.5 border-r border-slate-200/80 bg-slate-200/50 py-2 px-1 dark:border-slate-600 dark:bg-slate-800/90" aria-label="Painéis do simulador">
-          <button type="button" class="sim-rail" data-panel-group="env" title="Ambiente (vento, mar, corrente)" aria-pressed="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-          </button>
-          <button type="button" class="sim-rail sim-rail-active" data-panel-group="vessel" title="Navio, rebocador e desempenho" aria-pressed="true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 20a2.4 2.4 0 0 0 2 1h16a2.4 2.4 0 0 0 2-1"/><path d="M4 20 7 5a2 2 0 0 1 2-1h6a2 2 0 0 1 2 1l3 15"/><path d="M7 9h10"/><path d="M6 12h1"/><path d="M17 12h1"/></svg>
-          </button>
-          <button type="button" class="sim-rail" data-panel-group="winch" title="Guincho e cabo" aria-pressed="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22V8"/><path d="M5 12H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4h-3"/><path d="M5 8a7 7 0 0 0 6 0 7 7 0 0 0-6 0Z"/></svg>
-          </button>
-          <button type="button" class="sim-rail" data-panel-group="asd" title="Governo ASD" aria-pressed="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-          <button type="button" class="sim-rail" data-panel-group="towing" title="Configuração do reboque" aria-pressed="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 18h6"/><path d="M9 10h2"/></svg>
-          </button>
-          <button type="button" class="sim-rail" data-panel-group="buoy" title="Bóias" aria-pressed="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-          </button>
-        </nav>
-        <div id="panel-context" class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden py-2 pr-2 pl-1">
-        <p id="panel-context-label" class="text-[0.7rem] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-2 px-1">Navio, rebocador e desempenho</p>
-<style>
+  <style>
 .panel {
     background-color: rgba(20, 30, 40, 0.8);
     border: 1px solid rgba(128, 170, 255, 0.3);
@@ -217,113 +141,63 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 .sim-rail-active { background:#0ea5e9; color:#0f172a; border-color:#38bdf8; box-shadow:0 0 0 1px rgba(14,165,233,.25);}
 @media (prefers-color-scheme: dark) { .sim-rail-active { color:#f8fafc; } }
 .hidden { display: none !important; }
-
-/* Configuração do reboque — abas e conteúdo */
-#towingSetupPanel .tab-container { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
-#towingSetupPanel .tab-nav {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  padding-bottom: 8px; margin-bottom: 6px;
-  border-bottom: 1px solid rgba(128, 170, 255, 0.25);
+#sim-float-root { position: fixed; inset: 0; top: 4rem; pointer-events: none; z-index: 40; }
+#sim-float-root .sim-float-window { pointer-events: auto; }
+.sim-float-window {
+  position: fixed; display: flex; flex-direction: column; min-width: 260px; max-width: min(100vw - 20px, 24rem);
+  min-height: 100px; max-height: 88vh; width: 22rem;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  border-radius: 10px; border: 1px solid rgba(100, 116, 139, 0.45);
+  background: rgba(20, 30, 40, 0.97); color: #e0e0e0;
+  overflow: hidden; resize: none;
 }
-#towingSetupPanel .tab-nav .tab-btn {
-  width: auto !important; flex: 1 1 calc(50% - 3px); min-width: 0; margin-top: 0 !important;
-  padding: 7px 8px; font-size: 11px; line-height: 1.2;
-  background: rgba(40, 50, 65, 0.95); border: 1px solid rgba(100, 116, 139, 0.45);
-  border-radius: 6px; color: #cbd5e1; font-weight: 600;
-  cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+.sim-float-window.sim-float--min { max-height: none; min-height: 0; }
+.sim-float-window.sim-float--min .sim-float-body { display: none !important; }
+.sim-float-window.sim-float--min .sim-float-resize { display: none; }
+.sim-float-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  flex: 0 0 auto; padding: 6px 8px; cursor: grab;
+  background: linear-gradient(180deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
+  border-bottom: 1px solid rgba(100, 116, 139, 0.35);
+  user-select: none; touch-action: none;
 }
-#towingSetupPanel .tab-nav .tab-btn:hover { background: rgba(55, 65, 85, 0.95); color: #f1f5f9; }
-#towingSetupPanel .tab-nav .tab-btn.active {
-  background: rgba(14, 165, 233, 0.25); border-color: #38bdf8; color: #e0f2fe;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
+.sim-float-header:active { cursor: grabbing; }
+.sim-float-title { font-size: 0.78rem; font-weight: 700; color: #e2e8f0; letter-spacing: 0.02em; }
+.sim-float-tools { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.sim-float-btn {
+  display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; padding: 0;
+  border: none; border-radius: 6px; background: transparent; color: #94a3b8; font-size: 1.1rem; line-height: 1;
+  cursor: pointer; transition: background 0.12s, color 0.12s;
 }
-#towingSetupPanel .tab-content-container { min-height: 0; overflow: auto; max-height: min(60vh, 22rem); }
-#towingSetupPanel .tab-content { display: none !important; }
-#towingSetupPanel .tab-content.active { display: block !important; }
-#towingSetupPanel .tab-content h5 {
-  font-size: 0.8rem; margin: 0 0 0.5rem 0; color: #7dd3fc; font-weight: 700; letter-spacing: 0.02em;
-  border-bottom: 1px solid rgba(128, 170, 255, 0.2); padding-bottom: 4px;
+.sim-float-btn:hover { background: rgba(100, 116, 139, 0.35); color: #f1f5f9; }
+.sim-float-close:hover { color: #fecaca; background: rgba(127, 29, 29, 0.35); }
+.sim-float-body {
+  flex: 1; min-height: 0; overflow: auto; padding: 0; -webkit-overflow-scrolling: touch;
 }
-#towingSetupPanel .tab-content h5:not(:first-child) { margin-top: 0.75rem; }
-#towingSetupPanel .tab-content h6 { font-size: 0.7rem; margin: 0 0 0.35rem 0; color: #94a3b8; }
-#towingSetupPanel .prop-row {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
-  font-size: 12px; margin-bottom: 6px; line-height: 1.35;
+.sim-float-body > .panel {
+  position: relative !important; left: auto !important; top: auto !important; width: 100% !important;
+  margin: 0 !important; min-height: 0; box-sizing: border-box; border: none; border-radius: 0;
+  max-height: none; padding: 12px 14px 14px; background: transparent;
 }
-#towingSetupPanel .prop-row .label { color: #94a3b8; flex: 1; min-width: 0; }
-#towingSetupPanel .prop-row .value { color: #f1f5f9; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-#towingSetupPanel .assembly-trainer h5 { margin-bottom: 8px; }
-#towingSetupPanel .assembly-container { display: flex; flex-direction: column; gap: 8px; }
-#towingSetupPanel .assembly-box {
-  min-height: 72px; border: 1px solid rgba(128, 170, 255, 0.28); border-radius: 6px; padding: 8px;
-  background: rgba(0, 0, 0, 0.18);
+.sim-float-body .panel > h4:first-of-type { display: none !important; }
+.sim-float-resize {
+  position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, rgba(100, 116, 139, 0.55) 50%);
+  border-radius: 0 0 8px 0; z-index: 2;
 }
-#towingSetupPanel .assembly-item-drag {
-  display: block; width: 100% !important; box-sizing: border-box; margin: 4px 0; padding: 6px 8px;
-  font-size: 11px; line-height: 1.2; background: #3d4a5c; border: 1px solid #556; border-radius: 4px;
-  cursor: grab; color: #e8e8e8; text-align: left;
-}
-#towingSetupPanel .assembly-item-drag:active { cursor: grabbing; }
-#towingSetupPanel #checkAssemblyBtn { margin-top: 8px; }
-#towingSetupPanel .assembly-feedback { display: none; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 12px; line-height: 1.4; }
-#towingSetupPanel .assembly-feedback.error { background: rgba(127, 29, 29, 0.45); border: 1px solid rgba(248, 113, 113, 0.4); color: #fecaca; }
-#towingSetupPanel .assembly-feedback.success { background: rgba(20, 83, 45, 0.45); border: 1px solid rgba(74, 222, 128, 0.35); color: #dcfce7; }
-/* Comboio: navio + rebocador e gráfico de velocidades */
 #vesselPanel { overflow-x: hidden; }
 #vesselPanel h5 { font-size: 0.78rem; margin: 0 0 0.4rem; color: #7dd3fc; font-weight: 700; letter-spacing: 0.02em; }
-.fleet-compare {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-  gap: 10px 14px;
-  margin-bottom: 10px;
-  align-items: start;
-  isolation: isolate;
-}
-@media (max-width: 400px) {
-  .fleet-compare { grid-template-columns: 1fr; }
-}
-.fleet-col {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  box-sizing: border-box;
-  border: 1px solid rgba(128, 170, 255, 0.2);
-  border-radius: 6px;
-  padding: 8px;
-  background: rgba(0,0,0,0.12);
-  contain: layout;
-}
-/* Evita herdar flex 50/30 de .control-row: sliders não podem vazar para a coluna vizinha */
-#vesselPanel .fleet-col .control-row {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) auto;
-  column-gap: 6px;
-  row-gap: 3px;
-  align-items: center;
-  font-size: 11px;
-  margin-bottom: 6px;
-  min-width: 0;
-}
+.fleet-compare { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px 14px; margin-bottom: 10px; align-items: start; isolation: isolate; }
+@media (max-width: 400px) { .fleet-compare { grid-template-columns: 1fr; } }
+.fleet-col { min-width: 0; max-width: 100%; overflow: hidden; box-sizing: border-box; border: 1px solid rgba(128, 170, 255, 0.2); border-radius: 6px; padding: 8px; background: rgba(0,0,0,0.12); contain: layout; }
+#vesselPanel .fleet-col .control-row { display: grid; grid-template-columns: minmax(0,1fr) auto; column-gap: 6px; row-gap: 3px; align-items: center; font-size: 11px; margin-bottom: 6px; min-width: 0; }
 #vesselPanel .fleet-col .control-row > label { flex-basis: unset; min-width: 0; }
 #vesselPanel .fleet-col .control-row:has(> input[type="range"]) > label { grid-column: 1 / -1; }
-#vesselPanel .fleet-col .control-row:has(> input[type="range"]) > input[type="range"] {
-  grid-column: 1;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0;
-  box-sizing: border-box;
-  flex-basis: unset;
-}
+#vesselPanel .fleet-col .control-row:has(> input[type="range"]) > input[type="range"] { grid-column: 1; width: 100% !important; max-width: 100% !important; min-width: 0; box-sizing: border-box; flex-basis: unset; }
 #vesselPanel .fleet-col .control-row:has(> input[type="range"]) > span { grid-column: 2; }
 #vesselPanel .fleet-col .control-row:has(> select) { grid-template-columns: 1fr; }
 #vesselPanel .fleet-col .control-row:has(> select) > label { width: 100%; }
-#vesselPanel .fleet-col .control-row:has(> select) > select {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0;
-  box-sizing: border-box;
-  flex-basis: unset;
-}
+#vesselPanel .fleet-col .control-row:has(> select) > select { width: 100% !important; max-width: 100% !important; min-width: 0; box-sizing: border-box; flex-basis: unset; }
 #vesselPanel .fleet-col .control-row:not(:has(> input)):not(:has(> select)) > label { min-width: 0; }
 #vesselPanel .fleet-col .control-row:not(:has(> input)):not(:has(> select)) > span { white-space: nowrap; }
 #vesselPanel .fleet-col .control-row:last-child { margin-bottom: 0; }
@@ -335,136 +209,130 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 .chart-legend .leg-ship { color: #7dd3fc; }
 .chart-legend .leg-tug { color: #fb923c; }
 #asdPanel { overflow-x: hidden; }
-#asdPanel .asd-intro { font-size: 10px; color: #8da4b7; margin: 0 0 12px; line-height: 1.45; }
 #asdPanel .asd-section { margin-bottom: 10px; }
-#asdPanel .asd-btn-row {
-  display: flex; gap: 8px; margin-bottom: 12px;
-}
-#asdPanel .asd-btn-row .asd-btn {
-  flex: 1; margin-top: 0; min-width: 0;
-  font-size: 12px; font-weight: 600; padding: 9px 8px; border-radius: 8px;
-  border: 1px solid rgba(100, 116, 139, 0.5);
-  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
-}
-#asdPanel .asd-btn-engine {
-  background: linear-gradient(180deg, rgba(51, 65, 85, 0.9) 0%, rgba(30, 41, 59, 0.95) 100%);
-  color: #e2e8f0;
-}
+#asdPanel .asd-btn-row { display: flex; gap: 8px; margin-bottom: 12px; }
+#asdPanel .asd-btn-row .asd-btn { flex: 1; margin-top: 0; min-width: 0; font-size: 12px; font-weight: 600; padding: 9px 8px; border-radius: 8px; border: 1px solid rgba(100, 116, 139, 0.5); transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s; }
+#asdPanel .asd-btn-engine { background: linear-gradient(180deg, rgba(51, 65, 85, 0.9) 0%, rgba(30, 41, 59, 0.95) 100%); color: #e2e8f0; }
 #asdPanel .asd-btn-engine:hover { background: rgba(71, 85, 105, 0.95); border-color: rgba(125, 211, 252, 0.45); }
-#asdPanel .asd-btn-engine.running {
-  background: linear-gradient(180deg, rgba(22, 101, 52, 0.9) 0%, rgba(20, 83, 45, 0.95) 100%);
-  border-color: rgba(74, 222, 128, 0.45);
-  color: #dcfce7;
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
-}
-#asdPanel .asd-btn-mode {
-  background: linear-gradient(180deg, rgba(30, 58, 95, 0.95) 0%, rgba(23, 37, 84, 0.98) 100%);
-  color: #93c5fd; border-color: rgba(59, 130, 246, 0.45);
-}
+#asdPanel .asd-btn-engine.running { background: linear-gradient(180deg, rgba(22, 101, 52, 0.9) 0%, rgba(20, 83, 45, 0.95) 100%); border-color: rgba(74, 222, 128, 0.45); color: #dcfce7; box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2); }
+#asdPanel .asd-btn-mode { background: linear-gradient(180deg, rgba(30, 58, 95, 0.95) 0%, rgba(23, 37, 84, 0.98) 100%); color: #93c5fd; border-color: rgba(59, 130, 246, 0.45); }
 #asdPanel .asd-btn-mode:hover { border-color: rgba(96, 165, 250, 0.65); color: #bfdbfe; }
-#asdPanel .asd-clutch-row {
-  display: flex; gap: 8px; margin-top: 8px; margin-bottom: 2px;
-}
-#asdPanel .asd-btn-clutch {
-  flex: 1; font-size: 11px; font-weight: 600; padding: 8px 6px; border-radius: 8px;
-  border: 1px solid rgba(100, 116, 139, 0.55);
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
-  color: #94a3b8; cursor: pointer; transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, background 0.15s;
-}
+#asdPanel .asd-clutch-row { display: flex; gap: 8px; margin-top: 8px; margin-bottom: 2px; }
+#asdPanel .asd-btn-clutch { flex: 1; font-size: 11px; font-weight: 600; padding: 8px 6px; border-radius: 8px; border: 1px solid rgba(100, 116, 139, 0.55); background: linear-gradient(180deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); color: #94a3b8; cursor: pointer; transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, background 0.15s; }
 #asdPanel .asd-btn-clutch:hover { border-color: rgba(148, 163, 184, 0.6); color: #e2e8f0; }
-#asdPanel .asd-btn-clutch.is-active {
-  border-color: rgba(34, 197, 94, 0.55);
-  background: linear-gradient(180deg, rgba(22, 101, 52, 0.5) 0%, rgba(20, 83, 45, 0.6) 100%);
-  color: #bbf7d0; box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
-}
-/* Sempre 1 coluna: duas colunas no painel estreito (< ~160px/cartão) partiam os range sliders */
-#asdPanel .asd-thruster-grid {
-  display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 4px;
-}
-#asdPanel .asd-thruster-card {
-  border: 1px solid rgba(100, 116, 139, 0.35);
-  border-radius: 10px; padding: 10px; min-width: 0;
-  background: linear-gradient(160deg, rgba(15, 23, 42, 0.55) 0%, rgba(30, 41, 59, 0.4) 100%);
-  contain: layout style;
-  overflow: hidden;
-}
-#asdPanel .asd-thruster-bb { border-color: rgba(14, 165, 233, 0.35); box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.08); }
-#asdPanel .asd-thruster-be { border-color: rgba(249, 115, 22, 0.35); box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.08); }
-#asdPanel .asd-thruster-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px;
-  padding-bottom: 6px; border-bottom: 1px solid rgba(128, 170, 255, 0.15);
-}
-#asdPanel .asd-thruster-head h5 {
-  font-size: 0.75rem; margin: 0; color: #e2e8f0; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-}
-#asdPanel .asd-badge {
-  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px;
-  background: rgba(51, 65, 85, 0.8); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.4);
-}
-#asdPanel .asd-thruster-bb .asd-badge { color: #7dd3fc; border-color: rgba(14, 165, 233, 0.35); }
-#asdPanel .asd-thruster-be .asd-badge { color: #fdba74; border-color: rgba(249, 115, 22, 0.35); }
-#asdPanel .asd-thruster-head-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-#asdPanel .asd-prop-wrap {
-  width: 3rem; height: 3rem; flex: 0 0 auto; position: relative;
-}
-#asdPanel .asd-prop-svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
-#asdPanel .asd-prop-duct { fill: rgba(15, 23, 42, 0.4); stroke: rgba(100, 116, 139, 0.55); stroke-width: 1.2; }
-#asdPanel .asd-thruster-bb .asd-prop-blade { fill: rgba(56, 189, 248, 0.35); stroke: #38bdf8; stroke-width: 1.2; stroke-linejoin: round; }
-#asdPanel .asd-thruster-bb .asd-prop-boss { fill: #0c4a6e; stroke: #38bdf8; stroke-width: 0.5; }
-#asdPanel .asd-thruster-be .asd-prop-blade { fill: rgba(251, 146, 60, 0.3); stroke: #fb923c; stroke-width: 1.2; stroke-linejoin: round; }
-#asdPanel .asd-thruster-be .asd-prop-boss { fill: #7c2d12; stroke: #fb923c; stroke-width: 0.5; }
-/* Bússola por cima, sliders à largura total — evita faixa horizontal com 0px de largo */
-#asdPanel .asd-az-block { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-#asdPanel .asd-az-dial { flex: 0 0 auto; width: 5rem; height: 5rem; max-width: 100%; position: relative; align-self: center; }
-#asdPanel .asd-dial-svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); }
-#asdPanel .asd-dial-ring { fill: rgba(15, 23, 42, 0.65); stroke: rgba(100, 116, 139, 0.5); stroke-width: 1.2; }
-#asdPanel .asd-dial-tick { stroke: rgba(148, 163, 184, 0.45); stroke-width: 0.6; }
-#asdPanel .asd-dial-n { fill: #f87171; font-size: 8px; font-weight: 800; text-anchor: middle; font-family: system-ui, sans-serif; }
-#asdPanel .asd-dial-needle { stroke: #f8fafc; stroke-width: 2.2; stroke-linecap: round; }
-#asdPanel .asd-dial-hub { fill: #64748b; stroke: #94a3b8; stroke-width: 0.5; }
-#asdPanel .asd-thruster-bb .asd-dial-needle { stroke: #38bdf8; }
-#asdPanel .asd-thruster-be .asd-dial-needle { stroke: #fb923c; }
-#asdPanel .asd-sliders { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-#asdPanel .asd-section .control-row,
-#asdPanel .asd-sliders .control-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 6px; row-gap: 2px; align-items: center;
-  font-size: 11px; margin-bottom: 4px; min-width: 0;
-}
-#asdPanel .asd-section .control-row:has(> input[type="range"]) > label,
-#asdPanel .asd-sliders .control-row:has(> input[type="range"]) > label { grid-column: 1 / -1; }
-#asdPanel .asd-section .control-row:has(> input[type="range"]) > input[type="range"],
-#asdPanel .asd-sliders .control-row:has(> input[type="range"]) > input[type="range"] {
-  grid-column: 1;
-  width: 100% !important; max-width: 100% !important; min-width: 0;
-  flex-basis: unset !important; box-sizing: border-box; align-self: stretch;
-  height: 1.35rem; margin: 0;
-}
-#asdPanel .asd-section .control-row:has(> input[type="range"]) > span,
-#asdPanel .asd-sliders .control-row:has(> input[type="range"]) > span { grid-column: 2; }
-#asdPanel .asd-sliders .control-row:last-of-type { margin-bottom: 0; }
-#asdPanel .asd-sliders .control-row input[type="range"]::-webkit-slider-thumb { margin-top: -5px; }
-#asdPanel .asd-carga-real {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-top: 6px;
-  padding: 5px 8px; border-radius: 6px; background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(100, 116, 139, 0.35); font-size: 10px; color: #94a3b8;
-}
-#asdPanel .asd-carga-real .asd-cr-lbl { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
-#asdPanel .asd-carga-real .asd-cr-v { font-family: ui-monospace, monospace; font-size: 0.85rem; font-weight: 700; color: #e2e8f0; }
-#asdPanel .asd-rpm-gauge { margin-top: 4px; }
-#asdPanel .asd-rpm-track {
-  height: 5px; border-radius: 3px; background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(100, 116, 139, 0.35); overflow: hidden;
-}
-#asdPanel .asd-rpm-fill { height: 100%; width: 0%; border-radius: 2px;
-  background: linear-gradient(90deg, #0284c7, #4ade80 85%);
-  transition: width 0.12s ease-out;
-}
-#asdPanel .asd-thruster-be .asd-rpm-fill { background: linear-gradient(90deg, #c2410c, #fbbf24 90%); }
+#asdPanel .asd-btn-clutch.is-active { border-color: rgba(34, 197, 94, 0.55); background: linear-gradient(180deg, rgba(22, 101, 52, 0.5) 0%, rgba(20, 83, 45, 0.6) 100%); color: #bbf7d0; box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2); }
+#asd-thruster-dock { box-sizing: border-box; }
+#asd-thruster-dock .asd-thruster-card { border: 1px solid rgba(100, 116, 139, 0.35); border-radius: 10px; padding: 8px; min-width: 0; background: linear-gradient(160deg, rgba(15, 23, 42, 0.82) 0%, rgba(30, 41, 59, 0.75) 100%); contain: layout style; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,0.35); }
+#asd-thruster-dock .asd-thruster-bb { border-color: rgba(14, 165, 233, 0.4); box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.1), 0 -4px 20px rgba(0,0,0,0.3); }
+#asd-thruster-dock .asd-thruster-be { border-color: rgba(249, 115, 22, 0.4); box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.1), 0 -4px 20px rgba(0,0,0,0.3); }
+#asd-thruster-dock .asd-thruster-head { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(128, 170, 255, 0.12); }
+#asd-thruster-dock .asd-thruster-head--compact { justify-content: flex-end; min-height: 0; }
+#asd-thruster-dock .asd-badge { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; background: rgba(51, 65, 85, 0.8); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.4); }
+#asd-thruster-dock .asd-thruster-bb .asd-badge { color: #7dd3fc; border-color: rgba(14, 165, 233, 0.35); }
+#asd-thruster-dock .asd-thruster-be .asd-badge { color: #fdba74; border-color: rgba(249, 115, 22, 0.35); }
+#asd-thruster-dock .asd-thruster-head-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+#asd-thruster-dock .asd-thruster-head-right--end { margin-left: auto; }
+#asd-thruster-dock .asd-prop-wrap { width: 2.5rem; height: 2.5rem; flex: 0 0 auto; position: relative; }
+#asd-thruster-dock .asd-prop-svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
+#asd-thruster-dock .asd-prop-duct { fill: rgba(15, 23, 42, 0.4); stroke: rgba(100, 116, 139, 0.55); stroke-width: 1.2; }
+#asd-thruster-dock .asd-thruster-bb .asd-prop-blade { fill: rgba(56, 189, 248, 0.35); stroke: #38bdf8; stroke-width: 1.2; stroke-linejoin: round; }
+#asd-thruster-dock .asd-thruster-bb .asd-prop-boss { fill: #0c4a6e; stroke: #38bdf8; stroke-width: 0.5; }
+#asd-thruster-dock .asd-thruster-be .asd-prop-blade { fill: rgba(251, 146, 60, 0.3); stroke: #fb923c; stroke-width: 1.2; stroke-linejoin: round; }
+#asd-thruster-dock .asd-thruster-be .asd-prop-boss { fill: #7c2d12; stroke: #fb923c; stroke-width: 0.5; }
+#asd-thruster-dock .asd-az-block { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+#asd-thruster-dock .asd-az-dial { flex: 0 0 auto; width: 4.25rem; height: 4.25rem; max-width: 100%; position: relative; align-self: center; }
+#asd-thruster-dock .asd-dial-svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); }
+#asd-thruster-dock .asd-dial-ring { fill: rgba(15, 23, 42, 0.65); stroke: rgba(100, 116, 139, 0.5); stroke-width: 1.2; }
+#asd-thruster-dock .asd-dial-tick { stroke: rgba(148, 163, 184, 0.45); stroke-width: 0.6; }
+#asd-thruster-dock .asd-dial-n { fill: #f87171; font-size: 8px; font-weight: 800; text-anchor: middle; font-family: system-ui, sans-serif; }
+#asd-thruster-dock .asd-dial-needle { stroke: #f8fafc; stroke-width: 2.2; stroke-linecap: round; }
+#asd-thruster-dock .asd-dial-hub { fill: #64748b; stroke: #94a3b8; stroke-width: 0.5; }
+#asd-thruster-dock .asd-thruster-bb .asd-dial-needle { stroke: #38bdf8; }
+#asd-thruster-dock .asd-thruster-be .asd-dial-needle { stroke: #fb923c; }
+#asd-thruster-dock .asd-sliders { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#asd-thruster-dock .asd-section .control-row, #asd-thruster-dock .asd-sliders .control-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 6px; row-gap: 2px; align-items: center; font-size: 10px; margin-bottom: 4px; min-width: 0; }
+#asd-thruster-dock .asd-sliders .control-row:has(> input[type="range"]) > label { grid-column: 1 / -1; }
+#asd-thruster-dock .asd-sliders .control-row:has(> input[type="range"]) > input[type="range"] { grid-column: 1; width: 100% !important; max-width: 100% !important; min-width: 0; flex-basis: unset !important; box-sizing: border-box; align-self: stretch; height: 1.25rem; margin: 0; }
+#asd-thruster-dock .asd-sliders .control-row:has(> input[type="range"]) > span { grid-column: 2; }
+#asd-thruster-dock .asd-sliders .control-row:last-of-type { margin-bottom: 0; }
+#asd-thruster-dock .asd-sliders .control-row input[type="range"]::-webkit-slider-thumb { margin-top: -5px; }
+#asd-thruster-dock .asd-carga-real--compact { display: flex; align-items: center; justify-content: flex-end; margin-top: 2px; padding: 2px 0; font-size: 9px; color: #94a3b8; }
+#asd-thruster-dock .asd-carga-real--compact .asd-cr-v { font-family: ui-monospace, monospace; font-size: 0.78rem; font-weight: 700; color: #e2e8f0; }
+#asd-thruster-dock .asd-rpm-gauge { margin-top: 2px; }
+#asd-thruster-dock .asd-rpm-track { height: 4px; border-radius: 3px; background: rgba(0,0,0,0.35); border: 1px solid rgba(100, 116, 139, 0.35); overflow: hidden; }
+#asd-thruster-dock .asd-rpm-fill { height: 100%; width: 0%; border-radius: 2px; background: linear-gradient(90deg, #0284c7, #4ade80 85%); transition: width 0.12s ease-out; }
+#asd-thruster-dock .asd-thruster-be .asd-rpm-fill { background: linear-gradient(90deg, #c2410c, #fbbf24 90%); }
+#asdPanel .asd-section .control-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 6px; row-gap: 2px; align-items: center; font-size: 11px; margin-bottom: 4px; min-width: 0; }
+#asdPanel .asd-section .control-row:has(> input[type="range"]) > label { grid-column: 1 / -1; }
+#asdPanel .asd-section .control-row:has(> input[type="range"]) > input[type="range"] { grid-column: 1; width: 100% !important; max-width: 100% !important; min-width: 0; flex-basis: unset !important; box-sizing: border-box; align-self: stretch; height: 1.35rem; margin: 0; }
+#asdPanel .asd-section .control-row:has(> input[type="range"]) > span { grid-column: 2; }
 #asdPanel hr { margin: 10px 0; }
-</style>
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
+<header class="sticky top-0 z-50 glass-card rounded-none border-t-0 border-x-0 border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between min-h-16 py-2 sm:py-0 sm:h-16">
+        <!-- Logo/Title -->
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div class="bg-gradient-to-tr from-sky-600 to-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-sky-500/30 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M10 18h4"/><path d="M12 2v2"/><path d="m5 16 2-4"/><path d="m19 16-2-4"/><path d="m8 6 1 2"/><path d="m16 6-1 2"/></svg>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-base sm:text-xl font-bold tracking-tight leading-tight">T‑Sim <span class="font-normal opacity-60"><span class="sm:hidden">| Towing</span><span class="hidden sm:inline">| Towing Analytics</span></span></h1>
+            <p class="text-[9px] sm:text-xs text-slate-500 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate" title="Autoria">Autoria: Jossian Brito <span class="text-slate-400 dark:text-slate-500" aria-hidden="true">·</span> TugLife Systems</p>
+          </div>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4 text-[11px] sm:text-sm font-medium max-w-[min(100%,28rem)]">
+          <a href="index.html#visao" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Dinâmica</a>
+          <a href="index.html#formulas" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Fórmulas</a>
+          <a href="index.html#safety" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Safety</a>
+          <a href="index.html#manual" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Operação</a>
+        </nav>
 
+        <!-- CTA Button -->
+        <div class="flex items-center gap-4">
+          <a href="#calc" class="text-sm font-medium hover:text-sky-600 transition-colors lg:hidden">Calc</a>
+          <button id="btnExport" class="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-2 px-2 py-2" title="Exportar Snapshot da Simulação">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            <span class="hidden xl:inline text-xs font-semibold">Snapshot</span>
+          </button>
+          <a href="index.html" class="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-md hover:shadow-lg flex items-center gap-2" title="Vista catenária e KPIs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <span class="hidden sm:inline">Dashboard</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex max-w-[1400px] mx-auto relative w-full">
+    <aside id="sidebar" class="fixed left-0 top-16 z-[38] h-[calc(100vh-4rem)] w-[3.25rem] shrink-0 flex flex-col min-h-0 min-w-0 border-r border-slate-200/80 bg-slate-200/50 py-2 px-1 dark:border-slate-600 dark:bg-slate-800/90" aria-label="Painéis do simulador">
+        <nav id="sim-tool-rail" class="flex w-full min-h-0 flex-1 flex-col gap-1.5">
+          <button type="button" class="sim-rail" data-panel-group="env" title="Ambiente (vento, mar, corrente)" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          </button>
+          <button type="button" class="sim-rail sim-rail-active" data-panel-group="vessel" title="Navio, rebocador e desempenho" aria-pressed="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 20a2.4 2.4 0 0 0 2 1h16a2.4 2.4 0 0 0 2-1"/><path d="M4 20 7 5a2 2 0 0 1 2-1h6a2 2 0 0 1 2 1l3 15"/><path d="M7 9h10"/><path d="M6 12h1"/><path d="M17 12h1"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="winch" title="Guincho e cabo" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22V8"/><path d="M5 12H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4h-3"/><path d="M5 8a7 7 0 0 0 6 0 7 7 0 0 0-6 0Z"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="asd" title="Governo ASD" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="twinSafety" title="TWIN e segurança" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="buoy" title="Bóias" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+          </button>
+        </nav>
+    </aside>
+
+    <div id="sim-panels-staging" class="sr-only" aria-hidden="true">
         <div id="envPanel" class="panel">
             <h4>Ambiente</h4>
             <div class="control-row"><label>Vento (m/s):</label><input type="range" id="windSpeed" min="0" max="50" value="5" step="1"><span id="windSpeedValue">5</span></div>
@@ -557,19 +425,6 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             <div class="resize-handle"></div>
         </div>
 
-        <div id="towingSetupPanel" class="panel hidden">
-            <h4>Configuração do Reboque</h4>
-            <div class="tab-container">
-                <div class="tab-nav" id="towing-setup-tabs">
-                    <!-- Botões das abas serão gerados aqui -->
-                </div>
-                <div class="tab-content-container" id="towing-setup-content">
-                    <!-- Conteúdo das abas será gerado aqui -->
-                </div>
-            </div>
-            <div class="resize-handle"></div>
-        </div>
-
         <div id="buoyPanel" class="panel hidden">
             <h4>Marcadores (Bóias)</h4>
             <p class="text-[11px] leading-snug mb-2" style="color:#8da4b7;">Escolha a cor, depois <strong>clique na água</strong> na vista 3D para colocar a bóia.</p>
@@ -583,7 +438,6 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         
         <div id="asdPanel" class="panel asd-panel hidden">
             <h4>Governo ASD (rebocador)</h4>
-            <p class="asd-intro">Controlo de propulsores azimutais. <strong>Arranque desacoplado</strong> (sem tração) até <strong>Acoplar</strong>. Comando de RPM mínimo <strong>650</strong> com motores a trabalho. <strong>Desacoplar</strong>: sem jato/tração; a hélice no painel ainda roda, mais devagar que o eixo. Massa, velocidade, carga e consumo no painel <strong>Navio e rebocador</strong>.</p>
             <div class="asd-section">
                 <div class="control-row"><label for="tugDraft">Calado (m)</label><input type="range" id="tugDraft" min="3" max="8" value="5" step="0.25" title="Calado 3–8 m (default 5 m). f_calado = calado/5 m (1,0 em 5 m). Ref. 100%: 5 m + 1800 rpm + SOG ref. 11+ n + tração total."><span id="tugDraftValue">5</span></div>
             </div>
@@ -595,12 +449,31 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 <button type="button" id="asdDriveEngage" class="asd-btn asd-btn-clutch" title="Transmissão acoplada: tração na água (RPM mín. 650 em operação)">Acoplar</button>
                 <button type="button" id="asdDriveDisengage" class="asd-btn asd-btn-clutch is-active" title="Padrão ao iniciar. Sem tração; hélice segue o veio a baixa rotação (inércia)">Desacoplar</button>
             </div>
-            <div class="asd-thruster-grid">
-                <div class="asd-thruster-card asd-thruster-bb">
-                    <div class="asd-thruster-head">
-                        <h5>Propulsor 1</h5>
-                        <div class="asd-thruster-head-right">
-                            <div class="asd-prop-wrap" title="Hélice — rotação ∝ RPM real do eixo; parada gradual ao desligar motores" aria-hidden="true">
+            <div class="resize-handle"></div>
+        </div>
+
+        <div id="twinSafetyPanel" class="panel hidden">
+            <h4>TWIN e segurança</h4>
+            <p class="text-[11px] leading-snug mb-2" style="color:#8da4b7;">Lembrete operacional alinhado ao governo <strong>ASD</strong> e ao modo <strong>TWIN</strong> deste simulador. Não substitui o plano aprovado, o SMS/DOF nem as normas da autoridade e do armador.</p>
+            <ul class="list-disc pl-4 space-y-1.5 text-[11px] leading-relaxed" style="color:#cbd5e1;">
+                <li><strong>TWIN</strong>: o eixo 2 (BE) <strong>replica</strong> RPM e azimute do eixo 1 (BB). Antes de manobras curtas, confirme <strong>área livre</strong> e a <strong>linha de reboque</strong>.</li>
+                <li><strong>INDIVIDUAL</strong>: cada hélice passa a ser comandada em separado. Aumenta risco de <strong>asimetria</strong> de força; use só quando a operação o exigir e com vigilância à tensão e ao comboio.</li>
+                <li><strong>Acoplar / desacoplar</strong>: com transmissão <strong>desacoplada</strong> não há jato/tração útil; com <strong>acoplada</strong>, a tração no modelo exige <strong>≥ 650 rpm</strong> (faixa de comando do simulador).</li>
+                <li><strong>Limites e KPIs</strong>: monitore <strong>tensão no cabo</strong>, <strong>tensão extrema</strong> e o painel <strong>Navio e rebocador</strong> (cargas) — o T‑Sim é <em>educativo</em>.</li>
+            </ul>
+            <p class="text-[10px] mt-3 leading-snug" style="color:#64748b;">Em caso de dúvida, siga o <a href="index.html#safety" class="text-sky-500 hover:underline">conteúdo de segurança do dashboard</a> e a documentação do reboque.</p>
+            <div class="resize-handle"></div>
+        </div>
+    </div>
+
+    <!-- MAIN: vista 3D + fila de sobreposições; scripts ficam fora do overlay -->
+    <main id="sim-container" class="flex-1 relative z-0 w-full h-screen min-w-0 overflow-hidden isolate">
+        <div id="ui-overlay" class="absolute inset-0 z-10 min-h-0 p-4 flex flex-col gap-4 pointer-events-none" aria-hidden="true"></div>
+        <div id="asd-thruster-dock" class="absolute bottom-0 left-0 right-0 z-20 flex justify-between items-end gap-2 px-2 pb-3 pt-1 pointer-events-none">
+                <div class="asd-thruster-card asd-thruster-bb pointer-events-auto max-w-[min(42vw,14rem)] w-full min-w-0">
+                    <div class="asd-thruster-head asd-thruster-head--compact">
+                        <div class="asd-thruster-head-right asd-thruster-head-right--end">
+                            <div class="asd-prop-wrap" aria-hidden="true">
                                 <svg class="asd-prop-svg" viewBox="0 0 64 64" width="48" height="48" focusable="false">
                                     <circle class="asd-prop-duct" cx="32" cy="32" r="30"/>
                                     <g id="asdPropBlades1" transform="rotate(0 32 32)">
@@ -612,7 +485,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                                     <circle class="asd-prop-boss" cx="32" cy="32" r="6"/>
                                 </svg>
                             </div>
-                            <span class="asd-badge" title="Bombordo">BB</span>
+                            <span class="asd-badge">BB</span>
                         </div>
                     </div>
                     <div class="asd-az-block">
@@ -631,21 +504,17 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                             </svg>
                         </div>
                         <div class="asd-sliders">
-                            <div class="control-row"><label for="thruster1RPM">RPM</label><input type="range" id="thruster1RPM" min="650" max="1800" value="650" step="10" disabled title="Mín. 650 rpm em serviço. Comando; RPM de eixo com inércia ao desligar motores."><span id="thruster1RPMValue">0</span></div>
+                            <div class="control-row"><label for="thruster1RPM" class="sr-only">RPM propulsor 1</label><input type="range" id="thruster1RPM" min="650" max="1800" value="650" step="10" disabled><span id="thruster1RPMValue">0</span></div>
                             <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill1"></div></div></div>
-                            <div class="asd-carga-real" title="f(RPM) 650→16%, 900→40%, 1300→57% (esc. livre 11 n), 1800→100%. 11 n@1300 ≈ 54–60% com tr/f_calado. f(SOG) pleno em ~11+ n.">
-                                <span class="asd-cr-lbl">Carga real</span>
-                                <span class="asd-cr-v"><span id="asdCargaReal1">0.0</span>%</span>
-                            </div>
-                            <div class="control-row"><label for="thruster1Azimuth">Azimute (°)</label><input type="range" id="thruster1Azimuth" min="0" max="360" value="0" step="1" disabled title="Propulsor 1 — azimute em graus, rel. à proa"><span id="thruster1AzimuthValue">0</span></div>
+                            <div class="asd-carga-real asd-carga-real--compact" aria-hidden="true"><span class="asd-cr-v"><span id="asdCargaReal1">0.0</span><span class="opacity-80">%</span></span></div>
+                            <div class="control-row"><label for="thruster1Azimuth" class="sr-only">Azimute propulsor 1 (graus)</label><input type="range" id="thruster1Azimuth" min="0" max="360" value="0" step="1" disabled><span id="thruster1AzimuthValue">0°</span></div>
                         </div>
                     </div>
                 </div>
-                <div class="asd-thruster-card asd-thruster-be">
-                    <div class="asd-thruster-head">
-                        <h5>Propulsor 2</h5>
-                        <div class="asd-thruster-head-right">
-                            <div class="asd-prop-wrap" title="Hélice — sentido oposto ao P1; ω ∝ RPM (parada inercial com o motor)" aria-hidden="true">
+                <div class="asd-thruster-card asd-thruster-be pointer-events-auto max-w-[min(42vw,14rem)] w-full min-w-0">
+                    <div class="asd-thruster-head asd-thruster-head--compact">
+                        <div class="asd-thruster-head-right asd-thruster-head-right--end">
+                            <div class="asd-prop-wrap" aria-hidden="true">
                                 <svg class="asd-prop-svg" viewBox="0 0 64 64" width="48" height="48" focusable="false">
                                     <circle class="asd-prop-duct" cx="32" cy="32" r="30"/>
                                     <g id="asdPropBlades2" transform="rotate(0 32 32)">
@@ -657,7 +526,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                                     <circle class="asd-prop-boss" cx="32" cy="32" r="6"/>
                                 </svg>
                             </div>
-                            <span class="asd-badge" title="Boreste">BE</span>
+                            <span class="asd-badge">BE</span>
                         </div>
                     </div>
                     <div class="asd-az-block">
@@ -676,35 +545,208 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                             </svg>
                         </div>
                         <div class="asd-sliders">
-                            <div class="control-row"><label for="thruster2RPM">RPM</label><input type="range" id="thruster2RPM" min="650" max="1800" value="650" step="10" disabled title="Mín. 650 rpm. Idem propulsor 1."><span id="thruster2RPMValue">0</span></div>
+                            <div class="control-row"><label for="thruster2RPM" class="sr-only">RPM propulsor 2</label><input type="range" id="thruster2RPM" min="650" max="1800" value="650" step="10" disabled><span id="thruster2RPMValue">0</span></div>
                             <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill2"></div></div></div>
-                            <div class="asd-carga-real" title="Idem f(RPM) no eixo 2; gêmeo = mesmo RPM.">
-                                <span class="asd-cr-lbl">Carga real</span>
-                                <span class="asd-cr-v"><span id="asdCargaReal2">0.0</span>%</span>
-                            </div>
-                            <div class="control-row"><label for="thruster2Azimuth">Azimute (°)</label><input type="range" id="thruster2Azimuth" min="0" max="360" value="0" step="1" disabled title="Propulsor 2 — azimute em graus, rel. à proa"><span id="thruster2AzimuthValue">0</span></div>
+                            <div class="asd-carga-real asd-carga-real--compact" aria-hidden="true"><span class="asd-cr-v"><span id="asdCargaReal2">0.0</span><span class="opacity-80">%</span></span></div>
+                            <div class="control-row"><label for="thruster2Azimuth" class="sr-only">Azimute propulsor 2 (graus)</label><input type="range" id="thruster2Azimuth" min="0" max="360" value="0" step="1" disabled><span id="thruster2AzimuthValue">0°</span></div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <p class="asd-intro" style="margin: 10px 0 0; opacity: 0.9;">Em modo TWIN, o par BE segue o bombarde. Em modo individual, ajusta cada hélice à parte. O ícone da <strong>hélice</strong> segue o eixo: <strong>acoplado</strong> = mesma ordem de rotação que o RPM; <strong>desacoplado</strong> = rotação visual reduzida (≈20% do RPM de motor) e sem jato.</p>
-            <div class="resize-handle"></div>
         </div>
-        </div>
-      </div>
-        <div class="shrink-0 border-t border-slate-200/80 px-2 py-2 dark:border-slate-700/80">
-          <a href="index.html" class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-center text-xs font-medium text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-slate-800/80">Catenária &amp; dashboard</a>
-        </div>
-    </aside>
-
-    <!-- Overlay Mobile -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[35] hidden lg:hidden transition-opacity opacity-0"></div>
-
-    <!-- MAIN: vista 3D + fila de sobreposições; scripts ficam fora do overlay -->
-    <main id="sim-container" class="flex-1 relative z-0 w-full h-screen min-w-0 overflow-hidden isolate">
-        <div id="ui-overlay" class="absolute inset-0 z-10 min-h-0 p-4 flex flex-col gap-4 pointer-events-none" aria-hidden="true"></div>
     </main>
   </div>
+  <div id="sim-float-root" aria-live="polite"></div>
+  <script>
+  (function () {
+    const TITLES = {
+      envPanel: 'Ambiente',
+      vesselPanel: 'Navio, rebocador e desempenho',
+      winchPanel: 'Guincho e cabo',
+      buoyPanel: 'Bóias',
+      asdPanel: 'Governo ASD (rebocador)',
+      twinSafetyPanel: 'TWIN e segurança',
+    };
+    const ORDER = ['envPanel', 'vesselPanel', 'winchPanel', 'buoyPanel', 'asdPanel', 'twinSafetyPanel'];
+    const root = document.getElementById('sim-float-root');
+    if (!root) return;
+    let zStack = 50;
+    const byGroup = Object.create(null);
+
+    function bringFront(wrap) {
+      zStack += 1;
+      wrap.style.zIndex = String(zStack);
+    }
+
+    function attachDrag(wrap, handle) {
+      let dx = 0, dy = 0, startX, startY, origL, origT, dragging = false;
+      const lim = () => {
+        const r = wrap.getBoundingClientRect();
+        const maxL = Math.max(8, window.innerWidth - r.width - 8);
+        const maxT = Math.max(64, window.innerHeight - 48);
+        return { maxL, maxT };
+      };
+      handle.addEventListener('mousedown', (e) => {
+        if (e.target && e.target.closest('button')) return;
+        dragging = true;
+        bringFront(wrap);
+        startX = e.clientX;
+        startY = e.clientY;
+        const br = wrap.getBoundingClientRect();
+        origL = br.left;
+        origT = br.top;
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        dx = e.clientX - startX;
+        dy = e.clientY - startY;
+        let nl = origL + dx;
+        let nt = origT + dy;
+        const { maxL, maxT } = lim();
+        nl = Math.min(Math.max(8, nl), maxL);
+        nt = Math.min(Math.max(64, nt), maxT);
+        wrap.style.left = nl + 'px';
+        wrap.style.top = nt + 'px';
+        wrap.style.right = 'auto';
+        wrap.style.bottom = 'auto';
+      });
+      document.addEventListener('mouseup', () => { dragging = false; });
+    }
+
+    function attachResize(wrap, handle) {
+      let r0, w0, h0, sx, sy, active = false;
+      handle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        active = true;
+        bringFront(wrap);
+        const r = wrap.getBoundingClientRect();
+        w0 = r.width;
+        h0 = r.height;
+        sx = e.clientX;
+        sy = e.clientY;
+        const move = (ev) => {
+          if (!active) return;
+          const dw = ev.clientX - sx;
+          const dh = ev.clientY - sy;
+          let nw = Math.round(w0 + dw);
+          let nh = Math.round(h0 + dh);
+          nw = Math.min(Math.max(260, nw), window.innerWidth - 16);
+          nh = Math.min(Math.max(120, nh), window.innerHeight - 72);
+          wrap.style.width = nw + 'px';
+          wrap.style.maxHeight = nh + 'px';
+        };
+        const up = () => {
+          active = false;
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', up);
+        };
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      });
+    }
+
+    ORDER.forEach((pid, i) => {
+      const inner = document.getElementById(pid);
+      if (!inner) return;
+      const wrap = document.createElement('div');
+      wrap.id = pid;
+      wrap.className = 'sim-float-window hidden';
+      const left = 20 + (i % 3) * 28;
+      const top = 88 + (Math.floor(i / 3) * 32) + i * 6;
+      wrap.style.left = left + 'px';
+      wrap.style.top = top + 'px';
+      wrap.style.zIndex = String(50 + i);
+      inner.removeAttribute('id');
+      inner.classList.remove('hidden');
+      if (!inner.classList.contains('panel')) inner.classList.add('panel');
+      if (pid === 'asdPanel') inner.classList.add('asd-panel');
+
+      const header = document.createElement('div');
+      header.className = 'sim-float-header sim-float-drag';
+      const title = document.createElement('span');
+      title.className = 'sim-float-title';
+      title.textContent = TITLES[pid] || pid;
+      const tools = document.createElement('div');
+      tools.className = 'sim-float-tools';
+      const btnMin = document.createElement('button');
+      btnMin.type = 'button';
+      btnMin.className = 'sim-float-btn sim-float-min';
+      btnMin.setAttribute('aria-label', 'Minimizar');
+      btnMin.textContent = '−';
+      const btnClose = document.createElement('button');
+      btnClose.type = 'button';
+      btnClose.className = 'sim-float-btn sim-float-close';
+      btnClose.setAttribute('aria-label', 'Fechar');
+      btnClose.textContent = '×';
+      tools.appendChild(btnMin);
+      tools.appendChild(btnClose);
+      header.appendChild(title);
+      header.appendChild(tools);
+      const body = document.createElement('div');
+      body.className = 'sim-float-body';
+      const resize = document.createElement('div');
+      resize.className = 'sim-float-resize';
+      body.appendChild(inner);
+      wrap.appendChild(header);
+      wrap.appendChild(body);
+      wrap.appendChild(resize);
+      root.appendChild(wrap);
+      byGroup[pid] = wrap;
+
+      btnMin.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrap.classList.toggle('sim-float--min');
+        bringFront(wrap);
+      });
+      btnClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrap.classList.add('hidden');
+        wrap.classList.remove('sim-float--min');
+        if (pid === 'buoyPanel' && window.__simClearBuoyPick) {
+          try { window.__simClearBuoyPick(); } catch (err) { /* */ }
+        }
+        syncRail();
+      });
+      header.addEventListener('mousedown', () => bringFront(wrap));
+      attachDrag(wrap, header);
+      attachResize(wrap, resize);
+    });
+
+    const GROUP_TO_ID = { env: 'envPanel', vessel: 'vesselPanel', winch: 'winchPanel', asd: 'asdPanel', twinSafety: 'twinSafetyPanel', buoy: 'buoyPanel' };
+
+    function syncRail() {
+      document.querySelectorAll('.sim-rail').forEach((btn) => {
+        const gid = btn.dataset.panelGroup;
+        const pid = GROUP_TO_ID[gid];
+        const w = byGroup[pid];
+        const on = w && !w.classList.contains('hidden');
+        btn.classList.toggle('sim-rail-active', !!on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
+    function openGroup(group) {
+      const pid = GROUP_TO_ID[group];
+      const w = byGroup[pid];
+      if (!w) return;
+      if (w.classList.contains('hidden')) {
+        w.classList.remove('hidden', 'sim-float--min');
+        bringFront(w);
+      } else if (w.classList.contains('sim-float--min')) {
+        w.classList.remove('sim-float--min');
+        bringFront(w);
+      } else {
+        w.classList.add('sim-float--min');
+        bringFront(w);
+      }
+      syncRail();
+    }
+
+    window.__simFloat = { openGroup, bringFront, byGroup, syncRail };
+    syncRail();
+  })();
+  </script>
 
 <script type="importmap">
         {
@@ -1605,7 +1647,10 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             if (uiControls[key].el && uiControls[key].el.type === 'range') {
                 uiControls[key].el.addEventListener('input', (e) => {
                     const value = parseFloat(e.target.value);
-                    if(uiControls[key].valEl) uiControls[key].valEl.innerText = value;
+                    if (uiControls[key].valEl) {
+                        const azK = key === 'thruster1Azimuth' || key === 'thruster2Azimuth';
+                        uiControls[key].valEl.innerText = azK ? String(Math.round(value)) + '°' : String(value);
+                    }
                     if (key === 'shipDraft') { ship.draft = value; updateVesselMass(ship); updateVesselYPosition(ship, ship.mesh.geometry.parameters.height); }
                     else if (key === 'tugDraft') { tug.draft = value; updateVesselMass(tug); updateVesselYPosition(tug, tug.mesh.geometry.parameters.height); }
                     else if (key === 'cableLength') { cable.targetLength = value; }
@@ -1626,7 +1671,8 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                     }
                      if (key.includes('Azimuth') && simParams.isTwinMode && key.includes('1')) {
                          uiControls.thruster2Azimuth.el.value = uiControls.thruster1Azimuth.el.value;
-                         uiControls.thruster2Azimuth.valEl.innerText = uiControls.thruster1Azimuth.el.value;
+                         const a1 = parseFloat(uiControls.thruster1Azimuth.el.value) || 0;
+                         uiControls.thruster2Azimuth.valEl.innerText = String(Math.round(a1)) + '°';
                          simParams.thruster2Azimuth = simParams.thruster1Azimuth;
                     }
                     if (key.startsWith('thruster')) syncAsdViz();
@@ -1704,45 +1750,18 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         });
         syncAsdViz();
         syncDriveClutchUI();
-        // Trilho lateral: um grupo de painéis visível (ícones SVG)
-        const PANEL_GROUP_IDS = {
-            env: ['envPanel'],
-            vessel: ['vesselPanel'],
-            winch: ['winchPanel'],
-            asd: ['asdPanel'],
-            towing: ['towingSetupPanel'],
-            buoy: ['buoyPanel'],
-        };
-        const PANEL_GROUP_LABELS = {
-            env: 'Ambiente',
-            vessel: 'Navio, rebocador e desempenho',
-            winch: 'Guincho e cabo',
-            asd: 'Governo ASD',
-            towing: 'Configuração do reboque',
-            buoy: 'Bóias',
-        };
         // Preenchido na secção das bóias: ao sair do painel “Bóias” cancela cor pendente (evita cliques no mar fora do contexto)
         let clearPendingBuoyPick = () => {};
-        function setSimPanelGroup(group) {
-            const ids = Object.values(PANEL_GROUP_IDS).flat();
-            const show = new Set(PANEL_GROUP_IDS[group] || []);
-            ids.forEach((id) => {
-                const el = document.getElementById(id);
-                if (el) el.classList.toggle('hidden', !show.has(id));
-            });
-            document.querySelectorAll('.sim-rail').forEach((btn) => {
-                const on = btn.dataset.panelGroup === group;
-                btn.classList.toggle('sim-rail-active', on);
-                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-            });
-            const lab = document.getElementById('panel-context-label');
-            if (lab) lab.textContent = PANEL_GROUP_LABELS[group] || '';
-            if (group !== 'buoy') clearPendingBuoyPick();
-        }
+        window.__simClearBuoyPick = () => { clearPendingBuoyPick(); };
         document.querySelectorAll('.sim-rail').forEach((btn) => {
-            btn.addEventListener('click', () => setSimPanelGroup(btn.dataset.panelGroup));
+            btn.addEventListener('click', () => {
+                const g = btn.dataset.panelGroup;
+                if (g === 'winch' || g === 'vessel' || g === 'env' || g === 'asd' || g === 'twinSafety') clearPendingBuoyPick();
+                if (window.__simFloat && window.__simFloat.openGroup) {
+                    window.__simFloat.openGroup(g);
+                }
+            });
         });
-        setSimPanelGroup('vessel');
 
         // --- 7. LÓGICA DE PRESETS E INICIALIZAÇÃO ---
         // Aplica as propriedades de um preset de navio selecionado
@@ -1824,194 +1843,12 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             }
         }
 
-        let currentPanelPresetKey = null; // Rastreia o preset atual do painel para evitar recriação
-
-        // Atualiza o painel de visualização da configuração do reboque
-        function updateTowingSetupPanel(presetKey, cableLength) {
-            const tabsContainer = document.getElementById('towing-setup-tabs');
-            const contentContainer = document.getElementById('towing-setup-content');
-            if (!tabsContainer || !contentContainer) return;
-        
-            const preset = window.CableCatalog[presetKey];
-            if (!preset) return;
-        
-            // Apenas atualiza os valores se o preset não mudou
-            if (presetKey === currentPanelPresetKey) {
-                const weightEl = document.getElementById('towing-setup-weight');
-                if (weightEl) {
-                    weightEl.textContent = `${(preset.wNpm_air * cableLength / 9.81 / 1000).toFixed(1)} ton`;
-                }
-                return; // Sai da função para não recriar o painel
-            }
-        
-            // Se o preset mudou, recria a estrutura do painel
-            currentPanelPresetKey = presetKey;
-        
-            const prop = (label, value, id = '') => `<div class="prop-row"><span class="label">${label}</span><span class="value" ${id ? `id="${id}"` : ''}>${value}</span></div>`;
-        
-            let tabsHtml = `<button class="tab-btn active" data-tab="overview">Visão Geral</button>
-                            <button class="tab-btn" data-tab="assembly">Montagem</button>
-                            <button class="tab-btn" data-tab="main-cable">Cabo Principal</button>`;
-            
-            let overviewContent = `<div id="overview" class="tab-content active">
-                                    <h5>Propriedades do Sistema</h5>
-                                    ${prop('Configuração', preset.name)}
-                                    ${prop('Peso Total (aprox)', `${(preset.wNpm_air * cableLength / 9.81 / 1000).toFixed(1)} ton`, 'towing-setup-weight')}
-                                    ${prop('Rigidez Efetiva', `${preset.EA_MN} MN`)}
-                                    ${prop('Carga de Ruptura (MBL)', `${(preset.MBL / 1e6).toFixed(2)} MN`)}
-                                   </div>`;
-        
-            let mainCableContent = `<div id="main-cable" class="tab-content">
-                                      <h5>Cabo principal (trecho aço, sistema completo)</h5>
-                                      ${prop('Material', 'Aço 6x36 IWRC (referência) + shock-line poliamida (nylon) + corrente / aparelhagem (modelo equivalente)')}
-                                      ${prop('Diâmetro (equiv.)', `${(preset.d * 1000).toFixed(0)} mm`)}
-                                      ${prop('Peso linear (ar, equiv. aparelhagem)', `${(preset.wNpm_air / 9.81).toFixed(1)} kg/m`)}
-                                    </div>`;
-            
-            let assemblyContent = `<div id="assembly" class="tab-content">
-                                    <div class="assembly-trainer">
-                                        <h5>Treinamento: Arraste os componentes para montar o reboque.</h5>
-                                        <div class="assembly-container">
-                                            <div class="assembly-box">
-                                                <h6>Componentes Disponíveis</h6>
-                                                <div id="available-components"></div>
-                                            </div>
-                                            <div class="assembly-box" id="assembly-sequence">
-                                                <h6>Sua Montagem (em ordem)</h6>
-                                            </div>
-                                        </div>
-                                        <button id="checkAssemblyBtn">Verificar Montagem</button>
-                                        <div id="assemblyFeedback" class="assembly-feedback"></div>
-                                    </div></div>`;
-
-            let componentsContent = '';
-            let bridleContent = '';
-            tabsHtml += `<button class="tab-btn" data-tab="components">Componentes</button>`;
-            componentsContent = `<div id="components" class="tab-content">
-                                        <h5>Shock-line (poliamida / nylon)</h5>
-                                        ${prop('Material', 'Poliamida (nylon) — trançado naval; elevada extensibilidade a carga de serviço')}
-                                        ${prop('Diâmetro (ex.)', '128 mm (16") em layouts offshore longos')}
-                                        ${prop('Comprimento típico', '80 – 130 m')}
-                                        ${prop('Função', 'Ligação rebocador–cabeçote e amortecimento de picos (alta extensibilidade)')}
-                                        <h5>Corrente de Proteção (Chafing Chain)</h5>
-                                        ${prop('Material', 'Aço Grau 2 (38-44 mm)')}
-                                        ${prop('Comprimento Típico', '30 - 50 m')}
-                                        ${prop('Função', 'Proteger o cabo sintético do atrito no costado do navio')}
-                                        <h5>Aparelhos de Conexão (Ferragens)</h5>
-                                        ${prop('Tipo', 'Manilhas (Shackles), Pêra (Pear Link), etc.')}
-                                        ${prop('Função', 'Conectar os diferentes segmentos do reboque')}
-                                     </div>`;
-
-            tabsHtml += `<button class="tab-btn" data-tab="bridle">Bridle</button>`;
-            bridleContent = `<div id="bridle" class="tab-content">
-                                    <h5>Bridle (Pata de Galo)</h5>
-                                    ${prop('Uso', 'Cascos grandes ou condições severas')}
-                                    ${prop('Configuração', 'Duas pernas (sintético ou misto)')}
-                                    ${prop('Comprimento (perna)', '50 - 70 m')}
-                                    ${prop('Bitola (perna)', '64 - 76 mm')}
-                                    ${prop('Função', 'Distribuir a carga e aumentar a estabilidade do reboque')}
-                                 </div>`;
-        
-            tabsContainer.innerHTML = tabsHtml;
-            contentContainer.innerHTML = overviewContent + assemblyContent + mainCableContent + componentsContent + bridleContent;
-        
-            // Adiciona os listeners de clique aos novos botões de aba
-            tabsContainer.querySelectorAll('.tab-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const t = e.currentTarget;
-                    const targetTabId = t && t.dataset && t.dataset.tab;
-                    if (!targetTabId) return;
-                    const panel = contentContainer.querySelector(`#${CSS.escape(targetTabId)}`);
-                    if (!panel) return;
-                    tabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                    contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                    t.classList.add('active');
-                    panel.classList.add('active');
-                });
-            });
-
-            // --- Lógica do Treinamento de Montagem ---
-            const availableBox = document.getElementById('available-components');
-            const sequenceBox = document.getElementById('assembly-sequence');
-            const checkBtn = document.getElementById('checkAssemblyBtn');
-            const feedbackBox = document.getElementById('assemblyFeedback');
-
-            const components = [
-                { id: 'main_wire', name: 'Cabo de Aço Principal' },
-                { id: 'pennant', name: 'Shock-line (poliamida)' },
-                { id: 'chafing_chain', name: 'Corrente de Proteção' },
-                { id: 'shackle', name: 'Manilha de Conexão' }
-            ];
-
-            // Popula a caixa de componentes disponíveis
-            availableBox.innerHTML = '';
-            components.forEach(c => {
-                availableBox.innerHTML += `<div class="assembly-item-drag" draggable="true" id="${c.id}">${c.name}</div>`;
-            });
-
-            // Lógica de arrastar e soltar
-            const draggables = document.querySelectorAll('.assembly-item-drag');
-            const containers = document.querySelectorAll('.assembly-box');
-
-            draggables.forEach(draggable => {
-                draggable.addEventListener('dragstart', () => draggable.classList.add('dragging'));
-                draggable.addEventListener('dragend', () => draggable.classList.remove('dragging'));
-            });
-
-            containers.forEach(container => {
-                container.addEventListener('dragover', e => {
-                    e.preventDefault();
-                    const draggable = document.querySelector('.dragging');
-                    container.appendChild(draggable);
-                });
-            });
-
-            // Lógica de verificação
-            checkBtn.addEventListener('click', () => {
-                const assembledItems = Array.from(sequenceBox.querySelectorAll('.assembly-item-drag')).map(item => item.id);
-                const correctSequence = ['main_wire', 'shackle', 'pennant', 'chafing_chain'];
-                
-                feedbackBox.style.display = 'block';
-                feedbackBox.className = 'assembly-feedback'; // Reseta classes
-
-                // Verifica se todos os componentes necessários estão lá
-                const hasAllRequired = correctSequence.every(id => assembledItems.includes(id));
-                if (!hasAllRequired) {
-                    feedbackBox.classList.add('error');
-                    feedbackBox.textContent = 'Advertência: Faltam componentes essenciais para uma montagem segura.';
-                    return;
-                }
-
-                // Verifica a ordem
-                let isOrderCorrect = true;
-                for (let i = 0; i < correctSequence.length; i++) {
-                    if (assembledItems[i] !== correctSequence[i]) {
-                        isOrderCorrect = false;
-                        break;
-                    }
-                }
-
-                if (isOrderCorrect) {
-                    feedbackBox.classList.add('success');
-                    feedbackBox.textContent = 'Montagem correta! Aparelho com shock-line em poliamida (nylon) confirmado no modelo.';
-                    // Atualiza o seletor de cabo principal e aplica o preset
-                    const cableSelector = document.getElementById('cablePreset');
-                    cableSelector.value = 'composite_heavy';
-                    cableSelector.dispatchEvent(new Event('change'));
-                } else {
-                    feedbackBox.classList.add('error');
-                    feedbackBox.textContent = 'Advertência: A sequência dos componentes está incorreta. Revise a ordem.';
-                }
-            });
-        }
-
         // Listeners para os seletores de preset
         const shipPresetSelector = document.getElementById('shipPreset');
         shipPresetSelector.addEventListener('change', (e) => applyShipPreset(e.target.value));
         // Aplica os presets iniciais para garantir que o estado seja consistente na partida
         applyShipPreset(shipPresetSelector.value);
         applyCablePreset('composite_heavy');
-        updateTowingSetupPanel('composite_heavy', parseFloat(uiControls.cableLength.el.value)); // Chamada inicial
 
         // --- 8. LÓGICA DAS BÓIAS INTERATIVAS ---
         let pendingBuoyColor = null;
@@ -2931,9 +2768,6 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             _extremeTensionEma += (extremeRaw - _extremeTensionEma) * kEma;
             extremeTension = _extremeTensionEma;
             uiControls.extremeTension.valEl.innerText = (extremeTension / 1000).toFixed(1);
-
-            // Atualiza o painel de configuração do reboque de forma otimizada
-            updateTowingSetupPanel(TowSafety.currentKey, cable.length);
         }
         // Atualiza a direção e o comprimento das setas que representam vento e corrente
         function updateEnvironmentVisuals() {
@@ -3115,24 +2949,5 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         uiControls.tugDraft.el.dispatchEvent(new Event('input'));
         animate();
     </script>
-  <script>
-    (function () {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebarOverlay');
-      const openBtn = document.getElementById('btnMobileMenu');
-      const closeBtn = document.getElementById('btnCloseMenu');
-      if (!sidebar || !overlay || !openBtn) return;
-      function toggleMenu() {
-        sidebar.classList.toggle('-translate-x-full');
-        overlay.classList.toggle('hidden');
-        requestAnimationFrame(function () {
-          overlay.classList.toggle('opacity-0');
-        });
-      }
-      openBtn.addEventListener('click', toggleMenu);
-      if (closeBtn) closeBtn.addEventListener('click', toggleMenu);
-      overlay.addEventListener('click', toggleMenu);
-    })();
-  </script>
 </body>
 </html>
