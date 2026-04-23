@@ -1,0 +1,18 @@
+# Site estático: dashboard catenária (index) + simulador 3D
+# https://docs.netlify.com/configure-builds/overview/
+
+[build]
+  publish = "."
+  # Sem build step: HTML/CSS/JS e CDN
+  command = "echo T-Sim static site"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Página de entrada: raiz
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

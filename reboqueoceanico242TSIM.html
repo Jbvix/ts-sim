@@ -1,0 +1,3138 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="scroll-smooth">
+<head>
+  <!-- Jossian Brito 2025 -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T‑Sim • Catenária e Tração Offshore</title>
+  <meta name="description" content="Dashboard técnico e visual sobre catenária submersa, tração efetiva no navio e limites de segurança de reboque." />
+  <meta name="author" content="Jossian Brito — TugLife Systems" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Importando Pixi.js v7 e html2canvas -->
+  <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'media',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-5px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Estilos base e Glassmorphism */
+    body {
+      background-image: radial-gradient(circle at 100% 0%, rgba(14,165,233,0.15) 0%, transparent 25%),
+                        radial-gradient(circle at 0% 100%, rgba(79,70,229,0.15) 0%, transparent 25%);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    }
+    @media (prefers-color-scheme: dark) {
+      .glass-card {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+      }
+    }
+    .kpi-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    @media (prefers-color-scheme: dark) {
+      .kpi-value {
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+    }
+    .input-glass {
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    .input-glass:focus {
+      outline: none;
+      border-color: #0ea5e9;
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+    }
+    @media (prefers-color-scheme: dark) {
+      .input-glass {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .input-glass:focus {
+        border-color: #38bdf8;
+      }
+    }
+    /* Esconder scrollbar na nav mobile */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* Empilhamento: WebGL (base) < overlay UI (pointer-events: none) < aside/header */
+    main#sim-container {
+      isolation: isolate;
+    }
+    canvas.sim-webgl-canvas {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 0;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
+<header class="sticky top-0 z-50 glass-card rounded-none border-t-0 border-x-0 border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between min-h-16 py-2 sm:py-0 sm:h-16">
+        <!-- Logo/Title -->
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div class="bg-gradient-to-tr from-sky-600 to-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-sky-500/30 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M10 18h4"/><path d="M12 2v2"/><path d="m5 16 2-4"/><path d="m19 16-2-4"/><path d="m8 6 1 2"/><path d="m16 6-1 2"/></svg>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-base sm:text-xl font-bold tracking-tight leading-tight">T‑Sim <span class="font-normal opacity-60"><span class="sm:hidden">| Towing</span><span class="hidden sm:inline">| Towing Analytics</span></span></h1>
+            <p class="text-[9px] sm:text-xs text-slate-500 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate" title="Autoria">Autoria: Jossian Brito <span class="text-slate-400 dark:text-slate-500" aria-hidden="true">·</span> TugLife Systems</p>
+          </div>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="hidden lg:flex gap-6 text-sm font-medium">
+          <a href="index.html#visao" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Dinâmica</a>
+          <a href="index.html#formulas" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Fórmulas</a>
+          <a href="index.html#safety" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Safety</a>
+          <a href="index.html#manual" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Operação</a>
+        </nav>
+
+        <!-- CTA Button -->
+        <div class="flex items-center gap-4">
+          <a href="#calc" class="text-sm font-medium hover:text-sky-600 transition-colors lg:hidden">Calc</a>
+          <button id="btnExport" class="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-2 px-2 py-2" title="Exportar Snapshot da Simulação">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            <span class="hidden xl:inline text-xs font-semibold">Snapshot</span>
+          </button>
+          <a href="index.html" class="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-md hover:shadow-lg flex items-center gap-2" title="Vista catenária e KPIs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <span class="hidden sm:inline">Dashboard</span>
+          </a>
+          <button id="btnMobileMenu" class="lg:hidden p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex max-w-[1400px] mx-auto relative w-full">
+    
+    <!-- SIDEBAR (Esquerda) -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-[45] w-[min(100vw,22rem)] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800 transform -translate-x-full lg:translate-x-0 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] transition-transform duration-300 ease-in-out lg:z-[25] flex-shrink-0 flex flex-col min-h-0 min-w-0">
+      <div class="flex lg:hidden items-center justify-between gap-2 px-3 py-2 border-b border-slate-200/80 dark:border-slate-700/80">
+        <h2 class="font-bold text-sm text-slate-800 dark:text-slate-100">Controles</h2>
+        <button type="button" id="btnCloseMenu" class="p-2 text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-rose-500 transition-colors" aria-label="Fechar menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex flex-1 min-h-0 min-w-0">
+        <nav id="sim-tool-rail" class="flex w-[3.25rem] shrink-0 flex-col gap-1.5 border-r border-slate-200/80 bg-slate-200/50 py-2 px-1 dark:border-slate-600 dark:bg-slate-800/90" aria-label="Painéis do simulador">
+          <button type="button" class="sim-rail" data-panel-group="env" title="Ambiente (vento, mar, corrente)" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          </button>
+          <button type="button" class="sim-rail sim-rail-active" data-panel-group="vessel" title="Navio, rebocador e desempenho" aria-pressed="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 20a2.4 2.4 0 0 0 2 1h16a2.4 2.4 0 0 0 2-1"/><path d="M4 20 7 5a2 2 0 0 1 2-1h6a2 2 0 0 1 2 1l3 15"/><path d="M7 9h10"/><path d="M6 12h1"/><path d="M17 12h1"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="winch" title="Guincho e cabo" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22V8"/><path d="M5 12H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4h-3"/><path d="M5 8a7 7 0 0 0 6 0 7 7 0 0 0-6 0Z"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="asd" title="Governo ASD" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="towing" title="Configuração do reboque" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 18h6"/><path d="M9 10h2"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="buoy" title="Bóias" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+          </button>
+        </nav>
+        <div id="panel-context" class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden py-2 pr-2 pl-1">
+        <p id="panel-context-label" class="text-[0.7rem] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-2 px-1">Navio, rebocador e desempenho</p>
+<style>
+.panel {
+    background-color: rgba(20, 30, 40, 0.8);
+    border: 1px solid rgba(128, 170, 255, 0.3);
+    color: #e0e0e0;
+    padding: 15px;
+    border-radius: 8px;
+    pointer-events: auto;
+    margin-bottom: 15px;
+    position: relative !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+}
+.panel h4 { margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid rgba(128, 170, 255, 0.3); padding-bottom: 5px; margin-bottom: 10px; cursor: default;}
+.resize-handle { display: none !important; }
+.control-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px;}
+.control-row label { flex-basis: 50%; }
+.control-row input[type="range"] { flex-basis: 30%; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+.control-row select { flex-basis: 45%; background: #334; color: #e0e0e0; border: 1px solid #556; border-radius: 4px; padding: 2px; }
+.control-row input[type="range"]::-webkit-slider-runnable-track { background: #334; height: 4px; border-radius: 2px; }
+.control-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; margin-top: -6px; background-color: #8af; height: 16px; width: 16px; border-radius: 50%; }
+.control-row span { min-width: 40px; text-align: right; font-weight: bold; color: #fff; }
+.panel button { width: 100%; padding: 8px; margin-top: 10px; cursor: pointer; background-color: #334; color: #e0e0e0; border: 1px solid #556; border-radius: 5px; font-size: 13px; }
+.panel button:hover { background-color: #445; }
+hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10px; }
+.sim-rail { display:flex;align-items:center;justify-content:center;width:2.5rem;height:2.5rem;margin:0 auto;border-radius:0.5rem;border:1px solid rgba(100,116,139,.4);background:rgba(30,41,59,.45);color:#94a3b8;cursor:pointer;transition:background .15s,color .15s,border-color .15s,box-shadow .15s;flex-shrink:0;}
+.sim-rail:hover { color:#e2e8f0; background:rgba(51,65,85,.75); border-color:rgba(125,211,252,.45);}
+.sim-rail-active { background:#0ea5e9; color:#0f172a; border-color:#38bdf8; box-shadow:0 0 0 1px rgba(14,165,233,.25);}
+@media (prefers-color-scheme: dark) { .sim-rail-active { color:#f8fafc; } }
+.hidden { display: none !important; }
+
+/* Configuração do reboque — abas e conteúdo */
+#towingSetupPanel .tab-container { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+#towingSetupPanel .tab-nav {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding-bottom: 8px; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(128, 170, 255, 0.25);
+}
+#towingSetupPanel .tab-nav .tab-btn {
+  width: auto !important; flex: 1 1 calc(50% - 3px); min-width: 0; margin-top: 0 !important;
+  padding: 7px 8px; font-size: 11px; line-height: 1.2;
+  background: rgba(40, 50, 65, 0.95); border: 1px solid rgba(100, 116, 139, 0.45);
+  border-radius: 6px; color: #cbd5e1; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+#towingSetupPanel .tab-nav .tab-btn:hover { background: rgba(55, 65, 85, 0.95); color: #f1f5f9; }
+#towingSetupPanel .tab-nav .tab-btn.active {
+  background: rgba(14, 165, 233, 0.25); border-color: #38bdf8; color: #e0f2fe;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
+}
+#towingSetupPanel .tab-content-container { min-height: 0; overflow: auto; max-height: min(60vh, 22rem); }
+#towingSetupPanel .tab-content { display: none !important; }
+#towingSetupPanel .tab-content.active { display: block !important; }
+#towingSetupPanel .tab-content h5 {
+  font-size: 0.8rem; margin: 0 0 0.5rem 0; color: #7dd3fc; font-weight: 700; letter-spacing: 0.02em;
+  border-bottom: 1px solid rgba(128, 170, 255, 0.2); padding-bottom: 4px;
+}
+#towingSetupPanel .tab-content h5:not(:first-child) { margin-top: 0.75rem; }
+#towingSetupPanel .tab-content h6 { font-size: 0.7rem; margin: 0 0 0.35rem 0; color: #94a3b8; }
+#towingSetupPanel .prop-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: 12px; margin-bottom: 6px; line-height: 1.35;
+}
+#towingSetupPanel .prop-row .label { color: #94a3b8; flex: 1; min-width: 0; }
+#towingSetupPanel .prop-row .value { color: #f1f5f9; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+#towingSetupPanel .assembly-trainer h5 { margin-bottom: 8px; }
+#towingSetupPanel .assembly-container { display: flex; flex-direction: column; gap: 8px; }
+#towingSetupPanel .assembly-box {
+  min-height: 72px; border: 1px solid rgba(128, 170, 255, 0.28); border-radius: 6px; padding: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+#towingSetupPanel .assembly-item-drag {
+  display: block; width: 100% !important; box-sizing: border-box; margin: 4px 0; padding: 6px 8px;
+  font-size: 11px; line-height: 1.2; background: #3d4a5c; border: 1px solid #556; border-radius: 4px;
+  cursor: grab; color: #e8e8e8; text-align: left;
+}
+#towingSetupPanel .assembly-item-drag:active { cursor: grabbing; }
+#towingSetupPanel #checkAssemblyBtn { margin-top: 8px; }
+#towingSetupPanel .assembly-feedback { display: none; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 12px; line-height: 1.4; }
+#towingSetupPanel .assembly-feedback.error { background: rgba(127, 29, 29, 0.45); border: 1px solid rgba(248, 113, 113, 0.4); color: #fecaca; }
+#towingSetupPanel .assembly-feedback.success { background: rgba(20, 83, 45, 0.45); border: 1px solid rgba(74, 222, 128, 0.35); color: #dcfce7; }
+/* Comboio: navio + rebocador e gráfico de velocidades */
+#vesselPanel { overflow-x: hidden; }
+#vesselPanel h5 { font-size: 0.78rem; margin: 0 0 0.4rem; color: #7dd3fc; font-weight: 700; letter-spacing: 0.02em; }
+.fleet-compare {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 10px 14px;
+  margin-bottom: 10px;
+  align-items: start;
+  isolation: isolate;
+}
+@media (max-width: 400px) {
+  .fleet-compare { grid-template-columns: 1fr; }
+}
+.fleet-col {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid rgba(128, 170, 255, 0.2);
+  border-radius: 6px;
+  padding: 8px;
+  background: rgba(0,0,0,0.12);
+  contain: layout;
+}
+/* Evita herdar flex 50/30 de .control-row: sliders não podem vazar para a coluna vizinha */
+#vesselPanel .fleet-col .control-row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  column-gap: 6px;
+  row-gap: 3px;
+  align-items: center;
+  font-size: 11px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+#vesselPanel .fleet-col .control-row > label { flex-basis: unset; min-width: 0; }
+#vesselPanel .fleet-col .control-row:has(> input[type="range"]) > label { grid-column: 1 / -1; }
+#vesselPanel .fleet-col .control-row:has(> input[type="range"]) > input[type="range"] {
+  grid-column: 1;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
+  flex-basis: unset;
+}
+#vesselPanel .fleet-col .control-row:has(> input[type="range"]) > span { grid-column: 2; }
+#vesselPanel .fleet-col .control-row:has(> select) { grid-template-columns: 1fr; }
+#vesselPanel .fleet-col .control-row:has(> select) > label { width: 100%; }
+#vesselPanel .fleet-col .control-row:has(> select) > select {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
+  flex-basis: unset;
+}
+#vesselPanel .fleet-col .control-row:not(:has(> input)):not(:has(> select)) > label { min-width: 0; }
+#vesselPanel .fleet-col .control-row:not(:has(> input)):not(:has(> select)) > span { white-space: nowrap; }
+#vesselPanel .fleet-col .control-row:last-child { margin-bottom: 0; }
+#vesselPanel .fleet-col hr { width: 100%; margin: 6px 0; border: none; border-top: 1px solid rgba(128, 170, 255, 0.2); }
+.speed-chart-block { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(128, 170, 255, 0.2); }
+.speed-chart-block h5 { margin-bottom: 6px; }
+#speedHistoryChart { display: block; width: 100%; height: 100px; border-radius: 4px; background: rgba(0,0,0,0.25); }
+.chart-legend { display: flex; gap: 12px; justify-content: center; font-size: 10px; margin-top: 4px; color: #94a3b8; }
+.chart-legend .leg-ship { color: #7dd3fc; }
+.chart-legend .leg-tug { color: #fb923c; }
+#asdPanel { overflow-x: hidden; }
+#asdPanel .asd-intro { font-size: 10px; color: #8da4b7; margin: 0 0 12px; line-height: 1.45; }
+#asdPanel .asd-section { margin-bottom: 10px; }
+#asdPanel .asd-btn-row {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+#asdPanel .asd-btn-row .asd-btn {
+  flex: 1; margin-top: 0; min-width: 0;
+  font-size: 12px; font-weight: 600; padding: 9px 8px; border-radius: 8px;
+  border: 1px solid rgba(100, 116, 139, 0.5);
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+#asdPanel .asd-btn-engine {
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.9) 0%, rgba(30, 41, 59, 0.95) 100%);
+  color: #e2e8f0;
+}
+#asdPanel .asd-btn-engine:hover { background: rgba(71, 85, 105, 0.95); border-color: rgba(125, 211, 252, 0.45); }
+#asdPanel .asd-btn-engine.running {
+  background: linear-gradient(180deg, rgba(22, 101, 52, 0.9) 0%, rgba(20, 83, 45, 0.95) 100%);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: #dcfce7;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+}
+#asdPanel .asd-btn-mode {
+  background: linear-gradient(180deg, rgba(30, 58, 95, 0.95) 0%, rgba(23, 37, 84, 0.98) 100%);
+  color: #93c5fd; border-color: rgba(59, 130, 246, 0.45);
+}
+#asdPanel .asd-btn-mode:hover { border-color: rgba(96, 165, 250, 0.65); color: #bfdbfe; }
+#asdPanel .asd-clutch-row {
+  display: flex; gap: 8px; margin-top: 8px; margin-bottom: 2px;
+}
+#asdPanel .asd-btn-clutch {
+  flex: 1; font-size: 11px; font-weight: 600; padding: 8px 6px; border-radius: 8px;
+  border: 1px solid rgba(100, 116, 139, 0.55);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+  color: #94a3b8; cursor: pointer; transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+#asdPanel .asd-btn-clutch:hover { border-color: rgba(148, 163, 184, 0.6); color: #e2e8f0; }
+#asdPanel .asd-btn-clutch.is-active {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: linear-gradient(180deg, rgba(22, 101, 52, 0.5) 0%, rgba(20, 83, 45, 0.6) 100%);
+  color: #bbf7d0; box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+}
+/* Sempre 1 coluna: duas colunas no painel estreito (< ~160px/cartão) partiam os range sliders */
+#asdPanel .asd-thruster-grid {
+  display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 4px;
+}
+#asdPanel .asd-thruster-card {
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  border-radius: 10px; padding: 10px; min-width: 0;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.55) 0%, rgba(30, 41, 59, 0.4) 100%);
+  contain: layout style;
+  overflow: hidden;
+}
+#asdPanel .asd-thruster-bb { border-color: rgba(14, 165, 233, 0.35); box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.08); }
+#asdPanel .asd-thruster-be { border-color: rgba(249, 115, 22, 0.35); box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.08); }
+#asdPanel .asd-thruster-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid rgba(128, 170, 255, 0.15);
+}
+#asdPanel .asd-thruster-head h5 {
+  font-size: 0.75rem; margin: 0; color: #e2e8f0; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+}
+#asdPanel .asd-badge {
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px;
+  background: rgba(51, 65, 85, 0.8); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.4);
+}
+#asdPanel .asd-thruster-bb .asd-badge { color: #7dd3fc; border-color: rgba(14, 165, 233, 0.35); }
+#asdPanel .asd-thruster-be .asd-badge { color: #fdba74; border-color: rgba(249, 115, 22, 0.35); }
+#asdPanel .asd-thruster-head-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+#asdPanel .asd-prop-wrap {
+  width: 3rem; height: 3rem; flex: 0 0 auto; position: relative;
+}
+#asdPanel .asd-prop-svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
+#asdPanel .asd-prop-duct { fill: rgba(15, 23, 42, 0.4); stroke: rgba(100, 116, 139, 0.55); stroke-width: 1.2; }
+#asdPanel .asd-thruster-bb .asd-prop-blade { fill: rgba(56, 189, 248, 0.35); stroke: #38bdf8; stroke-width: 1.2; stroke-linejoin: round; }
+#asdPanel .asd-thruster-bb .asd-prop-boss { fill: #0c4a6e; stroke: #38bdf8; stroke-width: 0.5; }
+#asdPanel .asd-thruster-be .asd-prop-blade { fill: rgba(251, 146, 60, 0.3); stroke: #fb923c; stroke-width: 1.2; stroke-linejoin: round; }
+#asdPanel .asd-thruster-be .asd-prop-boss { fill: #7c2d12; stroke: #fb923c; stroke-width: 0.5; }
+/* Bússola por cima, sliders à largura total — evita faixa horizontal com 0px de largo */
+#asdPanel .asd-az-block { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+#asdPanel .asd-az-dial { flex: 0 0 auto; width: 5rem; height: 5rem; max-width: 100%; position: relative; align-self: center; }
+#asdPanel .asd-dial-svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); }
+#asdPanel .asd-dial-ring { fill: rgba(15, 23, 42, 0.65); stroke: rgba(100, 116, 139, 0.5); stroke-width: 1.2; }
+#asdPanel .asd-dial-tick { stroke: rgba(148, 163, 184, 0.45); stroke-width: 0.6; }
+#asdPanel .asd-dial-n { fill: #f87171; font-size: 8px; font-weight: 800; text-anchor: middle; font-family: system-ui, sans-serif; }
+#asdPanel .asd-dial-needle { stroke: #f8fafc; stroke-width: 2.2; stroke-linecap: round; }
+#asdPanel .asd-dial-hub { fill: #64748b; stroke: #94a3b8; stroke-width: 0.5; }
+#asdPanel .asd-thruster-bb .asd-dial-needle { stroke: #38bdf8; }
+#asdPanel .asd-thruster-be .asd-dial-needle { stroke: #fb923c; }
+#asdPanel .asd-sliders { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#asdPanel .asd-section .control-row,
+#asdPanel .asd-sliders .control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 6px; row-gap: 2px; align-items: center;
+  font-size: 11px; margin-bottom: 4px; min-width: 0;
+}
+#asdPanel .asd-section .control-row:has(> input[type="range"]) > label,
+#asdPanel .asd-sliders .control-row:has(> input[type="range"]) > label { grid-column: 1 / -1; }
+#asdPanel .asd-section .control-row:has(> input[type="range"]) > input[type="range"],
+#asdPanel .asd-sliders .control-row:has(> input[type="range"]) > input[type="range"] {
+  grid-column: 1;
+  width: 100% !important; max-width: 100% !important; min-width: 0;
+  flex-basis: unset !important; box-sizing: border-box; align-self: stretch;
+  height: 1.35rem; margin: 0;
+}
+#asdPanel .asd-section .control-row:has(> input[type="range"]) > span,
+#asdPanel .asd-sliders .control-row:has(> input[type="range"]) > span { grid-column: 2; }
+#asdPanel .asd-sliders .control-row:last-of-type { margin-bottom: 0; }
+#asdPanel .asd-sliders .control-row input[type="range"]::-webkit-slider-thumb { margin-top: -5px; }
+#asdPanel .asd-carga-real {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-top: 6px;
+  padding: 5px 8px; border-radius: 6px; background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(100, 116, 139, 0.35); font-size: 10px; color: #94a3b8;
+}
+#asdPanel .asd-carga-real .asd-cr-lbl { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+#asdPanel .asd-carga-real .asd-cr-v { font-family: ui-monospace, monospace; font-size: 0.85rem; font-weight: 700; color: #e2e8f0; }
+#asdPanel .asd-rpm-gauge { margin-top: 4px; }
+#asdPanel .asd-rpm-track {
+  height: 5px; border-radius: 3px; background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(100, 116, 139, 0.35); overflow: hidden;
+}
+#asdPanel .asd-rpm-fill { height: 100%; width: 0%; border-radius: 2px;
+  background: linear-gradient(90deg, #0284c7, #4ade80 85%);
+  transition: width 0.12s ease-out;
+}
+#asdPanel .asd-thruster-be .asd-rpm-fill { background: linear-gradient(90deg, #c2410c, #fbbf24 90%); }
+#asdPanel hr { margin: 10px 0; }
+</style>
+
+        <div id="envPanel" class="panel">
+            <h4>Ambiente</h4>
+            <div class="control-row"><label>Vento (m/s):</label><input type="range" id="windSpeed" min="0" max="50" value="5" step="1"><span id="windSpeedValue">5</span></div>
+            <div class="control-row"><label>Direção Vento (°):</label><input type="range" id="windDir" min="0" max="360" value="90" step="1"><span id="windDirValue">90</span></div>
+            <div class="control-row"><label>Corrente (m/s):</label><input type="range" id="currentSpeed" min="0" max="5" value="0.5" step="0.1"><span id="currentSpeedValue">0.5</span></div>
+            <div class="control-row"><label>Direção Corrente (°):</label><input type="range" id="currentDir" min="0" max="360" value="180" step="1"><span id="currentDirValue">180</span></div>
+             <hr>
+            <div class="control-row"><label>Altura Ondas (m):</label><input type="range" id="waveHeight" min="0" max="15" value="1" step="0.5"><span id="waveHeightValue">1</span></div>
+            <div class="control-row"><label>Profundidade (m):</label><input type="range" id="seabedDepth" min="50" max="1000" value="50" step="5"><span id="seabedDepthValue">50</span></div>
+            <div class="control-row"><label>Escala Beaufort:</label><span id="beaufortValue">F2</span></div>
+            <div class="control-row imo884-row" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:6px;">
+              <button type="button" id="btnImo884Env" class="w-full text-left px-2 py-1.5 rounded-md border text-[11px] font-semibold transition-colors" style="border-color: rgba(56,189,248,0.45); background: rgba(14,165,233,0.12); color: #e0f2fe;">MSC/Circ.884 — ambiente de referência</button>
+              <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:0;">Aplica vento <strong>20 m/s</strong>, onda <strong>5 m</strong> (Hs), corrente <strong>0,5 m/s</strong>, com vento e corrente na <strong>mesma direção</strong> (90°), alinhado ao critério documental de manter posição do conjunto. O modelo 3D permanece educativo.</p>
+              <button type="button" id="btnBkiRefEnv" class="w-full text-left px-2 py-1.5 rounded-md border text-[11px] font-semibold transition-colors" style="border-color: rgba(167,139,250,0.45); background: rgba(139,92,246,0.12); color: #ede9fe;">BKI Vol.12 — ref. (vento 20, corrente 1,0 m/s)</button>
+              <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:0;">Sec.3 B.3.2: valor geral de referência para a tração com que o rebocador <strong>mantém o comboio</strong> com vento de proa 20 m/s e corrente de proa <strong>1,0 m/s</strong> (H<sub>s</sub> não fixado nesse parágrafo; aqui mantém-se 5 m para comparar com o predef. IMO). Diferente do trio MSC (Hs 5 + 0,5 m/s alinhados).</p>
+              <button type="button" id="btnCcsBenignEnv" class="w-full text-left px-2 py-1.5 rounded-md border text-[11px] font-semibold transition-colors" style="border-color: rgba(52,211,153,0.45); background: rgba(16,185,129,0.12); color: #d1fae5;">Zona benigna (CCS) — 15 m/s, Hs 2 m</button>
+              <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:0;">CCS <em>Guidelines for Towage at Sea</em> (Def. 1.4.16): vento <strong>15 m/s</strong>, onda <strong>2 m</strong>; corrente <strong>0,5 m/s</strong> alinhada (o texto CCS não fixa V<sub>c</sub> na <em>benign area</em> — reutilizamos 0,5 m/s do critério geral de BP e do MSC).</p>
+            </div>
+            <div class="resize-handle"></div>
+        </div>
+         <div id="vesselPanel" class="panel">
+            <h4>Navio e rebocador</h4>
+            <p style="font-size:10px;color:#8da4b7;margin:0 0 8px;">Reboque oceânico: em regra <strong>lento</strong> (~3–6 n, conforme plano, mar e sispás). <strong>Escoteiro</strong> (experiência no modelo) ~<strong>11 n @ 1300 rpm</strong>; 8+ n raramente é serviço “longo” de reboque. Curva = histórico (nós).</p>
+            <div class="fleet-compare">
+                <div class="fleet-col">
+                    <h5>Navio (rebocado)</h5>
+                    <div class="control-row">
+                        <label for="shipPreset">Tipo:</label>
+                        <select id="shipPreset">
+                            <option value="generic">Cargueiro Genérico</option>
+                            <option value="feeder">Porta-Contentores (Feeder)</option>
+                            <option value="handy">Porta-Contentores (Handy)</option>
+                            <option value="panamax">Porta-Contentores (Panamax)</option>
+                            <option value="postpanamax">Porta-Contentores (UCLV)</option>
+                            <option value="aframax">Petroleiro (Aframax)</option>
+                        </select>
+                    </div>
+                    <div class="control-row"><label for="sailArea">Área Vélica (m²):</label><input type="range" id="sailArea" min="1000" max="10000" value="5000" step="100" title="Área Vélica"><span id="sailAreaValue">5000</span></div>
+                    <div class="control-row"><label for="shipDraft">Calado (m):</label><input type="range" id="shipDraft" min="8" max="20" value="10.5" step="0.5" title="Preset Cargueiro: 10,5 m (75% do intervalo 6–12 m)."><span id="shipDraftValue">10.5</span></div>
+                    <hr>
+                    <div class="control-row"><label title="Massa vs calado (aprox.)">Massa (ton):</label><span id="shipMassValue">0</span></div>
+                    <div class="control-row"><label>Comprimento (m):</label><span id="shipLengthValue">0</span></div>
+                    <div class="control-row"><label>Velocidade (nós):</label><span id="shipSpeedValue">0.00</span></div>
+                    <div class="control-row"><label>Resist. (kN):</label><span id="shipTotalResistanceValue">0.0</span></div>
+                </div>
+                <div class="fleet-col">
+                    <h5>Rebocador (desempenho)</h5>
+                    <div class="control-row"><label>Massa (ton):</label><span id="tugMassValue">0</span></div>
+                    <div class="control-row"><label>Velocidade (nós):</label><span id="tugSpeedValue">0.00</span></div>
+                    <div class="control-row" title="Carga: tração×f_calado×f(RPM)×f(SOG). ref. escoteiro livre: 11 n @ 1300 → ~54–60% (f_RPM=57% aqui). 100%: 5 m, 11+ n, 1800 rpm, tração 1. Teto SOG: 650→0,58 n, 1300→11 n, 1800→12,5 n. Suav ~0,4 s.">
+                        <label>Carga real (%):</label><span id="tugCargaRealValue">0.0</span>
+                    </div>
+                    <div class="control-row"><label>Consumo (l/h):</label><span id="tugFuelConsumptionValue">0.0</span></div>
+                </div>
+            </div>
+            <div class="speed-chart-block">
+                <h5>Velocidades ao longo do tempo (nós)</h5>
+                <canvas id="speedHistoryChart" width="300" height="100" aria-label="Gráfico de velocidades do navio e do rebocador em nós"></canvas>
+                <div class="chart-legend">
+                    <span class="leg-ship">— Navio</span>
+                    <span class="leg-tug">— Rebocador</span>
+                </div>
+            </div>
+            <div class="resize-handle"></div>
+        </div>
+
+         <div id="winchPanel" class="panel hidden">
+            <h4>Guincho e Cabo</h4>
+            <p class="text-[10px] leading-snug mb-2 border-b border-slate-600/50 pb-2" style="color:#8da4b7;">Peso do cabo na água sustenta a catenária: a linha afunda, mantém <span class="font-mono">H</span> e liga o comboio (amortece e transmite). Com muito cabo no fundo, o atrito altera o puxo horizontal.</p>
+             <div class="control-row">
+                <label>Aparelho de reboque</label>
+                <span class="text-[11px] leading-tight" style="color:#9cc0d4;max-width:14rem;">Aparelho completo: cabo aço + <strong>shock-line em poliamida (nylon)</strong> + corrente + ferragens — peso e EA efetivos no modelo.</span>
+                <input type="hidden" id="cablePreset" value="composite_heavy" />
+            </div>
+            <hr>
+            <div class="control-row"><label>Cabo Lançado (m):</label><input type="range" id="cableLength" min="50" max="800" value="320" step="10"><span id="cableLengthValue">320</span></div>
+            <div class="control-row"><label>Cabo Real (m):</label><span id="actualCableLengthValue">320.0</span></div>
+            <div class="control-row"><label>Vão 3D entre amarras (m):</label><span id="distanceBowSternValue">0.0</span></div>
+            <div class="control-row"><label>Vão horizontal, planta (m):</label><span id="distanceFairleadHzValue">0.0</span></div>
+            <hr>
+            <div class="control-row"><label>Peso cabo, total (t, água):</label><span id="cableWeightValue">0.00</span></div>
+            <div class="control-row"><label>Força Catenária (H) (kN):</label><span id="catenaryForceValue">0.00</span></div>
+            <div class="control-row"><label>Tensão Média (T_end) (kN):</label><span id="cableTensionValue">0.00</span></div>
+            <div class="control-row"><label class="extreme-tension-label">Tensão Extrema (kN):</label><span id="extremeTensionValue" class="extreme-tension-value">0.00</span></div>
+            <hr>
+            <div class="control-row"><label>Flecha (Sag) (m):</label><span id="cableSagValue">0.00</span></div>
+            <div class="control-row"><label>Estado do Cabo:</label><span id="cableStateValue">Catenária</span></div>
+            <div class="control-row"><label>Variação Catenária (m/s):</label><span id="cableSagVariationValue">0.00</span></div>
+            <div class="control-row"><label class="max-deployment-label">Vel. Máx. Lançamento (nós):</label><span id="maxDeploymentSpeedValue" class="max-deployment-value">5.0</span></div>
+            <div class="resize-handle"></div>
+        </div>
+
+        <div id="towingSetupPanel" class="panel hidden">
+            <h4>Configuração do Reboque</h4>
+            <div class="tab-container">
+                <div class="tab-nav" id="towing-setup-tabs">
+                    <!-- Botões das abas serão gerados aqui -->
+                </div>
+                <div class="tab-content-container" id="towing-setup-content">
+                    <!-- Conteúdo das abas será gerado aqui -->
+                </div>
+            </div>
+            <div class="resize-handle"></div>
+        </div>
+
+        <div id="buoyPanel" class="panel hidden">
+            <h4>Marcadores (Bóias)</h4>
+            <p class="text-[11px] leading-snug mb-2" style="color:#8da4b7;">Escolha a cor, depois <strong>clique na água</strong> na vista 3D para colocar a bóia.</p>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" id="addGreenBuoy" style="flex: 1;" title="Cor verde; em seguida clique no mar (vista 3D)">Bóia verde</button>
+                <button type="button" id="addRedBuoy" style="flex: 1;" title="Cor encarnada; em seguida clique no mar (vista 3D)">Bóia encarnada</button>
+            </div>
+            <button id="clearBuoys" style="margin-top: 15px; background-color: #522;">Limpar Todas as Bóias</button>
+            <div class="resize-handle"></div>
+        </div>
+        
+        <div id="asdPanel" class="panel asd-panel hidden">
+            <h4>Governo ASD (rebocador)</h4>
+            <p class="asd-intro">Controlo de propulsores azimutais. <strong>Arranque desacoplado</strong> (sem tração) até <strong>Acoplar</strong>. Comando de RPM mínimo <strong>650</strong> com motores a trabalho. <strong>Desacoplar</strong>: sem jato/tração; a hélice no painel ainda roda, mais devagar que o eixo. Massa, velocidade, carga e consumo no painel <strong>Navio e rebocador</strong>.</p>
+            <div class="asd-section">
+                <div class="control-row"><label for="tugDraft">Calado (m)</label><input type="range" id="tugDraft" min="3" max="8" value="5" step="0.25" title="Calado 3–8 m (default 5 m). f_calado = calado/5 m (1,0 em 5 m). Ref. 100%: 5 m + 1800 rpm + SOG ref. 11+ n + tração total."><span id="tugDraftValue">5</span></div>
+            </div>
+            <div class="asd-btn-row">
+                <button type="button" id="engineStartStop" class="asd-btn asd-btn-engine">Partida dos Motores</button>
+                <button type="button" id="asdModeToggle" class="asd-btn asd-btn-mode">Modo: TWIN</button>
+            </div>
+            <div class="asd-clutch-row">
+                <button type="button" id="asdDriveEngage" class="asd-btn asd-btn-clutch" title="Transmissão acoplada: tração na água (RPM mín. 650 em operação)">Acoplar</button>
+                <button type="button" id="asdDriveDisengage" class="asd-btn asd-btn-clutch is-active" title="Padrão ao iniciar. Sem tração; hélice segue o veio a baixa rotação (inércia)">Desacoplar</button>
+            </div>
+            <div class="asd-thruster-grid">
+                <div class="asd-thruster-card asd-thruster-bb">
+                    <div class="asd-thruster-head">
+                        <h5>Propulsor 1</h5>
+                        <div class="asd-thruster-head-right">
+                            <div class="asd-prop-wrap" title="Hélice — rotação ∝ RPM real do eixo; parada gradual ao desligar motores" aria-hidden="true">
+                                <svg class="asd-prop-svg" viewBox="0 0 64 64" width="48" height="48" focusable="false">
+                                    <circle class="asd-prop-duct" cx="32" cy="32" r="30"/>
+                                    <g id="asdPropBlades1" transform="rotate(0 32 32)">
+                                        <path class="asd-prop-blade" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                        <path class="asd-prop-blade" transform="rotate(90 32 32)" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                        <path class="asd-prop-blade" transform="rotate(180 32 32)" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                        <path class="asd-prop-blade" transform="rotate(270 32 32)" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                    </g>
+                                    <circle class="asd-prop-boss" cx="32" cy="32" r="6"/>
+                                </svg>
+                            </div>
+                            <span class="asd-badge" title="Bombordo">BB</span>
+                        </div>
+                    </div>
+                    <div class="asd-az-block">
+                        <div class="asd-az-dial" aria-hidden="true">
+                            <svg class="asd-dial-svg" viewBox="0 0 100 100" width="100" height="100" focusable="false">
+                                <circle class="asd-dial-ring" cx="50" cy="50" r="48"/>
+                                <line class="asd-dial-tick" x1="50" y1="4" x2="50" y2="10"/>
+                                <line class="asd-dial-tick" x1="50" y1="90" x2="50" y2="96"/>
+                                <line class="asd-dial-tick" x1="4" y1="50" x2="10" y2="50"/>
+                                <line class="asd-dial-tick" x1="90" y1="50" x2="96" y2="50"/>
+                                <text class="asd-dial-n" x="50" y="11">N</text>
+                                <g id="asdAzNeedle1" class="asd-needle-rot" transform="rotate(0 50 50)">
+                                    <line class="asd-dial-needle" x1="50" y1="50" x2="50" y2="16"/>
+                                </g>
+                                <circle class="asd-dial-hub" cx="50" cy="50" r="4"/>
+                            </svg>
+                        </div>
+                        <div class="asd-sliders">
+                            <div class="control-row"><label for="thruster1RPM">RPM</label><input type="range" id="thruster1RPM" min="650" max="1800" value="650" step="10" disabled title="Mín. 650 rpm em serviço. Comando; RPM de eixo com inércia ao desligar motores."><span id="thruster1RPMValue">0</span></div>
+                            <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill1"></div></div></div>
+                            <div class="asd-carga-real" title="f(RPM) 650→16%, 900→40%, 1300→57% (esc. livre 11 n), 1800→100%. 11 n@1300 ≈ 54–60% com tr/f_calado. f(SOG) pleno em ~11+ n.">
+                                <span class="asd-cr-lbl">Carga real</span>
+                                <span class="asd-cr-v"><span id="asdCargaReal1">0.0</span>%</span>
+                            </div>
+                            <div class="control-row"><label for="thruster1Azimuth">Azimute (°)</label><input type="range" id="thruster1Azimuth" min="0" max="360" value="0" step="1" disabled title="Propulsor 1 — azimute em graus, rel. à proa"><span id="thruster1AzimuthValue">0</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="asd-thruster-card asd-thruster-be">
+                    <div class="asd-thruster-head">
+                        <h5>Propulsor 2</h5>
+                        <div class="asd-thruster-head-right">
+                            <div class="asd-prop-wrap" title="Hélice — sentido oposto ao P1; ω ∝ RPM (parada inercial com o motor)" aria-hidden="true">
+                                <svg class="asd-prop-svg" viewBox="0 0 64 64" width="48" height="48" focusable="false">
+                                    <circle class="asd-prop-duct" cx="32" cy="32" r="30"/>
+                                    <g id="asdPropBlades2" transform="rotate(0 32 32)">
+                                        <path class="asd-prop-blade" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                        <path class="asd-prop-blade" transform="rotate(90 32 32)" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                        <path class="asd-prop-blade" transform="rotate(180 32 32)" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                        <path class="asd-prop-blade" transform="rotate(270 32 32)" d="M 32 32 L 32 6 Q 40 5 40 10 L 40 20 Q 36 20 32 20 Z"/>
+                                    </g>
+                                    <circle class="asd-prop-boss" cx="32" cy="32" r="6"/>
+                                </svg>
+                            </div>
+                            <span class="asd-badge" title="Boreste">BE</span>
+                        </div>
+                    </div>
+                    <div class="asd-az-block">
+                        <div class="asd-az-dial" aria-hidden="true">
+                            <svg class="asd-dial-svg" viewBox="0 0 100 100" width="100" height="100" focusable="false">
+                                <circle class="asd-dial-ring" cx="50" cy="50" r="48"/>
+                                <line class="asd-dial-tick" x1="50" y1="4" x2="50" y2="10"/>
+                                <line class="asd-dial-tick" x1="50" y1="90" x2="50" y2="96"/>
+                                <line class="asd-dial-tick" x1="4" y1="50" x2="10" y2="50"/>
+                                <line class="asd-dial-tick" x1="90" y1="50" x2="96" y2="50"/>
+                                <text class="asd-dial-n" x="50" y="11">N</text>
+                                <g id="asdAzNeedle2" class="asd-needle-rot" transform="rotate(0 50 50)">
+                                    <line class="asd-dial-needle" x1="50" y1="50" x2="50" y2="16"/>
+                                </g>
+                                <circle class="asd-dial-hub" cx="50" cy="50" r="4"/>
+                            </svg>
+                        </div>
+                        <div class="asd-sliders">
+                            <div class="control-row"><label for="thruster2RPM">RPM</label><input type="range" id="thruster2RPM" min="650" max="1800" value="650" step="10" disabled title="Mín. 650 rpm. Idem propulsor 1."><span id="thruster2RPMValue">0</span></div>
+                            <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill2"></div></div></div>
+                            <div class="asd-carga-real" title="Idem f(RPM) no eixo 2; gêmeo = mesmo RPM.">
+                                <span class="asd-cr-lbl">Carga real</span>
+                                <span class="asd-cr-v"><span id="asdCargaReal2">0.0</span>%</span>
+                            </div>
+                            <div class="control-row"><label for="thruster2Azimuth">Azimute (°)</label><input type="range" id="thruster2Azimuth" min="0" max="360" value="0" step="1" disabled title="Propulsor 2 — azimute em graus, rel. à proa"><span id="thruster2AzimuthValue">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="asd-intro" style="margin: 10px 0 0; opacity: 0.9;">Em modo TWIN, o par BE segue o bombarde. Em modo individual, ajusta cada hélice à parte. O ícone da <strong>hélice</strong> segue o eixo: <strong>acoplado</strong> = mesma ordem de rotação que o RPM; <strong>desacoplado</strong> = rotação visual reduzida (≈20% do RPM de motor) e sem jato.</p>
+            <div class="resize-handle"></div>
+        </div>
+        </div>
+      </div>
+        <div class="shrink-0 border-t border-slate-200/80 px-2 py-2 dark:border-slate-700/80">
+          <a href="index.html" class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-center text-xs font-medium text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-slate-800/80">Catenária &amp; dashboard</a>
+        </div>
+    </aside>
+
+    <!-- Overlay Mobile -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[35] hidden lg:hidden transition-opacity opacity-0"></div>
+
+    <!-- MAIN: vista 3D + fila de sobreposições; scripts ficam fora do overlay -->
+    <main id="sim-container" class="flex-1 relative z-0 w-full h-screen min-w-0 overflow-hidden isolate">
+        <div id="ui-overlay" class="absolute inset-0 z-10 min-h-0 p-4 flex flex-col gap-4 pointer-events-none" aria-hidden="true"></div>
+    </main>
+  </div>
+
+<script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+
+    </script>
+
+<script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- 1. SETUP BÁSICO DA CENA 3D ---
+        const container = document.getElementById('sim-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
+        camera.position.set(0, 300, 350);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.domElement.classList.add('sim-webgl-canvas');
+        container.appendChild(renderer.domElement);
+
+        // Controles de órbita para a câmera, permitindo ao usuário navegar na cena
+        const controls_cam = new OrbitControls(camera, renderer.domElement);
+
+        let seabedMesh; // Declarado aqui para ser acessível globalmente no script
+
+        // --- 2. AMBIENTE E ILUMINAÇÃO ---
+        scene.background = new THREE.Color(0x051d40);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(100, 100, 50);
+        scene.add(directionalLight);
+        
+        // Plano para representar a superfície da água
+        const water_level = -1;
+        const water = new THREE.Mesh(
+            new THREE.PlaneGeometry(10000, 10000),
+            new THREE.MeshPhongMaterial({ color: 0x003366, transparent: true, opacity: 0.8, shininess: 80 })
+        );
+        water.name = 'waterSurface';
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = water_level;
+        // Água transparente sem escrever no depth buffer: evita que o plano a “pinte por cima”
+        // do cabo em certos azimutes e o teste de profundidade esconda a linha ao orbitar a câmera.
+        water.material.depthWrite = false;
+        water.renderOrder = 0;
+        scene.add(water);
+
+        // Plano para representar o fundo do mar (seabed)
+        seabedMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(10000, 10000, 50, 50), // Segmentos para futura topografia
+            new THREE.MeshPhongMaterial({ color: 0x4a443b, shininess: 10 })
+        );
+        seabedMesh.rotation.x = -Math.PI / 2;
+        scene.add(seabedMesh);
+
+
+        // Setas visuais para indicar a direção e intensidade do vento e da corrente
+        const windArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(-400, 10, -400), 50, 0x00ffff, 20, 10);
+        scene.add(windArrow);
+        const currentArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(-400, 5, -350), 50, 0x00ff00, 20, 10);
+        scene.add(currentArrow);
+
+        // --- 3. CONSTANTES E DADOS DE ENGENHARIA ---
+        const RHO_WATER = 1025, RHO_AIR = 1.225;
+        const DEG2RAD = Math.PI / 180;
+        // Curvas de dados para cálculos de resistência (empíricos)
+        const hullResistanceCurve = [ {ratio: 0.0, val: 0.0}, {ratio: 0.2, val: 1.5}, {ratio: 0.3, val: 2.0}, {ratio: 0.4, val: 3.0}, {ratio: 0.5, val: 5.0}, {ratio: 0.6, val: 8.0}, {ratio: 0.7, val: 13.0} ];
+        const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}, {beaufort: 3, val: 0.6}, {beaufort: 4, val: 1.2}, {beaufort: 5, val: 2.5}, {beaufort: 6, val: 5.0}, {beaufort: 7, val: 9.0} ];
+
+        // --- 4. MÓDULO DE FÍSICA E SEGURANÇA DO CABO (TOWLINE) ---
+        (function(){
+          if (window.__TowV232Installed) return; window.__TowV232Installed = true;
+
+          // ————————————————————————————————————————————
+          // Catálogo de cabos com MBL, EA e parâmetros hidrodinâmicos
+          // (ajuste valores conforme seu equipamento real)
+          // ————————————————————————————————————————————
+          const CableCatalog = {
+            composite_heavy: {
+              key: 'composite_heavy',
+              name: 'Reboque completo (shock-line poliamida)',
+              MBL: 2.45e6,
+              // Rigidez efetiva: aço + shock em nylon (alta extensibilidade) + corrente
+              EA_MN: 115,
+              wNpm_air: 155,
+              buoy_factor: 0.18,
+              d: 0.070,
+              Cd: 1.15,
+              FoS: { auto: 3, brake: 5, pawl: 7 }
+            }
+          };
+
+          // ————————————————————————————————————————————
+          // HUD + lógica de segurança MBL/FoS + SURGE
+          // ————————————————————————————————————————————
+          const TowSafety = {
+            // Estado atual do módulo
+            currentKey: 'composite_heavy',
+            mode: 'brake',             // 'auto' | 'brake' | 'pawl'
+            lastTensionN: 0,
+            dTdt: 0,
+            surgeOn: false,
+            thresholds: {
+              mbl: { safe: 0.50, warn: 0.75, danger: 0.90 }, // frações da MBL para coloração
+              surgeNps: 1.0e5                                 // N/s — limiar de alarme de surge
+            },
+            // Propriedades computadas para acesso fácil
+            get cable(){ return CableCatalog[this.currentKey]; },
+            get WLL(){ const fos = (this.cable.FoS?.[this.mode]) || 5; return this.cable.MBL / fos; },
+            
+            // Garante que os estilos CSS para o HUD sejam injetados na página uma única vez
+            ensureStyles(){
+              if (document.getElementById('towHUDStyles')) return;
+              const css = `
+                #towHud{position:fixed;right:12px;top:max(calc(4rem + 8px),calc(env(safe-area-inset-top) + 4.5rem));background:#1B263B;color:#E0E1DD;border:1px solid #415A77;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px 12px;font:500 14px/1.3 system-ui,Segoe UI,Roboto,Ubuntu,sans-serif;z-index:30;min-width:230px;max-height:min(65vh,26rem);overflow:auto;pointer-events:auto}
+                #towHud h4{margin:0 0 6px 0;font:700 15px system-ui}
+                #towHud .row{display:flex;justify-content:space-between;gap:10px;margin:4px 0}
+                #towHud .val{font-variant-numeric:tabular-nums}
+                #towHud .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid #415A77}
+                #towHud .ok{background:#0f5132;border-color:#0f5132;color:#d1e7dd}
+                #towHud .warn{background:#7a5d00;border-color:#7a5d00;color:#fff3cd}
+                #towHud .danger{background:#842029;border-color:#842029;color:#f8d7da}
+                @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(220,53,69,.55)}70%{box-shadow:0 0 0 16px rgba(220,53,69,0)}100%{box-shadow:0 0 0 0 rgba(220,53,69,0)}}
+                #towHud.surge{animation:pulse 1s ease-out infinite;border-color:#842029}
+              `;
+              const st = document.createElement('style'); st.id='towHUDStyles'; st.textContent = css; document.head.appendChild(st);
+            },
+            // Garante que os elementos HTML do HUD sejam criados e adicionados à página uma única vez
+            ensureHUD(){
+              if (document.getElementById('towHud')) return;
+              const el = document.createElement('div'); el.id='towHud'; el.innerHTML = `
+                <h4>⚓ Towline Safety</h4>
+                <div class="row"><span>Cabo:</span><span class="val" id="towHudType"></span></div>
+                <div class="row">
+                    <span>Modo:</span>
+                    <select id="towHudModeSelect" style="background:#334;color:#e0e0e0;border:1px solid #556;border-radius:4px;padding:2px;font-family:inherit;font-size:inherit;flex-grow:1;">
+                        <option value="auto">AUTO</option>
+                        <option value="brake">BRAKE</option>
+                        <option value="pawl">PAWL</option>
+                    </select>
+                </div>
+                <div class="row"><span>Tensão:</span><span class="val" id="towHudT">0.0 kN</span></div>
+                <div class="row"><span>Util. MBL:</span><span class="val" id="towHudU">0%</span></div>
+                <div class="row"><span>Util. WLL:</span><span class="val" id="towHudUW">0%</span></div>
+                <div class="row"><span>dT/dt:</span><span class="val" id="towHudDT">0 kN/s</span></div>
+                <div class="row"><span>Estado:</span><span class="val" id="towHudState"><span class="pill ok">Seguro</span></span></div>
+              `;
+              document.body.appendChild(el);
+              const modeSelect = document.getElementById('towHudModeSelect');
+              modeSelect.value = this.mode;
+              modeSelect.addEventListener('change', (e) => window.setTowMode(e.target.value));
+            },
+            // Altera a cor da linha do cabo na cena 3D com base na utilização da MBL
+            colorTowline(utilMBL){
+              const line = window.cableLine || (window.scene && scene.getObjectByName('towLine')) || (window.scene && scene.getObjectByName('cableLine')) || null;
+              if (!line || !line.material || !line.material.color) return;
+              if (utilMBL < this.thresholds.mbl.safe)      line.material.color.set(0xffff00); // amarelo
+              else if (utilMBL < this.thresholds.mbl.warn) line.material.color.set(0xff8800); // laranja
+              else if (utilMBL < this.thresholds.mbl.danger) line.material.color.set(0xff3300);
+              else                                          line.material.color.set(0xff0000); // vermelho
+              line.material.needsUpdate = true;
+            },
+            // Atualiza os valores exibidos no painel do HUD
+            updateHUD(tN, utilMBL, utilWLL, surge, anom){
+              const tEl = document.getElementById('towHudT');
+              const uEl = document.getElementById('towHudU');
+              const uwEl= document.getElementById('towHudUW');
+              const dtEl= document.getElementById('towHudDT');
+              const tyEl= document.getElementById('towHudType');
+              const stEl= document.getElementById('towHudState');
+              const hud = document.getElementById('towHud');
+              if (!tEl) return;
+              tEl.textContent  = (tN/1000).toFixed(1) + ' kN';
+              uEl.textContent  = anom ? '—' : `${Math.min(999, Math.max(0, Math.round(utilMBL * 100)))}%`;
+              uwEl.textContent = anom ? '—' : `${Math.min(999, Math.max(0, Math.round(utilWLL * 100)))}%`;
+              dtEl.textContent = (this.dTdt/1000).toFixed(0) + ' kN/s';
+              tyEl.textContent = this.cable.name;
+              hud.classList.toggle('surge', !!surge);
+              if (anom) {
+                stEl.innerHTML = '<span class="pill danger" title="Tensão fora de faixa (erro numérico ou geometria incompatível)">Anomalia</span>';
+                return;
+              }
+              const pillClass = utilMBL < this.thresholds.mbl.safe ? 'ok' : utilMBL < this.thresholds.mbl.warn ? 'warn' : 'danger';
+              stEl.innerHTML = `<span class="pill ${pillClass}">${surge ? 'SURGE' : (pillClass==='ok'?'Seguro': pillClass==='warn'?'Atenção':'Limite')}</span>`;
+            },
+            // Função principal do módulo, chamada a cada quadro para actualizar a lógica de segurança
+            update(dt, tensionN){
+              this.ensureStyles(); this.ensureHUD();
+              dt = (isFinite(dt) && dt>0) ? dt : 0.016;
+              const mblC = this.cable.MBL > 0 ? this.cable.MBL : 2.45e6;
+              const tRaw = Number.isFinite(tensionN) && tensionN >= 0 ? tensionN : 0;
+              const anom = !Number.isFinite(tensionN) || tensionN < 0 || tensionN > mblC * 3.5;
+              const t = Math.max(0, Math.min(tRaw, mblC * 1.12));
+              this.dTdt = Math.max(0, (t - this.lastTensionN) / dt);
+              const utilMBL = mblC > 0 ? t / mblC : 0;
+              const utilWLL = this.WLL > 0 ? t / this.WLL : 0;
+              const surge = (this.dTdt > this.thresholds.surgeNps) && (utilMBL > this.thresholds.mbl.safe);
+              this.surgeOn = surge;
+              this.lastTensionN = t;
+              this.colorTowline(Math.min(1.5, utilMBL));
+              this.updateHUD(t, utilMBL, utilWLL, surge, anom);
+            }
+          };
+
+          // Expõe funções e objetos globalmente para que possam ser acessados por outros scripts ou pelo console
+          window.TowSafety = TowSafety;
+          window.CableCatalog = CableCatalog;
+          window.setCableType = (key)=>{ if (key === 'composite_heavy' && CableCatalog[key]) TowSafety.currentKey = key; };
+          window.setTowMode   = (m)=>{ if (['auto','brake','pawl'].includes(m)) TowSafety.mode = m; };
+
+          // ————————————————————————————————————————————
+          // Versão de computeTowlineForces que retorna TensionN
+          // (se você já tem uma versão, pode ignorar esta seção)
+          // ————————————————————————————————————————————
+          const RHO = 1025; const EPS=1e-6;
+          // Calcula a rigidez axial (k) do cabo com base no seu módulo (EA) e comprimento (L). k = EA / L
+          // Filtro para garantir que os valores sejam sempre números finitos e não-negativos.
+          const safe = v => (Number.isFinite(v) && v >= 0 ? v : 0);
+
+          function axialK_fromEA(scope_m, cable){
+            const EA = (cable.EA_MN||200)*1e6;
+            const L = Math.max(scope_m, 1);
+            let k = EA / L;
+            // Comprimentos muito longos: K=EA/L fica ainda muito rígido; suavizar ligeiramente evita
+            // oscilação numérica (integração explícita + mola dura) sem alterar a ordem de grandeza.
+            if (L > 180) k *= 1 / (1 + 0.0006 * (L - 180));
+            return k;
+          }
+          // Massa reduzida típica (ordem 10³–10⁴ t) para ordenar c próximo de amortecimento crítico: c_cr ≈ 2√(m K).
+          const TOW_M_RED_EST = 5.5e5;
+          let _towTbodyRateLimited = 0;
+          /** Transição BRAKE/esticado: EMA p/ não oscilar 0–1 com cabo longo (ex.: 450 m) */
+          let _wBlendEma = -1;
+          
+          // Função de interpolação suave para a transição de regimes
+          const smoothstep = (a, b, x) => {
+            const t = Math.max(0, Math.min(1, (x - a) / (b - a || 1e-6)));
+            return t * t * (3 - 2 * t);
+          };
+          
+          // Clamp global para funções hiperbólicas, garantindo estabilidade numérica.
+          const clampU = u => Math.min(Math.max(u, 0), 60);
+          const coshC = u => Math.cosh(clampU(u));
+          const sinhC = u => Math.sinh(clampU(u));
+          
+          // Solucionador de catenária robusto por bisseção, resolvendo para 'u'.
+          // NÃO tratar L≤S aqui: com u→0 dava a=S/(2u)→∞ e T na ordem 10^10 N (HUD absurdo).
+          function solveCatenaryByU(S, L) {
+            // Casos limites físicos rápidos
+            if (!Number.isFinite(S) || !Number.isFinite(L) || S <= 0 || L <= 0) {
+              return { ok:false, a:0, u:0 };
+            }
+            if (L <= S * 1.000001) {
+              return { ok:false, a:0, u:0 };
+            }
+
+            // Alvo: r = L/S
+            const r = L / S;
+
+            // g(u) = sinh(u)/u - r (monotônico crescente para u>0)
+            const g = (u) => (Math.sinh(u)/u) - r;
+
+            // Bracketing robusto para encontrar o intervalo [u_lo, u_hi] que contém a raiz
+            let u_lo = 1e-6, u_hi = 10.0; // 10 é um valor prático inicial
+            while (g(u_hi) < 0 && u_hi < 70) { // expande até cruzar o zero, com limite de segurança
+              u_hi *= 1.5;
+            }
+            u_hi = Math.min(u_hi, 70); // Garante que não ultrapasse o limite de double precision
+
+            // Se não encontrou um intervalo válido, retorna um fallback estável (u finito, sem explosão)
+            if (g(u_lo) > 0 && g(u_hi) > 0) {
+              const u = 0.2, a = S / (2 * u);
+              return { ok:true, a, u };
+            }
+
+            // Bisseção: estável e garantido de convergir
+            for (let i=0; i<60; i++) {
+              const u_mid = 0.5*(u_lo + u_hi);
+              if (u_mid === u_lo || u_mid === u_hi) break; // Convergiu
+              const val = g(u_mid);
+              if (Math.abs(val) < 1e-10) {
+                const a = S/(2*u_mid);
+                return { ok:true, a, u:u_mid };
+              }
+              if (val > 0) u_hi = u_mid; else u_lo = u_mid;
+            }
+            const u = 0.5*(u_lo + u_hi);
+            const a = S/(2*u);
+            return { ok:true, a, u };
+          }
+
+          // Resolve a equação da catenária para H e T_end. L=scope pago, S=vão 2D.
+          // L < vão: inextensível puro exigiria T→∞; usa alongamento EA·(S−L)/L, limitado à MBL.
+          // L ≈ S (sem folga aparente): u mínimo finito, evitando a→∞.
+          function solveCatenary_Symmetric(scope_m, span_m, wNpm) {
+            const L = Math.max(scope_m, 0.1), S = Math.max(span_m, 0.1);
+            const cbl = TowSafety.cable;
+            const mbl = cbl && cbl.MBL > 0 ? cbl.MBL : 2.45e6;
+            if (L < S * 0.9995) {
+              const EA = (cbl && cbl.EA_MN || 200) * 1e6;
+              const K = EA / L;
+              let T_end = K * (S - L);
+              T_end = Math.min(Math.max(0, T_end), mbl * 0.99);
+              const a = T_end / Math.max(wNpm, 1e-6);
+              return { H: wNpm * a, T_end, a, sag: 0 };
+            }
+            if (L <= S * 1.000001) {
+              const u = 0.07;
+              const a = S / (2 * u);
+              const H = wNpm * a;
+              const T_end = H * coshC(u);
+              return { H, T_end, a, sag: 0 };
+            }
+            const { ok, a, u } = solveCatenaryByU(S, L);
+            if (!ok) {
+              return { H: 0, T_end: 0, a: 0, sag: 0 };
+            }
+            const H = wNpm * a;
+            const T_end = H * coshC(u);
+            const sag = (L > S) ? a * (coshC(u) - 1) : 0;
+            return { H, T_end, a, sag };
+          }
+          // Calcula a força de arrasto hidrodinâmico no cabo
+          function towlineDragForce(vTug, vShip, span_m, scope_m, cable){
+            const vAvg = vTug.clone().add(vShip).multiplyScalar(0.5);
+            const V = vAvg.length();
+            if (V < 1e-3 || scope_m < 1e-3) return { Dmag:0, Dvec:new THREE.Vector3() };
+            const Cd=cable.Cd||1.2, d=cable.d||0.064; const fracProj=Math.min(1, span_m/Math.max(scope_m,EPS));
+            const A = d*scope_m*fracProj;
+            const Dmag = 0.5*RHO*Cd*A*V*V;
+            const Ddir = (V>0) ? vAvg.clone().normalize().multiplyScalar(-1) : new THREE.Vector3();
+            return { Dmag, Dvec: Ddir.multiplyScalar(Dmag) };
+          }
+          // Função principal que combina catenária, elasticidade e arrasto para calcular as forças resultantes no cabo
+          // 6.º arg opcional: { S3, S_hz, dir, d3 } — d3 = vectoro 3D bita→bita. As forças no casco usam a direcção 3D e
+          // a tensão na boca do cabo (T_end em folga) para aproximar o puxo “na corda” e reduzir o vão com mais sag/massa.
+          // S3 > scope = cabo “a esticar” (mola). S_hz entra na catenária 2D. O calado muda o Y da bita — logo S3.
+          window.computeTowlineForces = function(pTug, vTug, pShip, vShip, scope_m, spanFromFairleads){
+            const towCable = TowSafety.cable;
+            const seabed = { mu_s: 0.6, mu_k: 0.5, depth: simParams.seabedDepth || 50 };
+
+            let S3, S, dir;
+            if (spanFromFairleads && Number.isFinite(spanFromFairleads.S3) && spanFromFairleads.S3 > 0
+                && Number.isFinite(spanFromFairleads.S_hz) && spanFromFairleads.dir) {
+                S3 = spanFromFairleads.S3;
+                S = Math.max(spanFromFairleads.S_hz, 1e-4); // vão em planta; min evita catenária singular
+                dir = spanFromFairleads.dir.clone();
+                if (dir.lengthSq() < 1e-12) dir.set(0, 0, 1);
+                else dir.normalize();
+            } else {
+                const span = pShip.clone().sub(pTug);
+                S3 = S = Math.max(span.length(), 1e-4);
+                const hx = span.x, hz = span.z, hlen = Math.hypot(hx, hz);
+                dir = hlen > 1e-9 ? new THREE.Vector3(hx, 0, hz).normalize() : new THREE.Vector3(0, 0, 1);
+            }
+            let d3n;
+            if (spanFromFairleads && spanFromFairleads.d3 && spanFromFairleads.d3.length() > 1e-5) {
+                d3n = spanFromFairleads.d3.clone().normalize();
+            } else {
+                const c = pShip.clone().sub(pTug);
+                d3n = c.length() > 1e-5 ? c.normalize() : new THREE.Vector3(0, 0, 1);
+            }
+            
+            // Peso linear efetivo em água (N/m) — usado em H, flecha, Lb, atrito no fundo. Não confundir com wNpm_air/9,81 (kg/m no ar) na UI.
+            const wNpm = towCable.wNpm_air * (1 - (towCable.buoy_factor || 0.12));
+
+            // Arrasto distribuído (metade em cada corpo)
+            const { Dmag, Dvec } = towlineDragForce(vTug, vShip, S, scope_m, towCable); // S = S_hz
+            const F_drag_split = Dvec.clone().multiplyScalar(0.5);
+            
+            let T_line = 0, H_trans = 0, T_end_report = 0, sag = 0, a = 0, Lb = 0, state = "CATENARY";
+            const excess = S3 - scope_m;
+            // Faixa de transição um pouco mais larga com cabo pago longo: menos sensibilidade a micro-vãos
+            const scMin = Math.min(scope_m, 2e3);
+            const tautSlackTol = Math.max(0.22, 0.00045 * scMin);
+            const blendSpan = Math.max(0.55, 0.0009 * scMin) * (1.0 + 0.18 * (scMin / 450));
+            const tLo = Math.max(0, tautSlackTol - 0.2 * blendSpan);
+            const tHi = tautSlackTol + blendSpan;
+
+            // --- Catenária (pólo “folgado”; sempre, para interpo­lar com a mola sem degrau) ---
+            const S_cat = (S < scope_m) ? S : (scope_m * 0.9995);
+            const cat = solveCatenary_Symmetric(scope_m, S_cat, wNpm);
+            const H_geo = cat.H;
+            const Lsusp = 2 * cat.a * sinhC(Math.min(S_cat / (2 * cat.a), 70));
+            const Lb_cat = Math.max(0, scope_m - Lsusp);
+            let H_cat = H_geo;
+            if (Lb_cat > 1e-5) {
+                const ss = seabedFriction(H_geo, wNpm, Lb_cat, seabed.mu_s, seabed.mu_k);
+                H_cat = ss.H;
+                isSeabedSliding = ss.sliding;
+            } else {
+                isSeabedSliding = false;
+            }
+            const Tend_cat = cat.T_end * (H_cat / Math.max(H_geo, 1e-9));
+            const sag_cat = cat.sag;
+            const a_cat = cat.a;
+
+            // --- Mola radial (T≈0 quando excesso ≤ tLo) ---
+            let T_taut = 0;
+            if (excess > tLo) {
+                const K_ax = axialK_fromEA(scope_m, towCable);
+                const ext = Math.max(0, excess);
+                const T_elastic = K_ax * ext;
+                const cCrit = 2 * Math.sqrt(TOW_M_RED_EST * K_ax + 1);
+                const c_ax = Math.max(0.16 * K_ax, 0.5 * cCrit) * (1.0 + 0.45 * Math.min(1, scope_m / 500));
+                const relV = vShip.clone().sub(vTug);
+                const velAlong = relV.dot(d3n);
+                let T_damping = c_ax * velAlong;
+                const cap = 0.8 * Math.max(1, T_elastic) + 2e3 * (scope_m / 1e3);
+                T_damping = Math.max(-cap, Math.min(cap, T_damping));
+                T_taut = Math.max(0, T_elastic + T_damping);
+            }
+
+            // --- Peso w ∈ [0,1] entre catenária e mola (smoothstep) — evita degrau de força (picos) ---
+            let wBlend = 0;
+            if (excess >= tHi) wBlend = 1;
+            else if (excess > tLo) wBlend = (excess - tLo) / (tHi - tLo + 1e-9);
+            wBlend = wBlend * wBlend * (3 - 2 * wBlend);
+            const dtW = (typeof window._towSimDt === "number" && window._towSimDt > 0) ? window._towSimDt : 0.018;
+            const wBlendK = Math.min(0.45, 4.0 * dtW / (1.0 + scope_m / 420));
+            if (_wBlendEma < 0) _wBlendEma = wBlend;
+            _wBlendEma += (wBlend - _wBlendEma) * wBlendK;
+            wBlend = _wBlendEma;
+            T_end_report = (1 - wBlend) * Tend_cat + wBlend * T_taut;
+            T_line = (1 - wBlend) * H_cat + wBlend * T_taut;
+            H_trans = T_line;
+            sag = (1 - wBlend) * sag_cat;
+            Lb = (1 - wBlend) * Lb_cat;
+            if (wBlend < 0.04) { state = "CATENARY"; a = a_cat; }
+            else if (wBlend > 0.96) { state = "TAUT"; sag = 0; a = Infinity; Lb = 0; H_trans = T_taut; T_line = T_taut; T_end_report = T_taut; }
+            else { state = "BLEND"; a = (1 - wBlend) * a_cat; }
+
+            // Limite de taxa dT/dt na mola e na transição (integração de Euler + cabo muito duro) — inactivo puro em cat. folgada
+            let T_body = T_end_report;
+            if (wBlend > 0.07) {
+                const dtSim = (typeof window._towSimDt === "number" && window._towSimDt > 0) ? window._towSimDt : 0.018;
+                // Cabo longo: não aumentar a taxa máx. de dT (antes favorecia «trancos»); tecto contínuo mais baixo
+                const s100 = Math.min(220, scope_m / 1e2);
+                const dTmax = 1.05e5 + 6.5e2 * s100;
+                const dStep = dTmax * dtSim;
+                if (!Number.isFinite(_towTbodyRateLimited) || _towTbodyRateLimited < 0) _towTbodyRateLimited = T_body;
+                T_body = Math.max(_towTbodyRateLimited - dStep, Math.min(_towTbodyRateLimited + dStep, T_body));
+                _towTbodyRateLimited = T_body;
+            } else {
+                _towTbodyRateLimited = T_body;
+            }
+            T_end_report = T_body;
+
+            let F_onShip = d3n.clone().multiplyScalar(T_body).add(F_drag_split);
+            let F_onTug  = d3n.clone().multiplyScalar(-T_body).add(F_drag_split);
+
+            const sane = v => (Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z)) ? v : new THREE.Vector3();
+            F_onShip = sane(F_onShip);
+            F_onTug = sane(F_onTug);
+
+            // Tecto físico: evita T astronómica (integração + mola) a contaminar o HUD e TowSafety
+            const mbl0 = towCable.MBL > 0 ? towCable.MBL : 2.45e6;
+            const tLineMax = mbl0 * 1.08;
+            if (Number.isFinite(T_body) && T_body > tLineMax) {
+              const sc = tLineMax / T_body;
+              T_body *= sc;
+              T_end_report = Math.min(T_end_report * sc, tLineMax);
+              F_onShip = d3n.clone().multiplyScalar(T_body).add(F_drag_split);
+              F_onTug  = d3n.clone().multiplyScalar(-T_body).add(F_drag_split);
+            }
+            if (!Number.isFinite(T_body) || T_body < 0) T_body = 0;
+            let TensionHUD = Math.max(0, T_body) + Math.max(0, Dmag);
+            TensionHUD = Math.min(TensionHUD, mbl0 * 1.12 + Dmag);
+
+            return { F_onTug, F_onShip, TensionN: TensionHUD, H: H_trans, T_end: T_end_report, sag, a, Lb, state };
+          };
+
+        })();
+
+        // --- Módulo de Física Avançada do Cabo (com Estado e Atrito Realista) ---
+        let LINE_STATE = "CATENARY"; // "CATENARY" | "BLEND" | "TAUT"
+        let isSeabedSliding = false;
+
+        function updateLineState(S, scope, EPS_REGIME = 2.0) {
+          if (LINE_STATE === "CATENARY" && S >= scope - EPS_REGIME) LINE_STATE = "BLEND";
+          if (LINE_STATE === "BLEND") {
+            if (S >= scope) LINE_STATE = "TAUT";
+            if (S < scope - 2 * EPS_REGIME) LINE_STATE = "CATENARY";
+          }
+          if (LINE_STATE === "TAUT" && S < scope - EPS_REGIME) LINE_STATE = "BLEND";
+          return LINE_STATE;
+        }
+
+        function seabedFriction(H_try, wNpm, Lb, mu_s = 0.6, mu_k = 0.5) {
+          if (!Number.isFinite(H_try) || Lb <= 0) {
+            return { H: H_try, sliding: false };
+          }
+          const N = wNpm * Lb;
+          const H_max_static = mu_s * N;
+          // Atrito estático evita *deslizamento* do cabo no fundo, mas a tração horizontal H
+          // da catenária ainda se transmite ao navio. O modelo antigo (H:0) anulava o puxo
+          // útil praticamente sempre que Lb>0 (|H_try| ≪ μ_s·N), impedindo o reboque.
+          if (Math.abs(H_try) <= H_max_static) {
+            isSeabedSliding = false;
+            return { H: H_try, sliding: false };
+          }
+          isSeabedSliding = true;
+          const sgn = H_try >= 0 ? 1 : -1;
+          const H_kinetic = sgn * Math.max(0, Math.abs(H_try) - mu_k * N);
+          return { H: H_kinetic, sliding: true };
+        }
+
+        // --- 5. BASES DE DADOS E OBJETOS DE SIMULAÇÃO ---
+        const shipPresets = {
+            'generic': { name: 'Cargueiro Genérico', length: 160, beam: 25, height: 18, minDraft: 6, maxDraft: 12, minMass: 15000, maxMass: 30000, sailArea: 1500, propArea: 20 },
+            'feeder': { name: 'Porta-Contentores (Feeder)', length: 90, beam: 18, height: 10, minDraft: 4, maxDraft: 7, minMass: 4000, maxMass: 8000, sailArea: 800, propArea: 10 },
+            'handy': { name: 'Porta-Contentores (Handy)', length: 110, beam: 20, height: 12, minDraft: 5, maxDraft: 9, minMass: 8000, maxMass: 15000, sailArea: 1000, propArea: 15 },
+            'panamax': { name: 'Porta-Contentores (Panamax)', length: 150, beam: 24, height: 16, minDraft: 7, maxDraft: 12, minMass: 12000, maxMass: 25000, sailArea: 1400, propArea: 20 },
+            'postpanamax': { name: 'Porta-Contentores (UCLV)', length: 180, beam: 30, height: 20, minDraft: 8, maxDraft: 14, minMass: 20000, maxMass: 45000, sailArea: 2000, propArea: 25 },
+            'aframax': { name: 'Petroleiro (Aframax)', length: 140, beam: 28, height: 15, minDraft: 7, maxDraft: 11, minMass: 15000, maxMass: 35000, sailArea: 1300, propArea: 18 },
+        };
+
+        // Objetos que mantêm o estado da simulação para o navio, rebocador e cabo
+        const ship = {
+            mesh: new THREE.Mesh(), position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(0, 0, 0),
+            angularVelocity: 0, angle: 0, sailArea: 0, beam: 0, draft: 0, minDraft: 0, maxDraft: 0, minMass: 0, maxMass: 0, mass: 0, propArea: 0, lwl: 0, totalResistance: 0, length: 0
+        };
+        scene.add(ship.mesh);
+        const tug = {
+            mesh: new THREE.Mesh(new THREE.BoxGeometry(12, 8, 30), new THREE.MeshPhongMaterial({ color: 0xff4444 })),
+            position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(0, 0, 0),
+            angularVelocity: 0, angle: Math.PI, beam: 12, length: 30, draft: 5, minDraft: 3, maxDraft: 8,
+            minMass: 800 * 1000, maxMass: 1200 * 1000, mass: 0,
+            jet1: null, jet2: null, engineLoad: 0, tractionLoad: 0, enginesOn: false, // traction inclui f(calado), ref 5 m; UI ×f(RPM)×f(SOG)
+            maxPowerKW: 6000,
+            /** RPM reais p/ física (eixo propulsor + hélice); aprox. inércia de grupo motor — não colapsam instantaneamente ao “Parar” */
+            motorRpm1: 0, motorRpm2: 0,
+            /** true = transmissão acoplada (tração na água); início desacoplado, sem força de propulsor */
+            driveEngaged: false
+        };
+
+        // --- Cria a Superestrutura do Rebocador ---
+        const tugSuperMaterial = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+        const tugHullGeoParams = tug.mesh.geometry.parameters;
+
+        // Bloco principal da superestrutura
+        const tugSuperBlock = new THREE.Mesh(
+            new THREE.BoxGeometry(tugHullGeoParams.width * 0.85, 6, 10),
+            tugSuperMaterial
+        );
+        // Posiciona na parte de cima do casco, perto da proa
+        tugSuperBlock.position.set(0, tugHullGeoParams.height / 2 + 3, tugHullGeoParams.depth / 2 - 8);
+
+        // Passadiço (ponte de comando) em cima da superestrutura
+        const tugBridgeBlock = new THREE.Mesh(
+            new THREE.BoxGeometry(tugHullGeoParams.width * 0.7, 4, 6),
+            tugSuperMaterial
+        );
+        tugBridgeBlock.position.copy(tugSuperBlock.position);
+        tugBridgeBlock.position.y += 6 / 2 + 4 / 2; // Empilha em cima do bloco anterior
+        tug.mesh.add(tugSuperBlock, tugBridgeBlock);
+
+        scene.add(tug.mesh);
+        
+        // Helpers visuais para os jatos de água dos propulsores ASD
+        tug.jet1 = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(-4, 5, -5.1), 1, 0xADD8E6);
+        tug.jet2 = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(4, 5, -5.1), 1, 0xADD8E6);
+        tug.jet1.cone.material.transparent = true;
+        tug.jet1.line.material.transparent = true;
+        tug.jet2.cone.material.transparent = true;
+        tug.jet2.line.material.transparent = true;
+        tug.mesh.add(tug.jet1, tug.jet2);
+
+
+        // Estado do cabo e sua representação visual
+        const cable = { length: 320, targetLength: 320, springConstant: 0, damping: 0, weightPerMeter: 0, numSegments: 50 };
+        let cableTension = 0, maxSag = 0, catenaryPullForce = 0, extremeTension = 0, _extremeTensionEma = 0, towF = {};
+        let _towF_onShipEma = null, _towF_onTugEma = null;
+        let lastSag = 0, sagVariation = 0;
+        const cablePoints = Array.from({ length: cable.numSegments + 1 }, () => new THREE.Vector3());
+        const cableLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(cablePoints),
+            new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 1, depthTest: true, depthFunc: THREE.LessEqualDepth })
+        );
+        cableLine.name = 'cableLine';
+        cableLine.frustumCulled = false;
+        cableLine.renderOrder = 10;
+        window.cableLine = cableLine;
+        scene.add(cableLine);
+        
+        // Lógica para as bóias interativas
+        let buoys = [];
+        let draggedObject = null;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        let simParams = {
+            windSpeed: 5, windDir: 90, currentSpeed: 0.5, currentDir: 180, waveHeight: 1,
+            seabedDepth: 50, thruster1RPM: 0, thruster1Azimuth: 0, thruster2RPM: 0, thruster2Azimuth: 0, isTwinMode: true,
+        };
+        // Mapeamento dos elementos HTML para fácil acesso no código
+        const uiControls = {
+            sailArea: { el: document.getElementById('sailArea'), valEl: document.getElementById('sailAreaValue') },
+            shipDraft: { el: document.getElementById('shipDraft'), valEl: document.getElementById('shipDraftValue') },
+            tugDraft: { el: document.getElementById('tugDraft'), valEl: document.getElementById('tugDraftValue') },
+            cableLength: { el: document.getElementById('cableLength'), valEl: document.getElementById('cableLengthValue') },
+            distanceBowStern: { valEl: document.getElementById('distanceBowSternValue') },
+            distanceFairleadHz: { valEl: document.getElementById('distanceFairleadHzValue') },
+            actualCableLength: { valEl: document.getElementById('actualCableLengthValue') },
+            thruster1RPM: { el: document.getElementById('thruster1RPM'), valEl: document.getElementById('thruster1RPMValue') },
+            thruster1Azimuth: { el: document.getElementById('thruster1Azimuth'), valEl: document.getElementById('thruster1AzimuthValue') },
+            thruster2RPM: { el: document.getElementById('thruster2RPM'), valEl: document.getElementById('thruster2RPMValue') },
+            thruster2Azimuth: { el: document.getElementById('thruster2Azimuth'), valEl: document.getElementById('thruster2AzimuthValue') },
+            asdModeToggle: { el: document.getElementById('asdModeToggle') },
+            engineStartStop: { el: document.getElementById('engineStartStop') },
+            shipSpeed: { valEl: document.getElementById('shipSpeedValue') },
+            shipLength: { valEl: document.getElementById('shipLengthValue') },
+            tugSpeed: { valEl: document.getElementById('tugSpeedValue') },
+            cableTension: { valEl: document.getElementById('cableTensionValue') },
+            cableSag: { valEl: document.getElementById('cableSagValue') },
+            windSpeed: { el: document.getElementById('windSpeed'), valEl: document.getElementById('windSpeedValue') },
+            windDir: { el: document.getElementById('windDir'), valEl: document.getElementById('windDirValue') },
+            currentSpeed: { el: document.getElementById('currentSpeed'), valEl: document.getElementById('currentSpeedValue') },
+            currentDir: { el: document.getElementById('currentDir'), valEl: document.getElementById('currentDirValue') },
+            waveHeight: { el: document.getElementById('waveHeight'), valEl: document.getElementById('waveHeightValue') },
+            seabedDepth: { el: document.getElementById('seabedDepth'), valEl: document.getElementById('seabedDepthValue') },
+            beaufort: { valEl: document.getElementById('beaufortValue') },
+            shipMass: { valEl: document.getElementById('shipMassValue') },
+            tugMass: { valEl: document.getElementById('tugMassValue') },
+            tugCargaReal: { valEl: document.getElementById('tugCargaRealValue') },
+            tugFuelConsumption: { valEl: document.getElementById('tugFuelConsumptionValue') },
+            catenaryForce: { valEl: document.getElementById('catenaryForceValue') },
+            cableWeight: { valEl: document.getElementById('cableWeightValue') },
+            shipTotalResistance: { valEl: document.getElementById('shipTotalResistanceValue') },
+            extremeTension: { valEl: document.getElementById('extremeTensionValue') },
+            cableStateValue: { valEl: document.getElementById('cableStateValue') },
+            cableSagVariationValue: { valEl: document.getElementById('cableSagVariationValue') },
+            maxDeploymentSpeedValue: { valEl: document.getElementById('maxDeploymentSpeedValue') }
+        };
+        
+        // --- Funções Utilitárias ---
+        const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+        const map = (value, x1, x2, y1, y2) => {
+            if (x1 === x2) return y1; // evita divisão por zero
+            const t = (value - x1) / (x2 - x1);
+            return y1 + t * (y2 - y1);
+        };
+        /** Faixa de comando e tração: abaixo de 650 rpm não há puxo útil (curva de potência / motor parado com spool a 0). */
+        const TUG_RPM_MIN = 650;
+        const TUG_RPM_MAX = 1800;
+        /** P = F·v: avanço mín. equivalente (m/s) em 650 e em 1800 rpm — escala com o comando, ancorada ao mín. de serviço 650. */
+        const TUG_BOLL_V_MPS_AT_RPM_MIN = 0.10;
+        const TUG_BOLL_V_MPS_AT_RPM_MAX = 0.48;
+        /** nós: SOG mín. lógico alinhado a 650 rpm (reboque muito lento) → máx. em 1800, para f(SOG) da carga. */
+        const TUG_CARGA_V_KN_AT_RPM_MIN = 0.18;
+        const TUG_CARGA_V_KN_AT_RPM_MAX = 0.55;
+        /**
+         * f_RPM: 650→16% (mín. serviço), 900→40%, 1300→57% (escoteiro livre ~11 n @ 1300 → carga ~54–60% com tr/f_calado),
+         * 1800→100% (indic. tração 1, f_sog=1, calado ref.).
+         */
+        const TUG_CARGA_RPM_FLOOR = 0.16;
+        /** 1.º cotovelo: f_RPM ≈ 40% */
+        const TUG_CARGA_RPM_PIVOT = 900;
+        const TUG_CARGA_RPM_PIVOT_W = 0.4;
+        /** 2.º cotovelo: calib. viagem escoteiro livre — 11 n @ 1300 rpm, carga típ. 54–60% (centro 57%) */
+        const TUG_CARGA_RPM_ESCORT_RPM = 1300;
+        const TUG_CARGA_RPM_ESCORT_W = 0.57;
+        const TUG_CARGA_SOG_FLOOR = 0.12;
+        /**
+         * nós: f(SOG)=1 com SOG ≥ ref.; alinhado à rampa teto: reboque lento 650→0,58 n, escoteiro ~11 n @ 1300 rpm, 1800→12,5 n.
+         */
+        const TUG_CARGA_SOG_REF_KN = 11.0;
+        /** Ponto de experiência (viagem escoteiro): SOG teto a este comando (entre 650 e 1800). */
+        const TUG_SOG_EXPERIENCE_RPM = 1300;
+        const TUG_SOG_EXPERIENCE_SOG_KN = 11.0;
+        /** Teto a 1800 rpm (ligeiramente acima do cruseiro escoteiro 11 n @ 1300). */
+        const TUG_SOG_CAP_KN_AT_RPM_MAX = 12.5;
+        function rpmNormClamped(avgRpm) {
+            if (!Number.isFinite(avgRpm) || avgRpm < TUG_RPM_MIN) return 0;
+            return Math.min(1, (avgRpm - TUG_RPM_MIN) / (TUG_RPM_MAX - TUG_RPM_MIN));
+        }
+        function tugBollardEqMpsFromAvgRpm(avgRpm) {
+            return TUG_BOLL_V_MPS_AT_RPM_MIN
+                + (TUG_BOLL_V_MPS_AT_RPM_MAX - TUG_BOLL_V_MPS_AT_RPM_MIN) * rpmNormClamped(avgRpm);
+        }
+        function tugCargaMinSogKnFromAvgRpm(avgRpm) {
+            return TUG_CARGA_V_KN_AT_RPM_MIN
+                + (TUG_CARGA_V_KN_AT_RPM_MAX - TUG_CARGA_V_KN_AT_RPM_MIN) * rpmNormClamped(avgRpm);
+        }
+        function tugCargaRpmWeight(rpm) {
+            if (!tug.enginesOn || !Number.isFinite(rpm) || rpm < TUG_RPM_MIN) return 0;
+            const r = Math.min(TUG_RPM_MAX, Math.max(TUG_RPM_MIN, rpm));
+            if (r <= TUG_CARGA_RPM_PIVOT) {
+                const t = (r - TUG_RPM_MIN) / (TUG_CARGA_RPM_PIVOT - TUG_RPM_MIN);
+                return TUG_CARGA_RPM_FLOOR + (TUG_CARGA_RPM_PIVOT_W - TUG_CARGA_RPM_FLOOR) * t;
+            }
+            if (r <= TUG_CARGA_RPM_ESCORT_RPM) {
+                const t = (r - TUG_CARGA_RPM_PIVOT) / (TUG_CARGA_RPM_ESCORT_RPM - TUG_CARGA_RPM_PIVOT);
+                return TUG_CARGA_RPM_PIVOT_W
+                    + (TUG_CARGA_RPM_ESCORT_W - TUG_CARGA_RPM_PIVOT_W) * t;
+            }
+            const t2 = (r - TUG_CARGA_RPM_ESCORT_RPM) / (TUG_RPM_MAX - TUG_CARGA_RPM_ESCORT_RPM);
+            return TUG_CARGA_RPM_ESCORT_W + (1 - TUG_CARGA_RPM_ESCORT_W) * t2;
+        }
+        function tugCargaSogWeightForTowing(vKn) {
+            if (!Number.isFinite(vKn) || vKn < 0) return TUG_CARGA_SOG_FLOOR;
+            const t = vKn / Math.max(0.35, TUG_CARGA_SOG_REF_KN);
+            return TUG_CARGA_SOG_FLOOR + (1 - TUG_CARGA_SOG_FLOOR) * Math.min(1, t);
+        }
+        /**
+         * Calado: f_calado = (calado m) / 5, limitado. Com 5 m exatamente 1 → ponto de escala 100% juntamente com
+         * 1800 rpm, 11+ n, tração 1, f_rpm=1, f_sog=1. Menos lastro <1; 8 m ≈1,6 (teto 1,62) reboca mais carga lógica.
+         */
+        const TUG_CARGA_DRAFT_REF_M = 5;
+        function tugCargaFactorFromDraft() {
+            const d = (typeof tug.draft === 'number' && tug.draft > 0.1) ? tug.draft : TUG_CARGA_DRAFT_REF_M;
+            const f = d / TUG_CARGA_DRAFT_REF_M;
+            return Math.max(0.6, Math.min(1.62, f));
+        }
+        /**
+         * Teto de |v| (nós) em função do RPM de comando: 650 → ~0,58 n, 1300 → 11 n (ref. escoteiro), 1800 → 12,5 n.
+         * f(SOG) pleno (≈1) em ref. 11 n alinha a experiência; indicador 100%: 5 m, 1800 rpm, SOG no teto, f_calado=1, tração 1.
+         */
+        const TUG_SOG_CAP_KN_AT_RPM_MIN = 0.58;
+        /** teto nós na rampa, por RPM de comando (650–1800) */
+        function tugSogCapKnFromRpm(rpm) {
+            if (!Number.isFinite(rpm) || rpm < TUG_RPM_MIN) return TUG_SOG_CAP_KN_AT_RPM_MIN;
+            const r = Math.min(TUG_RPM_MAX, Math.max(TUG_RPM_MIN, rpm));
+            if (r <= TUG_SOG_EXPERIENCE_RPM) {
+                const t = (r - TUG_RPM_MIN) / (TUG_SOG_EXPERIENCE_RPM - TUG_RPM_MIN);
+                return TUG_SOG_CAP_KN_AT_RPM_MIN
+                    + (TUG_SOG_EXPERIENCE_SOG_KN - TUG_SOG_CAP_KN_AT_RPM_MIN) * t;
+            }
+            const t2 = (r - TUG_SOG_EXPERIENCE_RPM) / (TUG_RPM_MAX - TUG_SOG_EXPERIENCE_RPM);
+            return TUG_SOG_EXPERIENCE_SOG_KN
+                + (TUG_SOG_CAP_KN_AT_RPM_MAX - TUG_SOG_EXPERIENCE_SOG_KN) * t2;
+        }
+        function clampTugVelocityToRpmSogLimit() {
+            if (!tug.enginesOn || !tug.driveEngaged) return;
+            let c1 = simParams.thruster1RPM || 0;
+            let c2 = simParams.isTwinMode ? c1 : (simParams.thruster2RPM || 0);
+            c1 = Math.min(TUG_RPM_MAX, c1);
+            c2 = Math.min(TUG_RPM_MAX, c2);
+            const r = 0.5 * (c1 + c2);
+            if (!Number.isFinite(r) || r < TUG_RPM_MIN) return;
+            const knMax = tugSogCapKnFromRpm(r);
+            const mpsMax = knMax / 1.94384;
+            const vt = tug.velocity.length();
+            if (vt > mpsMax) tug.velocity.multiplyScalar(mpsMax / vt);
+        }
+        /** Carga exibida: acompanha o alvo com inércia (tau ~0,38 s), como manómetro. */
+        const TUG_CARGA_DISPLAY_TAU_S = 0.38;
+        let _cargaDisplayEma1 = null, _cargaDisplayEma2 = null, _cargaDisplayEmaM = null;
+        function stepCargaDisplayEma(prev, target, dt) {
+            if (!Number.isFinite(target) || target < 0) return (prev != null && Number.isFinite(prev)) ? prev : 0;
+            if (prev == null || !Number.isFinite(prev)) return target;
+            const a = 1 - Math.exp(-dt / Math.max(1e-4, TUG_CARGA_DISPLAY_TAU_S));
+            return prev + (target - prev) * a;
+        }
+        /** Aprox. de rotação do grupo motor+hélice: passo max. por s em RPM (máquinas diesel / volante). */
+        const MOTOR_RPM_SPOOL_PER_SEC = 300;
+        function moveRpmToward(current, target, maxStep) {
+            const d = target - current;
+            if (Math.abs(d) <= maxStep) return target;
+            return current + Math.sign(d) * maxStep;
+        }
+        /** Ângulo acumulado (°) — hélice SVG, ω visual ∝ RPM do eixo */
+        let asdPropVisAngle1 = 0, asdPropVisAngle2 = 0;
+        let asdPropBladeG1 = null, asdPropBladeG2 = null;
+        const ASD_PROP_DEG_S_PER_RPM = 0.4;
+        /** Com transmissão desacoplada: rotação visual da hélice = fração do RPM de motor (veio a “fazer arrastar” a hélice, bem mais lento). */
+        const ASD_DISENGAGED_PROP_RPM_FRACTION = 0.2;
+        function getPropellerVisualRpm(motorRpm) {
+            const m = motorRpm || 0;
+            if (tug.driveEngaged) return m;
+            if (!tug.enginesOn || m < 0.5) return 0;
+            return m * ASD_DISENGAGED_PROP_RPM_FRACTION;
+        }
+        function updateAsdPropellerGauges(dt) {
+            if (!tug) return;
+            if (!asdPropBladeG1) {
+                asdPropBladeG1 = document.getElementById('asdPropBlades1');
+                asdPropBladeG2 = document.getElementById('asdPropBlades2');
+            }
+            const r1 = getPropellerVisualRpm(tug.motorRpm1);
+            const r2 = getPropellerVisualRpm(tug.motorRpm2);
+            asdPropVisAngle1 += r1 * ASD_PROP_DEG_S_PER_RPM * dt;
+            asdPropVisAngle2 -= r2 * ASD_PROP_DEG_S_PER_RPM * dt;
+            const wrapA = (a) => { const k = 360; return a - k * Math.floor(a / k); };
+            if (Math.abs(asdPropVisAngle1) > 1e5) asdPropVisAngle1 = wrapA(asdPropVisAngle1);
+            if (Math.abs(asdPropVisAngle2) > 1e5) asdPropVisAngle2 = wrapA(asdPropVisAngle2);
+            if (asdPropBladeG1) {
+                const a1 = ((asdPropVisAngle1 % 360) + 360) % 360;
+                asdPropBladeG1.setAttribute('transform', 'rotate(' + a1 + ' 32 32)');
+            }
+            if (asdPropBladeG2) {
+                const a2 = ((asdPropVisAngle2 % 360) + 360) % 360;
+                asdPropBladeG2.setAttribute('transform', 'rotate(' + a2 + ' 32 32)');
+            }
+        }
+        /**
+         * Sincroniza motorRpm* com o alvo (simParams quando ligado, 0 quando parado). Atualiza barras/jatos.
+         * Com motores desligados, o RPM efetivo desce de forma contínua → tração cai de forma contínua (não “salta”).
+         */
+        function updateTugMotorSpool(dt) {
+            if (!tug) return;
+            const step = MOTOR_RPM_SPOOL_PER_SEC * dt;
+            const tgt1 = tug.enginesOn ? Math.max(TUG_RPM_MIN, Math.min(TUG_RPM_MAX, simParams.thruster1RPM || TUG_RPM_MIN)) : 0;
+            const tgt2 = tug.enginesOn
+                ? (simParams.isTwinMode ? tgt1 : Math.max(TUG_RPM_MIN, Math.min(TUG_RPM_MAX, simParams.thruster2RPM || TUG_RPM_MIN)))
+                : 0;
+            if (!Number.isFinite(tug.motorRpm1)) tug.motorRpm1 = 0;
+            if (!Number.isFinite(tug.motorRpm2)) tug.motorRpm2 = 0;
+            tug.motorRpm1 = moveRpmToward(tug.motorRpm1, tgt1, step);
+            if (simParams.isTwinMode) {
+                tug.motorRpm2 = tug.motorRpm1;
+            } else {
+                tug.motorRpm2 = moveRpmToward(tug.motorRpm2, tgt2, step);
+            }
+            tug.motorRpm1 = Math.max(0, Math.min(2000, tug.motorRpm1));
+            tug.motorRpm2 = Math.max(0, Math.min(2000, tug.motorRpm2));
+            if (!tug.enginesOn) {
+                const m1 = uiControls.thruster1RPM, m2 = uiControls.thruster2RPM;
+                if (m1 && m1.el) {
+                    m1.el.value = String(TUG_RPM_MIN);
+                    if (m1.valEl) m1.valEl.textContent = String(Math.round(tug.motorRpm1));
+                }
+                if (m2 && m2.el) {
+                    m2.el.value = String(TUG_RPM_MIN);
+                    if (m2.valEl) {
+                        m2.valEl.textContent = simParams.isTwinMode ? m1.valEl.textContent : String(Math.round(tug.motorRpm2));
+                    }
+                }
+            } else {
+                const m1 = uiControls.thruster1RPM, m2 = uiControls.thruster2RPM;
+                if (m1 && m1.valEl) m1.valEl.textContent = String(Math.round(tug.motorRpm1));
+                if (m2 && m2.valEl) {
+                    m2.valEl.textContent = simParams.isTwinMode ? m1.valEl.textContent : String(Math.round(tug.motorRpm2));
+                }
+            }
+            updateAsdPropellerGauges(dt);
+            syncAsdViz();
+        }
+        // Atualiza a massa do navio/rebocador com base no calado atual
+        function updateVesselMass(vessel) {
+            const ratio = (vessel.draft - vessel.minDraft) / (vessel.maxDraft - vessel.minDraft);
+            vessel.mass = vessel.minMass + (vessel.maxMass - vessel.minMass) * ratio;
+        }
+        // Ajusta a posição vertical do mesh do navio/rebocador para corresponder ao calado
+        function updateVesselYPosition(vessel, height) {
+            vessel.mesh.position.y = water_level - vessel.draft + (height / 2);
+        }
+        
+        // --- Indicadores visuais (bússola + barra de potência) do painel ASD ---
+        function syncAsdViz() {
+            const t1a = parseFloat(uiControls.thruster1Azimuth.el.value) || 0;
+            const t2a = parseFloat(uiControls.thruster2Azimuth.el.value) || 0;
+            const n1 = document.getElementById('asdAzNeedle1');
+            const n2 = document.getElementById('asdAzNeedle2');
+            if (n1) n1.setAttribute('transform', 'rotate(' + t1a + ' 50 50)');
+            if (n2) n2.setAttribute('transform', 'rotate(' + t2a + ' 50 50)');
+            const p1 = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : 0;
+            const p2 = simParams.isTwinMode ? p1 : ((typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : 0);
+            const f1 = document.getElementById('asdRpmFill1');
+            const f2 = document.getElementById('asdRpmFill2');
+            // Barra 0…100% com RPM real (inclui descida inercial abaixo da faixa 650–1800)
+            const rpmPct = (rpm) => (rpm < 0.5) ? 0 : Math.max(0, Math.min(100, (rpm / 1800) * 100));
+            if (f1) f1.style.width = rpmPct(p1) + '%';
+            if (f2) f2.style.width = rpmPct(p2) + '%';
+        }
+        // --- Listeners de Eventos da UI ---
+        // Adiciona listeners para todos os sliders (input range)
+        const applyEnvPreset = (o) => {
+            const apply = (key, val) => {
+                const c = uiControls[key];
+                if (!c || !c.el) return;
+                c.el.value = String(val);
+                simParams[key] = typeof val === 'number' ? val : parseFloat(val);
+                if (c.valEl) c.valEl.textContent = String(val);
+            };
+            if (o.windSpeed != null) apply('windSpeed', o.windSpeed);
+            if (o.windDir != null) apply('windDir', o.windDir);
+            if (o.currentSpeed != null) apply('currentSpeed', o.currentSpeed);
+            if (o.currentDir != null) apply('currentDir', o.currentDir);
+            if (o.waveHeight != null) apply('waveHeight', o.waveHeight);
+        };
+        document.getElementById('btnImo884Env')?.addEventListener('click', () => {
+            applyEnvPreset({ windSpeed: 20, windDir: 90, currentSpeed: 0.5, currentDir: 90, waveHeight: 5 });
+        });
+        document.getElementById('btnBkiRefEnv')?.addEventListener('click', () => {
+            applyEnvPreset({ windSpeed: 20, windDir: 90, currentSpeed: 1, currentDir: 90, waveHeight: 5 });
+        });
+        document.getElementById('btnCcsBenignEnv')?.addEventListener('click', () => {
+            applyEnvPreset({ windSpeed: 15, windDir: 90, currentSpeed: 0.5, currentDir: 90, waveHeight: 2 });
+        });
+        for (const key in uiControls) {
+            if (uiControls[key].el && uiControls[key].el.type === 'range') {
+                uiControls[key].el.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    if(uiControls[key].valEl) uiControls[key].valEl.innerText = value;
+                    if (key === 'shipDraft') { ship.draft = value; updateVesselMass(ship); updateVesselYPosition(ship, ship.mesh.geometry.parameters.height); }
+                    else if (key === 'tugDraft') { tug.draft = value; updateVesselMass(tug); updateVesselYPosition(tug, tug.mesh.geometry.parameters.height); }
+                    else if (key === 'cableLength') { cable.targetLength = value; }
+                    else if (key.startsWith('thruster')) {
+                        let v = value;
+                        if (key === 'thruster1RPM' || key === 'thruster2RPM') {
+                            v = Math.max(TUG_RPM_MIN, Math.min(TUG_RPM_MAX, v));
+                            if (v !== value && e.target) e.target.value = String(v);
+                        }
+                        simParams[key] = v;
+                    }
+                    else { simParams[key] = value; }
+                    // Sincroniza os controles do propulsor 2 com o 1 se estiver no modo TWIN
+                    if (key.includes('RPM') && simParams.isTwinMode && key.includes('1')) {
+                         uiControls.thruster2RPM.el.value = uiControls.thruster1RPM.el.value;
+                         uiControls.thruster2RPM.valEl.innerText = uiControls.thruster1RPM.el.value;
+                         simParams.thruster2RPM = simParams.thruster1RPM;
+                    }
+                     if (key.includes('Azimuth') && simParams.isTwinMode && key.includes('1')) {
+                         uiControls.thruster2Azimuth.el.value = uiControls.thruster1Azimuth.el.value;
+                         uiControls.thruster2Azimuth.valEl.innerText = uiControls.thruster1Azimuth.el.value;
+                         simParams.thruster2Azimuth = simParams.thruster1Azimuth;
+                    }
+                    if (key.startsWith('thruster')) syncAsdViz();
+                });
+            }
+        }
+        // Listener para o botão de modo de governo (TWIN/INDIVIDUAL)
+        uiControls.asdModeToggle.el.addEventListener('click', () => {
+            simParams.isTwinMode = !simParams.isTwinMode;
+            uiControls.asdModeToggle.el.innerText = `Modo: ${simParams.isTwinMode ? 'TWIN' : 'INDIVIDUAL'}`;
+            uiControls.thruster2RPM.el.disabled = simParams.isTwinMode || !tug.enginesOn;
+            uiControls.thruster2Azimuth.el.disabled = simParams.isTwinMode || !tug.enginesOn;
+            syncAsdViz();
+        });
+        const btnAsdEngage = document.getElementById('asdDriveEngage');
+        const btnAsdDisengage = document.getElementById('asdDriveDisengage');
+        function syncDriveClutchUI() {
+            if (!btnAsdEngage || !btnAsdDisengage) return;
+            const on = !!tug.driveEngaged;
+            btnAsdEngage.classList.toggle('is-active', on);
+            btnAsdDisengage.classList.toggle('is-active', !on);
+        }
+        syncDriveClutchUI();
+        if (btnAsdEngage) {
+            btnAsdEngage.addEventListener('click', () => {
+                tug.driveEngaged = true;
+                syncDriveClutchUI();
+            });
+        }
+        if (btnAsdDisengage) {
+            btnAsdDisengage.addEventListener('click', () => {
+                tug.driveEngaged = false;
+                syncDriveClutchUI();
+            });
+        }
+        // Listener para o botão de partida/parada dos motores
+        uiControls.engineStartStop.el.addEventListener('click', () => {
+            tug.enginesOn = !tug.enginesOn;
+            const btn = uiControls.engineStartStop.el;
+            const rpm1 = uiControls.thruster1RPM;
+            const az1 = uiControls.thruster1Azimuth;
+            const rpm2 = uiControls.thruster2RPM;
+            const az2 = uiControls.thruster2Azimuth;
+
+            /** Partida sempre ao mínimo de serviço (650 rpm); sobe com o deslizador. */
+            const START_RPM = TUG_RPM_MIN;
+            if(tug.enginesOn) {
+                btn.textContent = "Parar Motores";
+                btn.classList.add('running');
+                simParams.thruster1RPM = START_RPM;
+                simParams.thruster2RPM = START_RPM;
+                rpm1.valEl.textContent = String(START_RPM);
+                rpm1.el.value = String(START_RPM);
+                rpm2.valEl.textContent = String(START_RPM);
+                rpm2.el.value = String(START_RPM);
+                rpm1.el.disabled = false;
+                az1.el.disabled = false;
+                rpm2.el.disabled = simParams.isTwinMode;
+                az2.el.disabled = simParams.isTwinMode;
+            } else {
+                btn.textContent = "Partida dos Motores";
+                btn.classList.remove('running');
+                simParams.thruster1RPM = 0;
+                simParams.thruster2RPM = 0;
+                rpm1.el.value = String(TUG_RPM_MIN);
+                rpm2.el.value = String(TUG_RPM_MIN);
+                rpm1.valEl.textContent = "0";
+                rpm2.valEl.textContent = "0";
+                rpm1.el.disabled = true;
+                az1.el.disabled = true;
+                rpm2.el.disabled = true;
+                az2.el.disabled = true;
+            }
+            syncAsdViz();
+        });
+        syncAsdViz();
+        syncDriveClutchUI();
+        // Trilho lateral: um grupo de painéis visível (ícones SVG)
+        const PANEL_GROUP_IDS = {
+            env: ['envPanel'],
+            vessel: ['vesselPanel'],
+            winch: ['winchPanel'],
+            asd: ['asdPanel'],
+            towing: ['towingSetupPanel'],
+            buoy: ['buoyPanel'],
+        };
+        const PANEL_GROUP_LABELS = {
+            env: 'Ambiente',
+            vessel: 'Navio, rebocador e desempenho',
+            winch: 'Guincho e cabo',
+            asd: 'Governo ASD',
+            towing: 'Configuração do reboque',
+            buoy: 'Bóias',
+        };
+        // Preenchido na secção das bóias: ao sair do painel “Bóias” cancela cor pendente (evita cliques no mar fora do contexto)
+        let clearPendingBuoyPick = () => {};
+        function setSimPanelGroup(group) {
+            const ids = Object.values(PANEL_GROUP_IDS).flat();
+            const show = new Set(PANEL_GROUP_IDS[group] || []);
+            ids.forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', !show.has(id));
+            });
+            document.querySelectorAll('.sim-rail').forEach((btn) => {
+                const on = btn.dataset.panelGroup === group;
+                btn.classList.toggle('sim-rail-active', on);
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            const lab = document.getElementById('panel-context-label');
+            if (lab) lab.textContent = PANEL_GROUP_LABELS[group] || '';
+            if (group !== 'buoy') clearPendingBuoyPick();
+        }
+        document.querySelectorAll('.sim-rail').forEach((btn) => {
+            btn.addEventListener('click', () => setSimPanelGroup(btn.dataset.panelGroup));
+        });
+        setSimPanelGroup('vessel');
+
+        // --- 7. LÓGICA DE PRESETS E INICIALIZAÇÃO ---
+        // Aplica as propriedades de um preset de navio selecionado
+        function applyShipPreset(presetName) {
+            const preset = shipPresets[presetName];
+            if (!preset) return;
+            ship.length = preset.length;
+            ship.beam = preset.beam;
+            ship.minDraft = preset.minDraft; ship.maxDraft = preset.maxDraft;
+            ship.minMass = preset.minMass * 1000; ship.maxMass = preset.maxMass * 1000;
+            ship.sailArea = preset.sailArea;
+            ship.propArea = preset.propArea;
+            ship.lwl = preset.length * 0.97;
+            if (ship.mesh.geometry) ship.mesh.geometry.dispose();
+            
+            // Limpa filhos antigos (superestrutura) antes de criar um novo modelo
+            while(ship.mesh.children.length > 0){ 
+                const child = ship.mesh.children[0];
+                ship.mesh.remove(child);
+                if(child.geometry) child.geometry.dispose();
+                if(child.material) child.material.dispose();
+            }
+
+            // Cria o casco principal (a física se baseia neste objeto)
+            ship.mesh.geometry = new THREE.BoxGeometry(preset.beam, preset.height, preset.length);
+            ship.mesh.material = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+
+            // --- Cria a Superestrutura ---
+            const superMaterial = new THREE.MeshPhongMaterial({ color: 0xdddddd });
+
+            // Bloco principal da superestrutura
+            const superHeight = preset.height * 0.8;
+            const superLength = preset.length * 0.25;
+            const superBlock = new THREE.Mesh(
+                new THREE.BoxGeometry(preset.beam * 0.9, superHeight, superLength),
+                superMaterial
+            );
+            superBlock.position.set(0, preset.height / 2 + superHeight / 2, preset.length * 0.3);
+            
+            // "Asas" do passadiço
+            const wingWidth = preset.beam * 0.15;
+            const wing = new THREE.Mesh(new THREE.BoxGeometry(wingWidth, 4, 8), superMaterial);
+            const wingBB = wing.clone(); wingBB.position.x =  (preset.beam / 2) + (wingWidth/2) - (preset.beam * 0.05);
+            const wingBE = wing.clone(); wingBE.position.x = -(preset.beam / 2) - (wingWidth/2) + (preset.beam * 0.05);
+            wingBB.position.y = wingBE.position.y = preset.height / 2 + superHeight - 4;
+            wingBB.position.z = wingBE.position.z = preset.length * 0.3;
+
+            ship.mesh.add(superBlock, wingBB, wingBE);
+
+            const draftSlider = uiControls.shipDraft.el;
+            draftSlider.min = preset.minDraft; draftSlider.max = preset.maxDraft;
+            draftSlider.value = preset.minDraft + (preset.maxDraft - preset.minDraft) * 0.75;
+            const sailSlider = uiControls.sailArea.el;
+            sailSlider.min = preset.sailArea * 0.5; sailSlider.max = preset.sailArea * 1.5;
+            sailSlider.value = preset.sailArea;
+            ship.position.set(0, 0, 0); ship.velocity.set(0, 0, 0);
+            ship.angle = 0; ship.angularVelocity = 0;
+            tug.position.set(0, 0, -(preset.length / 2) - (tug.mesh.geometry.parameters.depth / 2) - 50);
+            tug.velocity.set(0, 0, 0); tug.angle = Math.PI; tug.angularVelocity = 0;
+            _cargaDisplayEma1 = _cargaDisplayEma2 = _cargaDisplayEmaM = null;
+            tug.motorRpm1 = 0; tug.motorRpm2 = 0;
+            tug.driveEngaged = false;
+            asdPropVisAngle1 = 0; asdPropVisAngle2 = 0;
+            if (asdPropBladeG1) asdPropBladeG1.setAttribute('transform', 'rotate(0 32 32)');
+            if (asdPropBladeG2) asdPropBladeG2.setAttribute('transform', 'rotate(0 32 32)');
+            syncDriveClutchUI();
+            draftSlider.dispatchEvent(new Event('input'));
+            sailSlider.dispatchEvent(new Event('input'));
+        }
+        
+        // Aplica as propriedades de um preset de cabo selecionado
+        function applyCablePreset(presetName) {
+            if (window.setCableType && window.CableCatalog) {
+                window.setCableType(presetName);
+                const preset = window.CableCatalog[presetName];
+                // O peso agora é calculado dinamicamente na física a partir de wNpm_air e buoy_factor
+                // Apenas para UI, podemos mostrar o peso no ar
+                if (preset) { cable.weightPerMeter = (preset.wNpm_air || 0) / 9.81; } // kg/m
+            }
+        }
+
+        let currentPanelPresetKey = null; // Rastreia o preset atual do painel para evitar recriação
+
+        // Atualiza o painel de visualização da configuração do reboque
+        function updateTowingSetupPanel(presetKey, cableLength) {
+            const tabsContainer = document.getElementById('towing-setup-tabs');
+            const contentContainer = document.getElementById('towing-setup-content');
+            if (!tabsContainer || !contentContainer) return;
+        
+            const preset = window.CableCatalog[presetKey];
+            if (!preset) return;
+        
+            // Apenas atualiza os valores se o preset não mudou
+            if (presetKey === currentPanelPresetKey) {
+                const weightEl = document.getElementById('towing-setup-weight');
+                if (weightEl) {
+                    weightEl.textContent = `${(preset.wNpm_air * cableLength / 9.81 / 1000).toFixed(1)} ton`;
+                }
+                return; // Sai da função para não recriar o painel
+            }
+        
+            // Se o preset mudou, recria a estrutura do painel
+            currentPanelPresetKey = presetKey;
+        
+            const prop = (label, value, id = '') => `<div class="prop-row"><span class="label">${label}</span><span class="value" ${id ? `id="${id}"` : ''}>${value}</span></div>`;
+        
+            let tabsHtml = `<button class="tab-btn active" data-tab="overview">Visão Geral</button>
+                            <button class="tab-btn" data-tab="assembly">Montagem</button>
+                            <button class="tab-btn" data-tab="main-cable">Cabo Principal</button>`;
+            
+            let overviewContent = `<div id="overview" class="tab-content active">
+                                    <h5>Propriedades do Sistema</h5>
+                                    ${prop('Configuração', preset.name)}
+                                    ${prop('Peso Total (aprox)', `${(preset.wNpm_air * cableLength / 9.81 / 1000).toFixed(1)} ton`, 'towing-setup-weight')}
+                                    ${prop('Rigidez Efetiva', `${preset.EA_MN} MN`)}
+                                    ${prop('Carga de Ruptura (MBL)', `${(preset.MBL / 1e6).toFixed(2)} MN`)}
+                                   </div>`;
+        
+            let mainCableContent = `<div id="main-cable" class="tab-content">
+                                      <h5>Cabo principal (trecho aço, sistema completo)</h5>
+                                      ${prop('Material', 'Aço 6x36 IWRC (referência) + shock-line poliamida (nylon) + corrente / aparelhagem (modelo equivalente)')}
+                                      ${prop('Diâmetro (equiv.)', `${(preset.d * 1000).toFixed(0)} mm`)}
+                                      ${prop('Peso linear (ar, equiv. aparelhagem)', `${(preset.wNpm_air / 9.81).toFixed(1)} kg/m`)}
+                                    </div>`;
+            
+            let assemblyContent = `<div id="assembly" class="tab-content">
+                                    <div class="assembly-trainer">
+                                        <h5>Treinamento: Arraste os componentes para montar o reboque.</h5>
+                                        <div class="assembly-container">
+                                            <div class="assembly-box">
+                                                <h6>Componentes Disponíveis</h6>
+                                                <div id="available-components"></div>
+                                            </div>
+                                            <div class="assembly-box" id="assembly-sequence">
+                                                <h6>Sua Montagem (em ordem)</h6>
+                                            </div>
+                                        </div>
+                                        <button id="checkAssemblyBtn">Verificar Montagem</button>
+                                        <div id="assemblyFeedback" class="assembly-feedback"></div>
+                                    </div></div>`;
+
+            let componentsContent = '';
+            let bridleContent = '';
+            tabsHtml += `<button class="tab-btn" data-tab="components">Componentes</button>`;
+            componentsContent = `<div id="components" class="tab-content">
+                                        <h5>Shock-line (poliamida / nylon)</h5>
+                                        ${prop('Material', 'Poliamida (nylon) — trançado naval; elevada extensibilidade a carga de serviço')}
+                                        ${prop('Diâmetro (ex.)', '128 mm (16") em layouts offshore longos')}
+                                        ${prop('Comprimento típico', '80 – 130 m')}
+                                        ${prop('Função', 'Ligação rebocador–cabeçote e amortecimento de picos (alta extensibilidade)')}
+                                        <h5>Corrente de Proteção (Chafing Chain)</h5>
+                                        ${prop('Material', 'Aço Grau 2 (38-44 mm)')}
+                                        ${prop('Comprimento Típico', '30 - 50 m')}
+                                        ${prop('Função', 'Proteger o cabo sintético do atrito no costado do navio')}
+                                        <h5>Aparelhos de Conexão (Ferragens)</h5>
+                                        ${prop('Tipo', 'Manilhas (Shackles), Pêra (Pear Link), etc.')}
+                                        ${prop('Função', 'Conectar os diferentes segmentos do reboque')}
+                                     </div>`;
+
+            tabsHtml += `<button class="tab-btn" data-tab="bridle">Bridle</button>`;
+            bridleContent = `<div id="bridle" class="tab-content">
+                                    <h5>Bridle (Pata de Galo)</h5>
+                                    ${prop('Uso', 'Cascos grandes ou condições severas')}
+                                    ${prop('Configuração', 'Duas pernas (sintético ou misto)')}
+                                    ${prop('Comprimento (perna)', '50 - 70 m')}
+                                    ${prop('Bitola (perna)', '64 - 76 mm')}
+                                    ${prop('Função', 'Distribuir a carga e aumentar a estabilidade do reboque')}
+                                 </div>`;
+        
+            tabsContainer.innerHTML = tabsHtml;
+            contentContainer.innerHTML = overviewContent + assemblyContent + mainCableContent + componentsContent + bridleContent;
+        
+            // Adiciona os listeners de clique aos novos botões de aba
+            tabsContainer.querySelectorAll('.tab-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const t = e.currentTarget;
+                    const targetTabId = t && t.dataset && t.dataset.tab;
+                    if (!targetTabId) return;
+                    const panel = contentContainer.querySelector(`#${CSS.escape(targetTabId)}`);
+                    if (!panel) return;
+                    tabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    t.classList.add('active');
+                    panel.classList.add('active');
+                });
+            });
+
+            // --- Lógica do Treinamento de Montagem ---
+            const availableBox = document.getElementById('available-components');
+            const sequenceBox = document.getElementById('assembly-sequence');
+            const checkBtn = document.getElementById('checkAssemblyBtn');
+            const feedbackBox = document.getElementById('assemblyFeedback');
+
+            const components = [
+                { id: 'main_wire', name: 'Cabo de Aço Principal' },
+                { id: 'pennant', name: 'Shock-line (poliamida)' },
+                { id: 'chafing_chain', name: 'Corrente de Proteção' },
+                { id: 'shackle', name: 'Manilha de Conexão' }
+            ];
+
+            // Popula a caixa de componentes disponíveis
+            availableBox.innerHTML = '';
+            components.forEach(c => {
+                availableBox.innerHTML += `<div class="assembly-item-drag" draggable="true" id="${c.id}">${c.name}</div>`;
+            });
+
+            // Lógica de arrastar e soltar
+            const draggables = document.querySelectorAll('.assembly-item-drag');
+            const containers = document.querySelectorAll('.assembly-box');
+
+            draggables.forEach(draggable => {
+                draggable.addEventListener('dragstart', () => draggable.classList.add('dragging'));
+                draggable.addEventListener('dragend', () => draggable.classList.remove('dragging'));
+            });
+
+            containers.forEach(container => {
+                container.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    const draggable = document.querySelector('.dragging');
+                    container.appendChild(draggable);
+                });
+            });
+
+            // Lógica de verificação
+            checkBtn.addEventListener('click', () => {
+                const assembledItems = Array.from(sequenceBox.querySelectorAll('.assembly-item-drag')).map(item => item.id);
+                const correctSequence = ['main_wire', 'shackle', 'pennant', 'chafing_chain'];
+                
+                feedbackBox.style.display = 'block';
+                feedbackBox.className = 'assembly-feedback'; // Reseta classes
+
+                // Verifica se todos os componentes necessários estão lá
+                const hasAllRequired = correctSequence.every(id => assembledItems.includes(id));
+                if (!hasAllRequired) {
+                    feedbackBox.classList.add('error');
+                    feedbackBox.textContent = 'Advertência: Faltam componentes essenciais para uma montagem segura.';
+                    return;
+                }
+
+                // Verifica a ordem
+                let isOrderCorrect = true;
+                for (let i = 0; i < correctSequence.length; i++) {
+                    if (assembledItems[i] !== correctSequence[i]) {
+                        isOrderCorrect = false;
+                        break;
+                    }
+                }
+
+                if (isOrderCorrect) {
+                    feedbackBox.classList.add('success');
+                    feedbackBox.textContent = 'Montagem correta! Aparelho com shock-line em poliamida (nylon) confirmado no modelo.';
+                    // Atualiza o seletor de cabo principal e aplica o preset
+                    const cableSelector = document.getElementById('cablePreset');
+                    cableSelector.value = 'composite_heavy';
+                    cableSelector.dispatchEvent(new Event('change'));
+                } else {
+                    feedbackBox.classList.add('error');
+                    feedbackBox.textContent = 'Advertência: A sequência dos componentes está incorreta. Revise a ordem.';
+                }
+            });
+        }
+
+        // Listeners para os seletores de preset
+        const shipPresetSelector = document.getElementById('shipPreset');
+        shipPresetSelector.addEventListener('change', (e) => applyShipPreset(e.target.value));
+        // Aplica os presets iniciais para garantir que o estado seja consistente na partida
+        applyShipPreset(shipPresetSelector.value);
+        applyCablePreset('composite_heavy');
+        updateTowingSetupPanel('composite_heavy', parseFloat(uiControls.cableLength.el.value)); // Chamada inicial
+
+        // --- 8. LÓGICA DAS BÓIAS INTERATIVAS ---
+        let pendingBuoyColor = null;
+        const elBtnGreen = document.getElementById('addGreenBuoy');
+        const elBtnRed = document.getElementById('addRedBuoy');
+
+        function syncBuoyColorButtonStyles() {
+            const on = (hex, w) => (pendingBuoyColor === hex ? w : 'none');
+            if (elBtnGreen) elBtnGreen.style.boxShadow = on(0x00ff00, '0 0 0 2px #22c55e');
+            if (elBtnRed) elBtnRed.style.boxShadow = on(0xff0000, '0 0 0 2px #ef4444');
+        }
+        clearPendingBuoyPick = function () {
+            pendingBuoyColor = null;
+            syncBuoyColorButtonStyles();
+        };
+
+        function addBuoyAt(color, x, z) {
+            const buoyGeometry = new THREE.CylinderGeometry(2, 2, 8, 16);
+            const buoyMaterial = new THREE.MeshPhongMaterial({ color: color });
+            const buoy = new THREE.Mesh(buoyGeometry, buoyMaterial);
+            buoy.position.set(x, water_level + 4, z);
+            scene.add(buoy);
+            buoys.push(buoy);
+        }
+
+        // Remove todas as bóias da cena
+        function clearBuoys() {
+            buoys.forEach(buoy => {
+                scene.remove(buoy);
+                buoy.geometry.dispose();
+                buoy.material.dispose();
+            });
+            buoys = [];
+        }
+
+        // Botões só definem a cor; a criação é no clique na malha d’água (vista 3D)
+        if (elBtnGreen) {
+            elBtnGreen.addEventListener('click', () => {
+                pendingBuoyColor = 0x00ff00;
+                syncBuoyColorButtonStyles();
+            });
+        }
+        if (elBtnRed) {
+            elBtnRed.addEventListener('click', () => {
+                pendingBuoyColor = 0xff0000;
+                syncBuoyColorButtonStyles();
+            });
+        }
+        document.getElementById('clearBuoys')?.addEventListener('click', clearBuoys);
+        syncBuoyColorButtonStyles();
+
+        // --- GERENCIADOR DE ARRASTO UNIFICADO (PAINÉIS E BÓIAS) ---
+        
+        // util: NDC a partir do canvas, não da janela
+        function setMouseFromEventOnCanvas(e, camera, renderer, outVec2) {
+          const rect = renderer.domElement.getBoundingClientRect();
+          outVec2.set( ((e.clientX - rect.left) / rect.width) * 2 - 1, -( (e.clientY - rect.top) / rect.height) * 2 + 1 );
+        }
+
+        let dragContext = {
+            target: null, // O elemento sendo arrastado (painel, bóia, etc.)
+            type: 'none', // 'panel', 'resize', 'buoy'
+            startX: 0, startY: 0,
+            startLeft: 0, startTop: 0,
+            startWidth: 0, startHeight: 0
+        };
+
+        // plano de arrasto: paralelo ao mar (XZ) na altura da bóia (NÃO deixe new Plane() "nuo" — def. é o plano YZ em x=0 e intersecta o raio noutro sítio)
+        let dragPlane = new THREE.Plane();
+        const planePoint = new THREE.Vector3();
+        const planeNormal = new THREE.Vector3(0, 1, 0);
+        function syncBuoyDragPlane() {
+            dragPlane.setFromNormalAndCoplanarPoint(planeNormal, new THREE.Vector3(0, water_level + 4, 0));
+        }
+        syncBuoyDragPlane();
+        let buoyPointerId = null;
+
+        renderer.domElement.style.touchAction = 'none';
+        // Captura: arrastar bóia sem o OrbitControls mover a câmera (ele escuta o mesmo canvas em fase de bolha, depois)
+        // Objetos que podem tapar a água: primeiro acerto = decide se colocamos bóia no “mar”
+        function getBuoyPlaceOccluders() {
+            return [water, ship.mesh, tug.mesh, seabedMesh, cableLine].filter(Boolean);
+        }
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 || e.target !== renderer.domElement) return;
+            setMouseFromEventOnCanvas(e, camera, renderer, mouse);
+            raycaster.setFromCamera(mouse, camera);
+
+            const onBuoy = raycaster.intersectObjects(buoys, false);
+            if (onBuoy.length > 0) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                dragContext = { target: onBuoy[0].object, type: 'buoy' };
+                draggedObject = dragContext.target;
+                syncBuoyDragPlane();
+                controls_cam.enabled = false;
+                try {
+                    renderer.domElement.setPointerCapture(e.pointerId);
+                    buoyPointerId = e.pointerId;
+                } catch (_) { buoyPointerId = null; }
+                return;
+            }
+
+            if (pendingBuoyColor != null) {
+                const phits = raycaster.intersectObjects(getBuoyPlaceOccluders(), true);
+                const first = phits[0];
+                if (first && (first.object === water || first.object.name === 'waterSurface')) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    addBuoyAt(pendingBuoyColor, first.point.x, first.point.z);
+                }
+            }
+        }, true);
+
+        function onPointerDown(e) {
+            const target = e.target;
+
+            // 1. Tenta iniciar o redimensionamento do painel
+            const resizeHandle = target.closest('.resize-handle');
+            if (resizeHandle && window.innerWidth > 768) {
+                const panel = resizeHandle.closest('.panel');
+                dragContext = {
+                    target: panel,
+                    type: 'resize',
+                    startX: e.clientX, startY: e.clientY,
+                    startWidth: panel.offsetWidth, startHeight: panel.offsetHeight
+                };
+                e.preventDefault();
+                return;
+            }
+
+            // 2. Tenta iniciar o arrasto do painel
+            const panelHeader = target.closest('h4');
+            if (panelHeader && window.innerWidth > 768) {
+                const panel = panelHeader.closest('.panel');
+                dragContext = {
+                    target: panel,
+                    type: 'panel',
+                    startX: e.clientX, startY: e.clientY,
+                    startLeft: panel.offsetLeft, startTop: panel.offsetTop
+                };
+                // "Descola" o painel da borda direita ao começar a arrastar
+                if (panel.style.right) {
+                    panel.style.right = '';
+                    panel.style.left = dragContext.startLeft + 'px';
+                }
+                return;
+            }
+
+        }
+
+        function onPointerMove(e) {
+            if (dragContext.type === 'none') return;
+
+            if (dragContext.type === 'panel') {
+                const dx = e.clientX - dragContext.startX;
+                const dy = e.clientY - dragContext.startY;
+                dragContext.target.style.left = `${dragContext.startLeft + dx}px`;
+                dragContext.target.style.top = `${dragContext.startTop + dy}px`;
+            } else if (dragContext.type === 'resize') {
+                const dx = e.clientX - dragContext.startX;
+                const dy = e.clientY - dragContext.startY;
+                dragContext.target.style.width = `${dragContext.startWidth + dx}px`;
+                dragContext.target.style.height = `${dragContext.startHeight + dy}px`;
+            } else if (dragContext.type === 'buoy') {
+                setMouseFromEventOnCanvas(e, camera, renderer, mouse);
+                raycaster.setFromCamera(mouse, camera);
+
+                const hit = new THREE.Vector3();
+                if (raycaster.ray.intersectPlane(dragPlane, hit)) {
+                  // move apenas em XZ, fixa Y na linha d’água da bóia
+                  dragContext.target.position.set(hit.x, water_level + 4, hit.z);
+                }
+            }
+        }
+
+        function onPointerUp() {
+            if (dragContext.type === 'buoy') {
+                controls_cam.enabled = true;
+                draggedObject = null; // Mantém compatibilidade
+                if (buoyPointerId != null) {
+                    try { renderer.domElement.releasePointerCapture(buoyPointerId); } catch (_) { /* ok */ }
+                    buoyPointerId = null;
+                }
+            }
+            // Reseta o contexto de arrasto
+            dragContext = { target: null, type: 'none' };
+        }
+
+        window.addEventListener('pointerdown', onPointerDown, { passive: false });
+        window.addEventListener('pointermove', onPointerMove, { passive: false });
+        window.addEventListener('pointerup', onPointerUp);
+
+        // --- 9. LÓGICA DA FÍSICA ---
+        const clock = new THREE.Clock();
+
+        // Curva kW / RPM: faixa 650–1000 = “reboque lento / ordem de grandeza padrão”;
+        // 1200+ = reserva (não representa cruzeiro de reboque oceânico comercial).
+        const powerCurve = [
+            {rpm: 650, kw: 320},
+            {rpm: 750, kw: 450},
+            {rpm: 800, kw: 520},
+            {rpm: 850, kw: 590},
+            {rpm: 900, kw: 660},
+            {rpm: 950, kw: 740},
+            {rpm: 1050, kw: 980},
+            {rpm: 1200, kw: 2400},
+            {rpm: 1600, kw: 4800},
+            {rpm: 1800, kw: 6000}
+        ];
+        /**
+         * N/kW ao longo: equilibrado p/ reboque lento 3–6 n; teto carga/SOG pode ir a ~11+ n (escoteiro).
+         * (pouco alinhado a prática de reboque oceânico lento; ver texto no painel «Navio e rebocador»).
+         */
+        const PROP_KN_PER_KW = 172;
+        const fuelCurve = [ // Curva de consumo ajustada para 6000 kW
+            {kw: 101, lph: 27.8}, {kw: 161, lph: 43.0}, {kw: 240, lph: 61.5}, {kw: 342, lph: 89.7},
+            {kw: 469, lph: 122.5}, {kw: 624, lph: 161.1}, {kw: 810, lph: 202.2}, {kw: 1030, lph: 253.3},
+            {kw: 1286, lph: 316.0}, {kw: 1582, lph: 390.5}, {kw: 1920, lph: 454.7}
+            , {kw: 6000, lph: 1482} // Ponto extrapolado para a nova potência máxima
+        ];
+
+        // Função de interpolação linear para ler valores das curvas de dados
+        function interpolate(x, points, keyX, keyY) {
+            if (x <= points[0][keyX]) return points[0][keyY];
+            if (x >= points[points.length - 1][keyX]) return points[points.length - 1][keyY];
+            for (let i = 0; i < points.length - 1; i++) {
+                if (x >= points[i][keyX] && x <= points[i+1][keyX]) {
+                    return map(x, points[i][keyX], points[i+1][keyX], points[i][keyY], points[i+1][keyY]);
+                }
+            }
+            return points[points.length - 1][keyY];
+        }
+
+        // Obtém a potência (kW) gerada pelo motor para uma dada RPM
+        function getPowerFromRPM(rpm) {
+            if (rpm < 650) return 0;
+            if (rpm >= 1800) return tug.maxPowerKW;
+            return interpolate(rpm, powerCurve, 'rpm', 'kw');
+        }
+        
+        // Calcula o vetor de força e o torque total gerado pelos propulsores ASD
+        function calculateThrust(tugAngle) {
+            if (!tug.driveEngaged) {
+                return { force: new THREE.Vector3(0, 0, 0), torque: 0 };
+            }
+            let t1RPM = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : simParams.thruster1RPM;
+            let t1Azimuth = simParams.thruster1Azimuth;
+            let t2RPM = simParams.isTwinMode ? t1RPM : ((typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : simParams.thruster2RPM);
+            let t2Azimuth = simParams.isTwinMode ? t1Azimuth : simParams.thruster2Azimuth;
+            
+            const t1PowerKW = getPowerFromRPM(t1RPM);
+            const t2PowerKW = getPowerFromRPM(t2RPM);
+
+            let t1ForceMag = t1PowerKW * PROP_KN_PER_KW;
+            let t2ForceMag = t2PowerKW * PROP_KN_PER_KW;
+            
+            // Limite de tração à bolina (alinha ao default BP = 80 tf do T‑Sim / index.html; MSC/Circ.884 exige BP documentado)
+            const BPmaxN = 80 * 9.81 * 1000;
+            const FpairMag = t1ForceMag + t2ForceMag;
+            if (FpairMag > BPmaxN) {
+                const bpScale = BPmaxN / FpairMag;
+                t1ForceMag *= bpScale;
+                t2ForceMag *= bpScale;
+            }
+            
+            // Calcula os vetores de força para cada propulsor
+            const t1AngleRad = (t1Azimuth - 90) * Math.PI / 180 + tugAngle, t2AngleRad = (t2Azimuth - 90) * Math.PI / 180 + tugAngle;
+            const force1 = new THREE.Vector3(t1ForceMag * Math.cos(t1AngleRad), 0, -t1ForceMag * Math.sin(t1AngleRad));
+            const force2 = new THREE.Vector3(t2ForceMag * Math.cos(t2AngleRad), 0, -t2ForceMag * Math.sin(t2AngleRad));
+            const totalForce = new THREE.Vector3().addVectors(force1, force2);
+            // Calcula o torque gerado por cada propulsor em relação ao centro do rebocador
+            const thrusterOffset = tug.mesh.geometry.parameters.width / 4;
+            const torque1 = t1ForceMag * thrusterOffset * Math.sin(t1AngleRad - tugAngle - Math.PI/2);
+            const torque2 = t2ForceMag * -thrusterOffset * Math.sin(t2AngleRad - tugAngle - Math.PI/2);
+            return { force: totalForce, torque: torque1 + torque2 };
+        }
+        // Calcula a força do vento atuando na área vélica do navio/rebocador
+        function calculateWindForce(area, vesselAngle) {
+            const windAngleRad = (simParams.windDir - 90) * Math.PI / 180;
+            const relativeWindAngle = windAngleRad - vesselAngle;
+            const effectiveArea = area * Math.abs(Math.sin(relativeWindAngle));
+            const forceMag = 0.5 * RHO_AIR * simParams.windSpeed**2 * 1.0 * effectiveArea;
+            return new THREE.Vector3(forceMag * Math.cos(windAngleRad), 0, -forceMag * Math.sin(windAngleRad));
+        }
+
+        // Calcula a força da corrente atuando na área submersa do navio/rebocador
+        function calculateCurrentForce(area, vesselAngle) {
+            const currentAngleRad = (simParams.currentDir - 90) * Math.PI / 180;
+            const relativeAngle = currentAngleRad - vesselAngle;
+            const effectiveArea = area * Math.abs(Math.sin(relativeAngle));
+            const forceMag = 0.5 * RHO_WATER * simParams.currentSpeed**2 * 0.8 * effectiveArea;
+            return new THREE.Vector3(forceMag * Math.cos(currentAngleRad), 0, -forceMag * Math.sin(currentAngleRad));
+        }
+
+        // Obtém as coordenadas globais dos pontos de conexão do cabo no navio e no rebocador
+        function getAttachmentPoints() {
+            if (!ship.mesh.geometry.parameters.depth) return { shipAttachPoint: new THREE.Vector3(), tugAttachPoint: new THREE.Vector3() };
+            const shipAttachPoint = new THREE.Vector3(0, ship.mesh.geometry.parameters.height / 2, -ship.mesh.geometry.parameters.depth / 2);
+            ship.mesh.localToWorld(shipAttachPoint);
+            const tugAttachPoint = new THREE.Vector3(0, 0, -tug.mesh.geometry.parameters.depth / 2);
+            tug.mesh.localToWorld(tugAttachPoint);
+            return { shipAttachPoint, tugAttachPoint };
+        }
+        // Geometria do cabo sem heave/assentamento (ondas): o updateVesselMotions pós-física altera o mesh e a corda 3D
+        // com pitch/rolagem pode *parecer* > L_pago e forçar TAUT/esticado sem folga. Física de regime e restrição usam isto; o desenho do cabo continua a usar getAttachmentPoints().
+        function getAttachmentPointsQuiescent() {
+            if (!ship.mesh.geometry.parameters.depth) return { shipAttachPoint: new THREE.Vector3(), tugAttachPoint: new THREE.Vector3() };
+            const sh = ship.mesh.position.clone();
+            const sr = ship.mesh.rotation.clone();
+            const th = tug.mesh.position.clone();
+            const tr = tug.mesh.rotation.clone();
+            updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+            updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
+            ship.mesh.position.x = sh.x; ship.mesh.position.z = sh.z;
+            tug.mesh.position.x = th.x; tug.mesh.position.z = th.z;
+            ship.mesh.rotation.x = 0; ship.mesh.rotation.z = 0; ship.mesh.rotation.y = sr.y;
+            tug.mesh.rotation.x = 0; tug.mesh.rotation.z = 0; tug.mesh.rotation.y = tr.y;
+            ship.mesh.updateMatrixWorld(true);
+            tug.mesh.updateMatrixWorld(true);
+            const p = getAttachmentPoints();
+            ship.mesh.position.copy(sh);
+            ship.mesh.rotation.copy(sr);
+            tug.mesh.position.copy(th);
+            tug.mesh.rotation.copy(tr);
+            ship.mesh.updateMatrixWorld(true);
+            tug.mesh.updateMatrixWorld(true);
+            return p;
+        }
+        
+        /** Factor menor que 1: o ASD em reboque não usa a área proa×calado a 100%; calibra ordem 3–6 n */
+        const TUG_DRAG_TOW_BALANCE = 0.64;
+        // Calcula a força de arrasto hidrodinâmico (rebocador com factor próprio; navio inalterado)
+        function calculateDragForce(vessel) {
+            const frontalArea = vessel.beam * vessel.draft;
+            const dragCoeff = 0.78;
+            let forceMag = 0.5 * RHO_WATER * vessel.velocity.lengthSq() * dragCoeff * frontalArea;
+            if (vessel === tug) forceMag *= TUG_DRAG_TOW_BALANCE;
+            return vessel.velocity.clone().normalize().multiplyScalar(-forceMag);
+        }
+
+        // Calcula a resistência total ao avanço do navio (casco, hélice, estado do mar)
+        function calculateTotalShipResistance() {
+            const shipSpeed = ship.velocity.length();
+            // Se a velocidade for desprezível, a resistência hidrodinâmica também é.
+            // Isso corrige o problema do navio ficar "colado" por uma resistência constante.
+            if (!ship.mass || shipSpeed < 0.01) {
+                return new THREE.Vector3();
+            }
+            const shipSpeedKnots = shipSpeed * 1.94384;
+            const shipDirection = ship.velocity.length() > 0.1 ? ship.velocity.clone().normalize() : new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), ship.angle);
+            
+            // RH - Hull Resistance
+            const speedLengthRatio = shipSpeedKnots / Math.sqrt(ship.lwl * 3.28084); // LWL to feet
+            const rhRatio = interpolate(speedLengthRatio, hullResistanceCurve, 'ratio', 'val');
+            const rh = rhRatio * ship.mass * 0.004378; // Convert from lbf/LT to N
+
+            // RP - Propeller Resistance
+            const rp = 178.6 * ship.propArea * shipSpeedKnots**2; // N
+            
+            // RS - Sea State Resistance
+            const beaufort = getBeaufortFromWaveHeight(simParams.waveHeight);
+            const rsRatio = interpolate(beaufort, seaStateResistanceCurve, 'beaufort', 'val');
+            let rs = rsRatio * ship.mass * 0.00022; // Base resistance
+            
+            let totalResistanceMagnitude = rh + rp + rs;
+            
+            // --- AJUSTE DE EQUILÍBRIO ---
+            // Redutor global 0,40 (já abaixo do 0,7 original) — comboio, não prova a velocidade de escoteiro
+            totalResistanceMagnitude *= 0.4;
+
+            ship.totalResistance = totalResistanceMagnitude;
+            
+            return shipDirection.clone().multiplyScalar(-totalResistanceMagnitude);
+        }
+        
+        // Forma do cabo: a catenária actua como “mola”/amortecedor do comboio (a física já vem de towF).
+        // Uma **única** geometria: corda 3D + flecha em parábola; depois o fundo limita (sem segundo algoritmo
+        // quando Lb>0 — o modelo antigo misturava Lb com interpolação linear e mudava a forma de forma brusca).
+        let _cableSagEma = 0;
+        function updateCatenary() {
+            const { shipAttachPoint, tugAttachPoint } = getAttachmentPoints();
+            const seabed_y = water_level - simParams.seabedDepth;
+
+            const rawSag = (towF.sag != null && Number.isFinite(towF.sag)) ? Math.max(0, towF.sag) : 0;
+            const blend = 0.2; // suaviza flecha; cabos longos com mais inércia no comboio: menos “tremer” na polilinha
+            _cableSagEma = _cableSagEma + blend * (rawSag - _cableSagEma);
+            const sag_for_render = _cableSagEma;
+
+            for (let i = 0; i <= cable.numSegments; i++) {
+                const t = i / cable.numSegments;
+                const point = cablePoints[i];
+                point.lerpVectors(tugAttachPoint, shipAttachPoint, t);
+                const sag_at_t = sag_for_render * 4 * t * (1 - t);
+                point.y -= sag_at_t;
+                if (point.y < seabed_y) {
+                    point.y = seabed_y;
+                }
+            }
+            // Último vértice alinhado ao ponto de amarração (evita degrau)
+            cablePoints[cable.numSegments].copy(shipAttachPoint);
+
+            cableLine.geometry.setFromPoints(cablePoints);
+            cableLine.geometry.attributes.position.needsUpdate = true;
+            // O culling usava bounds antigos (p.ex. (0,0,0)) — ao orbitar, o cabo sumia. Obrigatório após mover vértices.
+            cableLine.geometry.computeBoundingBox();
+            cableLine.geometry.computeBoundingSphere();
+        }
+
+        // Restrição: corda 3D (quiescent) ≤ L_pago. Dupla chamada: após guincho (L pode subir) e pós-integração.
+        // Com escopo longo (400 m+), tolerâncias maiores evitam micro-correcções a cada frame que excitam a mola axial.
+        function enforceTowlineConstraint() {
+            try {
+                const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsQuiescent();
+                const spanVec = shipAttachPoint.clone().sub(tugAttachPoint);
+                const S_now = spanVec.length();
+                const scope = cable.length;
+                const stiffTol = 0.12 + 0.00012 * Math.min(scope, 800);
+                if (S_now <= scope + stiffTol) return;
+                const dir = spanVec.clone().normalize();
+                let excess = S_now - scope;
+                const maxExcess = 0.22 + 0.00035 * Math.min(scope, 800);
+                excess = Math.min(excess, maxExcess);
+                const mS = Math.max(1, ship.mass || 1);
+                const mT = Math.max(1, tug.mass || 1);
+                let wS = mT / (mS + mT);
+                let wT = mS / (mS + mT);
+                if (mS > 3 * mT) {
+                    const blend = 0.5;
+                    wS = wS * (1 - blend) + 0.5 * blend;
+                    wT = wT * (1 - blend) + 0.5 * blend;
+                }
+                ship.position.addScaledVector(dir, -excess * wS);
+                tug.position.addScaledVector(dir, excess * wT);
+                const vRel = ship.velocity.clone().sub(tug.velocity);
+                const vAlong = vRel.dot(dir);
+                if (vAlong > 0) {
+                    ship.velocity.addScaledVector(dir, -vAlong * wS);
+                    tug.velocity.addScaledVector(dir, vAlong * wT);
+                }
+            } catch (e) { /* ok */ }
+        }
+        
+        // Função principal da física, chamada a cada quadro
+        function updatePhysics() {
+            const raw_dt = clock.getDelta();
+            const dt = clamp(raw_dt, 0.005, 0.03); // Delta time, com teto e piso para estabilidade
+            if (isNaN(dt) || !ship.mass) return;
+
+            updateTugMotorSpool(dt);
+
+            // --- Lógica de Suavização do Guincho ---
+            // Em vez de alterar o comprimento do cabo instantaneamente, simulamos a velocidade do guincho.
+            // Isso evita instabilidades na física quando grandes comprimentos de cabo são liberados de uma vez.
+            const winchSpeed = 2; // metros por segundo (velocidade de lançamento/recolhimento), reduzido para maior estabilidade e realismo.
+            const lengthDifference = cable.targetLength - cable.length;
+            
+            if (Math.abs(lengthDifference) > 0.1) {
+                const changeThisFrame = Math.sign(lengthDifference) * winchSpeed * dt;
+                // Garante que não ultrapassamos o alvo
+                if (Math.abs(changeThisFrame) >= Math.abs(lengthDifference)) {
+                    cable.length = cable.targetLength;
+                } else {
+                    cable.length += changeThisFrame;
+                }
+            }
+            // Guincho pode ter *reduzido* L: sem isto, S3 > L ainda nesse passo e o modelo cai em mola/esticado com folga
+            enforceTowlineConstraint();
+            
+            // --- Orçamento de Forças ---
+            const { force: thrustForce, torque: thrustTorque } = calculateThrust(tug.angle);
+            const dragForceTug = calculateDragForce(tug);
+
+            // Corda 3D e vão em planta (XZ) entre bitas — geometria *calma* (sem onda) para regime/reação; o calado entra, o heave não
+            const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsQuiescent();
+            const dxa = shipAttachPoint.x - tugAttachPoint.x;
+            const dza = shipAttachPoint.z - tugAttachPoint.z;
+            const S_hz = Math.hypot(dxa, dza);
+            const d3v = new THREE.Vector3().subVectors(shipAttachPoint, tugAttachPoint);
+            const S3 = d3v.length();
+            const dirF = S_hz > 1e-4
+                ? new THREE.Vector3(dxa, 0, dza).normalize()
+                : (() => {
+                    const dx = ship.position.x - tug.position.x, dz = ship.position.z - tug.position.z;
+                    const sh = Math.hypot(dx, dz);
+                    return sh > 1e-4 ? new THREE.Vector3(dx, 0, dz).normalize() : new THREE.Vector3(0, 0, 1);
+                })();
+            window._towSimDt = dt;
+            towF = window.computeTowlineForces(
+                tug.position, tug.velocity, ship.position, ship.velocity, cable.length,
+                { S3, S_hz, dir: dirF, d3: d3v }
+            );
+            const Lcab = Math.max(1, cable.length);
+            const kTowF = (Math.min(0.5, 20 * dt)) * (1 / (1 + (Lcab * Lcab) / (500 * 500)));
+            if (!_towF_onShipEma) {
+                _towF_onShipEma = towF.F_onShip.clone();
+                _towF_onTugEma = towF.F_onTug.clone();
+            } else {
+                _towF_onShipEma.lerp(towF.F_onShip, kTowF);
+                _towF_onTugEma.lerp(towF.F_onTug, kTowF);
+            }
+            towF.F_onShip.copy(_towF_onShipEma);
+            towF.F_onTug.copy(_towF_onTugEma);
+            
+            // Calcula a variação da catenária (d(sag)/dt)
+            sagVariation = (towF.sag - lastSag) / Math.max(dt, 1e-6);
+            lastSag = towF.sag;
+
+            maxSag = towF.sag || 0; // Atualiza a flecha para a renderização visual
+
+            // Guardião de NaN/Inf na saída da física — evita que um pico ainda derrube a cena.
+            if (!Number.isFinite(towF.TensionN)) {
+                towF.TensionN = 0;
+            }
+
+            // Chame o novo módulo de segurança
+            if (window.TowSafety) { window.TowSafety.update(dt, towF.TensionN); }
+            
+            // Orçamento ambiental (mesmo sítio usado no rebocador)
+            const windForceOnTug = new WindForceStrategy().calculate(tug, simParams);
+            const currentForceTug = calculateCurrentForce(tug.beam * tug.draft, tug.angle);
+            // Carga (0–1) por potência: P_dem = F·v com v ≥ mín. escala 650–1800 rpm; P_disp = Σ P_motor(RPM) → carga = P_dem / P_disp.
+            // Assim entram a resistência (F), a velocidade na direção de impulso (v) e a curva de potência (RPM) no divisor.
+            const thLen = thrustForce.length();
+            const thrustDir = thLen > 1e-6
+                ? thrustForce.clone().normalize()
+                : (() => {
+                    const a = ((simParams.thruster1Azimuth || 0) - 90) * (Math.PI / 180) + tug.angle;
+                    return new THREE.Vector3(Math.cos(a), 0, -Math.sin(a)).normalize();
+                })();
+            const tensionResistance = Math.max(0, -towF.F_onTug.dot(thrustDir));
+            const dragResistance = Math.max(0, -dragForceTug.dot(thrustDir));
+            const windOppTug = Math.max(0, -windForceOnTug.dot(thrustDir));
+            const curOppTug = Math.max(0, -currentForceTug.dot(thrustDir));
+            const resTowN = tensionResistance + dragResistance + windOppTug + curOppTug;
+            const potentialThrust = thLen;
+            if (!tug.driveEngaged) {
+                tug.tractionLoad = 0;
+            } else {
+                const m1p = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : 0;
+                const m2p = simParams.isTwinMode ? m1p : ((typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : 0);
+                const pAvailKW = getPowerFromRPM(m1p) + getPowerFromRPM(m2p);
+                const vAlongMps = Math.abs(tug.velocity.dot(thrustDir));
+                const rAvgM = 0.5 * (m1p + m2p);
+                const bollMps = tugBollardEqMpsFromAvgRpm(rAvgM);
+                const vEffMps = Math.max(bollMps, vAlongMps);
+                // Potência requerida: P ≈ F·v (F e v na linha de impulso) → entra a velocidade do rebocador
+                const pRunRatio = (pAvailKW > 1e-6) ? ((resTowN * vEffMps) / 1000) / pAvailKW : 0;
+                // Utilização de força: resistência / tração a este RPM
+                const utilF = (potentialThrust > 0) ? Math.min(1, resTowN / potentialThrust) : 0;
+                // Sobra o maior: reboque “parado” (só força) vs avanço (F·v força com a potência a este RPM e ao regime)
+                const traction = Math.min(1, Math.max(pRunRatio, utilF));
+                const dCal = tugCargaFactorFromDraft();
+                tug.tractionLoad = Math.min(1, traction * dCal);
+            }
+            // Carga “real” exibida (proporcional a RPM e SOG) é calculada no update do HUD, não aqui
+            
+            // --- Integração Numérica (Euler Simples) ---
+            // VERSÃO REATORADA COM O PADRÃO STRATEGY
+            const shipForce = new THREE.Vector3();
+            shipForceStrategies.forEach(strategy => {
+                shipForce.add(strategy.calculate(ship, simParams));
+            });
+            shipForce.add(towF.F_onShip); // Aplica a força do cabo de reboque no navio
+            
+            // Forças no rebocador
+            const tugForce = new THREE.Vector3();
+            // Monta o orçamento de forças do rebocador (vento e corrente já calculados acima)
+            tugForce.add(thrustForce).add(dragForceTug).add(windForceOnTug).add(currentForceTug);
+            tugForce.add(towF.F_onTug); // Aplica a reação do cabo de reboque no rebocador
+            
+            // Integração (velocidade primeiro, depois pequena amortecção com motores off)
+            ship.velocity.add(shipForce.clone().divideScalar(ship.mass).multiplyScalar(dt));
+            tug.velocity.add(tugForce.clone().divideScalar(tug.mass).multiplyScalar(dt));
+            if (!tug.enginesOn) {
+                const relV = ship.velocity.clone().sub(tug.velocity);
+                const along = relV.dot(dirF);
+                if (along > 0) {
+                    const beta = 0.14;
+                    const ms = Math.max(1, ship.mass);
+                    const mt = Math.max(1, tug.mass);
+                    ship.velocity.addScaledVector(dirF, -along * beta * (mt / (ms + mt)));
+                    tug.velocity.addScaledVector(dirF, along * beta * (ms / (ms + mt)));
+                }
+            }
+            const shipDisplacement = ship.velocity.clone().multiplyScalar(dt);
+            if (isFinite(shipDisplacement.x) && isFinite(shipDisplacement.y) && isFinite(shipDisplacement.z)) {
+                ship.position.add(shipDisplacement);
+            }
+            const tugDisplacement = tug.velocity.clone().multiplyScalar(dt);
+            if (isFinite(tugDisplacement.x) && isFinite(tugDisplacement.y) && isFinite(tugDisplacement.z)) {
+                tug.position.add(tugDisplacement);
+            }
+
+            // --- HARD CONSTRAINT: correção pós-integração (separação) ---
+            enforceTowlineConstraint();
+
+            // --- Lógica de Colisão ---
+            handleCollisions();
+            // SOG teto: rampa comando (1300→11 n, 1800→12,5 n); 100% carga: 5 m + 1800 + SOG ref. + f_calado=1
+            clampTugVelocityToRpmSogLimit();
+            // Sincronização manual da posição do mesh (objeto visual) com a posição física
+            ship.mesh.position.x = ship.position.x; ship.mesh.position.z = ship.position.z;
+            tug.mesh.position.x = tug.position.x; tug.mesh.position.z = tug.position.z;
+            
+            const tugInertia = 0.1 * tug.mass * (tug.mesh.geometry.parameters.width**2 + tug.mesh.geometry.parameters.depth**2);
+            tug.angularVelocity += (thrustTorque / tugInertia) * dt;
+            tug.angularVelocity *= 0.95; // Amortecimento rotacional
+            tug.angle += tug.angularVelocity * dt;
+            
+            // Sincronização da rotação do mesh com o ângulo físico
+            ship.mesh.rotation.y = ship.angle;
+            tug.mesh.rotation.y = tug.angle;
+        }
+
+        // Função para detectar e resolver colisões entre o navio e o rebocador
+        function handleCollisions() {
+            // Usamos as bounding boxes dos objetos para detectar a colisão.
+            // É uma aproximação (AABB - Axis-Aligned Bounding Box) que funciona bem para este caso.
+            const shipBB = new THREE.Box3().setFromObject(ship.mesh);
+            const tugBB = new THREE.Box3().setFromObject(tug.mesh);
+
+            if (shipBB.intersectsBox(tugBB)) {
+                // --- 1. Correção de Posição (para evitar que os objetos fiquem presos) ---
+                const centerShip = new THREE.Vector3(); shipBB.getCenter(centerShip);
+                const centerTug = new THREE.Vector3(); tugBB.getCenter(centerTug);
+                const toTug = centerTug.clone().sub(centerShip);
+
+                const sizeShip = new THREE.Vector3(); shipBB.getSize(sizeShip);
+                const sizeTug = new THREE.Vector3(); tugBB.getSize(sizeTug);
+
+                const overlapX = (sizeShip.x + sizeTug.x) / 2 - Math.abs(toTug.x);
+                const overlapZ = (sizeShip.z + sizeTug.z) / 2 - Math.abs(toTug.z);
+
+                if (overlapX <= 0 || overlapZ <= 0) return; // Salvaguarda
+
+                let collisionNormal;
+                let penetrationDepth;
+
+                // Encontra o eixo de menor penetração para uma separação mais suave
+                if (overlapX < overlapZ) {
+                    penetrationDepth = overlapX;
+                    collisionNormal = new THREE.Vector3(Math.sign(toTug.x), 0, 0);
+                } else {
+                    penetrationDepth = overlapZ;
+                    collisionNormal = new THREE.Vector3(0, 0, Math.sign(toTug.z));
+                }
+
+                const separationVector = collisionNormal.clone().multiplyScalar(penetrationDepth);
+                const totalMass = ship.mass + tug.mass;
+                
+                // Move os objetos para fora um do outro, proporcionalmente às suas massas
+                ship.position.sub(separationVector.clone().multiplyScalar(tug.mass / totalMass));
+                tug.position.add(separationVector.clone().multiplyScalar(ship.mass / totalMass));
+
+                // --- 2. Resposta de Velocidade (o "ricochete") ---
+                const relativeVelocity = tug.velocity.clone().sub(ship.velocity);
+                const velocityAlongNormal = relativeVelocity.dot(collisionNormal);
+
+                // Não faz nada se as velocidades já estiverem se separando
+                if (velocityAlongNormal > 0) return;
+
+                const e = 0.2; // Coeficiente de restituição (quão "elástica" é a colisão)
+
+                // Fórmula do impulso
+                const j = -(1 + e) * velocityAlongNormal;
+                const impulseMagnitude = j / (1 / ship.mass + 1 / tug.mass);
+                const impulse = collisionNormal.clone().multiplyScalar(impulseMagnitude);
+
+                // Aplica o impulso às velocidades dos objetos
+                ship.velocity.sub(impulse.clone().divideScalar(ship.mass));
+                tug.velocity.add(impulse.clone().divideScalar(tug.mass));
+            }
+        }
+        // Atualiza todos os valores exibidos nos painéis da UI
+
+        // --- APLICAÇÃO DO PADRÃO DE PROJETO: STRATEGY ---
+        // O padrão Strategy permite encapsular diferentes algoritmos (cálculos de força)
+        // em objetos separados. Isso torna o sistema de física mais extensível.
+
+        // "Interface" para uma estratégia de força
+        class ForceStrategy {
+            calculate(vessel, environment) {
+                return new THREE.Vector3(); // Retorna um vetor de força
+            }
+        }
+
+        // Estratégia concreta para a força do vento
+        class WindForceStrategy extends ForceStrategy {
+            calculate(vessel, environment) {
+                const windAngleRad = (environment.windDir - 90) * DEG2RAD;
+                const relativeWindAngle = windAngleRad - vessel.angle;
+                // Usa a área vélica específica do navio
+                const effectiveArea = (vessel.sailArea || (vessel.beam * 10)) * Math.abs(Math.sin(relativeWindAngle));
+                const forceMag = 0.5 * RHO_AIR * environment.windSpeed**2 * 1.0 * effectiveArea;
+                return new THREE.Vector3(forceMag * Math.cos(windAngleRad), 0, -forceMag * Math.sin(windAngleRad));
+            }
+        }
+
+        // Corrente no casco: área efetiva ∝ boca×calado; menos calado → menos carga, coerente com o reboque em lastro
+        class CurrentForceStrategy extends ForceStrategy {
+            calculate(vessel, environment) {
+                const aSub = (vessel.beam || 0) * (vessel.draft || 0);
+                return calculateCurrentForce(aSub, vessel.angle);
+            }
+        }
+
+        // Estratégia concreta para a resistência total do navio
+        class ShipResistanceStrategy extends ForceStrategy {
+            calculate(vessel, environment) {
+                // Reutiliza a função de cálculo de resistência já existente
+                return calculateTotalShipResistance();
+            }
+        }
+
+        // Lista de estratégias de força a serem aplicadas ao navio
+        const shipForceStrategies = [new WindForceStrategy(), new CurrentForceStrategy(), new ShipResistanceStrategy()];
+
+        // Calcula a velocidade máxima recomendada para lançamento do cabo com base no estado do mar
+        function calculateMaxDeploymentSpeed(waveHeight) {
+            if (waveHeight < 2) return "5.0";
+            if (waveHeight < 5) return "3.0";
+            return "< 1.5";
+        }
+
+        // Mapeia o estado interno do cabo para um texto amigável na UI
+        function mapCableStateToUI(state) {
+            const map = { "CATENARY": "Catenária (Folgado)", "TAUT": "Reboque (Esticado)" };
+            return map[state] || "Indefinido";
+        }
+
+        const speedHistory = { ship: [], tug: [], maxPoints: 200 };
+
+        function drawSpeedHistoryChart() {
+            const el = document.getElementById('speedHistoryChart');
+            if (!el) return;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const cssW = el.clientWidth || 280;
+            const cssH = 100;
+            if (cssW < 30) return;
+            const w = Math.floor(cssW * dpr);
+            const h = Math.floor(cssH * dpr);
+            if (el.width !== w) el.width = w;
+            if (el.height !== h) el.height = h;
+            const ctx = el.getContext('2d');
+            if (!ctx) return;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            const n = speedHistory.ship.length;
+            if (n < 2) {
+                ctx.fillStyle = 'rgba(148,163,184,0.6)';
+                ctx.font = '11px system-ui';
+                ctx.fillText('A aguardar dados…', 8, 40);
+                return;
+            }
+            let yMax = 2;
+            for (let i = 0; i < n; i++) {
+                yMax = Math.max(yMax, speedHistory.ship[i], speedHistory.tug[i]);
+            }
+            yMax = Math.min(32, yMax * 1.12 + 0.25);
+            const padL = 28, padR = 6, padT = 4, padB = 14;
+            const innerW = cssW - padL - padR;
+            const innerH = cssH - padT - padB;
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(0, 0, cssW, cssH);
+            ctx.strokeStyle = 'rgba(100,116,139,0.4)';
+            ctx.lineWidth = 1;
+            for (let g = 0; g <= 4; g++) {
+                const y = padT + (innerH * g) / 4;
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(cssW - padR, y);
+                ctx.stroke();
+            }
+            ctx.fillStyle = 'rgba(148,163,184,0.8)';
+            ctx.font = '9px system-ui, sans-serif';
+            ctx.textAlign = 'right';
+            for (let g = 0; g <= 2; g++) {
+                const val = (yMax * (1 - g / 2)).toFixed(1);
+                const y = padT + (innerH * g) / 2;
+                ctx.fillText(val, padL - 4, y + 3);
+            }
+            const line = (arr, color) => {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for (let i = 0; i < n; i++) {
+                    const t = n <= 1 ? 0.5 : i / (n - 1);
+                    const x = padL + t * innerW;
+                    const y = padT + innerH * (1 - arr[i] / yMax);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            };
+            line(speedHistory.ship, '#7dd3fc');
+            line(speedHistory.tug, '#fb923c');
+        }
+
+        function updateUI() {
+            uiControls.shipMass.valEl.innerText = (ship.mass / 1000).toFixed(0);
+            uiControls.shipLength.valEl.innerText = ship.length.toFixed(0);
+            uiControls.tugMass.valEl.innerText = (tug.mass / 1000).toFixed(0);
+            // Velocidade em nós: módulo 3D de v; a física vem de ΣF/m (proa/ASD + arrasto + reboque). O "peso" do cabo de aço entra só via towF (tensão catenária + arrasto do cabo), não como massa extra no rebocador.
+            const knS = ship.velocity.length() * 1.94384;
+            const knT = tug.velocity.length() * 1.94384;
+            uiControls.shipSpeed.valEl.innerText = knS.toFixed(2);
+            uiControls.tugSpeed.valEl.innerText = knT.toFixed(2);
+            if (uiControls.tugSpeed.valEl) uiControls.tugSpeed.valEl.title = 'SOG (nós); teto ∝ rpm de comando: 650→0,58 n, 1300→11 n (ref. escoteiro), 1800→12,5 n. f(SOG) pleno ≈ a partir de 11 n; calado 5 m na escala 100%.';
+            speedHistory.ship.push(knS);
+            speedHistory.tug.push(knT);
+            if (speedHistory.ship.length > speedHistory.maxPoints) {
+                speedHistory.ship.shift();
+                speedHistory.tug.shift();
+            }
+            drawSpeedHistoryChart();
+            
+            const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsQuiescent();
+            const d3 = shipAttachPoint.distanceTo(tugAttachPoint);
+            const dH = Math.hypot(shipAttachPoint.x - tugAttachPoint.x, shipAttachPoint.z - tugAttachPoint.z);
+            uiControls.distanceBowStern.valEl.innerText = d3.toFixed(1);
+            uiControls.distanceBowStern.valEl.title = 'Distância em linha recta 3D entre as bitas. Com muito cabo e catenária, a tensão na boca (T_end) puxa ao longo desta recta: o vão tende a encolher, sobretudo com rebocador parado, até ao equilíbrio com vento/àguas.';
+            if (uiControls.distanceFairleadHz && uiControls.distanceFairleadHz.valEl) {
+                uiControls.distanceFairleadHz.valEl.innerText = dH.toFixed(1);
+                uiControls.distanceFairleadHz.valEl.title = 'Vão em planta (X–Z) entre amarras; o mesmo S usado no modelo de H / catenária, sem embandeiramento de onda na leitura.';
+            }
+
+            {
+            const p = (typeof window !== 'undefined' && window.CableCatalog && window.TowSafety)
+                ? window.CableCatalog[window.TowSafety.currentKey] : null;
+            const wWetNpm = p ? (p.wNpm_air * (1 - (p.buoy_factor ?? 0.12))) : 0;
+            const tonWet = wWetNpm > 0 ? (wWetNpm * cable.length / 9.81 / 1000) : 0;
+            const tonDry = (cable.length * cable.weightPerMeter / 1000);
+            uiControls.cableWeight.valEl.innerText = (wWetNpm > 0 ? tonWet : tonDry).toFixed(2);
+            uiControls.cableWeight.valEl.title = wWetNpm > 0
+                ? `Peso aparente total em água (o mesmo w em N/m da catenária). Peso seco no ar ≈ ${tonDry.toFixed(2)} t.`
+                : 'Peso em ton (ar) × comprimento; selecione um tipo de cabo no catálogo.';
+            }
+            uiControls.actualCableLength.valEl.innerText = cable.length.toFixed(1);
+            const tEndKN = (towF.T_end / 1000).toFixed(1);
+            uiControls.cableTension.valEl.innerText = tEndKN;
+            cableTension = towF.TensionN;
+            uiControls.catenaryForce.valEl.innerText = (towF.H / 1000).toFixed(1); // H (kN)
+
+            // Filtra valores da catenária antes de mandar pro HUD/render para evitar valores absurdos
+            let sag_display = towF.sag || 0;
+            if (!Number.isFinite(sag_display) || sag_display > 1.1 * cable.length) {
+                sag_display = cable.length; // fallback seguro
+            }
+            uiControls.cableSag.valEl.innerText = sag_display.toFixed(2);
+
+            // Atualiza os novos campos da UI
+            uiControls.cableStateValue.valEl.innerText = mapCableStateToUI(towF.state);
+            uiControls.maxDeploymentSpeedValue.valEl.innerText = calculateMaxDeploymentSpeed(simParams.waveHeight);
+            const sagVarDisplay = Number.isFinite(sagVariation) ? sagVariation.toFixed(2) : "0.00";
+            uiControls.cableSagVariationValue.valEl.innerText = sagVarDisplay; 
+            
+            // Carga = traction×f(RPM cmd)×f(SOG); f(RPM) segue o COMANDO (slider), não o eixo ainda a subir (inércia) — 1800 no comando = f_RPM=100%.
+            const t1Mot = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : simParams.thruster1RPM;
+            const t2Mot = simParams.isTwinMode ? t1Mot : ((typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : simParams.thruster2RPM);
+            const tr = tug.tractionLoad;
+            const vKnTug = tug.velocity.length() * 1.94384;
+            const cargaOn = (tug.driveEngaged && tug.enginesOn);
+            let cmd1 = simParams.thruster1RPM, cmd2 = simParams.isTwinMode ? simParams.thruster1RPM : simParams.thruster2RPM;
+            if (cargaOn) {
+                cmd1 = Math.max(TUG_RPM_MIN, Math.min(TUG_RPM_MAX, cmd1));
+                cmd2 = Math.max(TUG_RPM_MIN, Math.min(TUG_RPM_MAX, cmd2));
+            } else { cmd1 = 0; cmd2 = 0; }
+            const rAvgCmd = 0.5 * (cmd1 + cmd2);
+            const vKnMinRpm = cargaOn ? tugCargaMinSogKnFromAvgRpm(rAvgCmd) : 0;
+            const wSog0 = tugCargaSogWeightForTowing(Math.max(vKnTug, vKnMinRpm));
+            const rpmNCmd = cargaOn ? Math.min(1, Math.max(0, (rAvgCmd - TUG_RPM_MIN) / (TUG_RPM_MAX - TUG_RPM_MIN))) : 0;
+            const wSog = wSog0 + (1 - wSog0) * rpmNCmd;
+            const wRpm1 = tugCargaRpmWeight(cmd1);
+            const wRpm2 = tugCargaRpmWeight(cmd2);
+            const wRpmM = 0.5 * (wRpm1 + wRpm2);
+            const p1t = cargaOn ? (100 * tr * wRpm1 * wSog) : 0;
+            const p2t = cargaOn ? (100 * tr * wRpm2 * wSog) : 0;
+            const pMt = cargaOn ? (100 * tr * wRpmM * wSog) : 0;
+            const dtUi = (typeof window._towSimDt === 'number' && window._towSimDt > 0) ? window._towSimDt : 0.016;
+            const p1 = stepCargaDisplayEma(_cargaDisplayEma1, p1t, dtUi);
+            const p2 = stepCargaDisplayEma(_cargaDisplayEma2, p2t, dtUi);
+            const pM = stepCargaDisplayEma(_cargaDisplayEmaM, pMt, dtUi);
+            _cargaDisplayEma1 = p1; _cargaDisplayEma2 = p2; _cargaDisplayEmaM = pM;
+            tug.engineLoad = pM / 100;
+            const pLoad = pM.toFixed(1);
+            if (uiControls.tugCargaReal && uiControls.tugCargaReal.valEl) uiControls.tugCargaReal.valEl.innerText = pLoad;
+            const elC1 = document.getElementById('asdCargaReal1');
+            const elC2 = document.getElementById('asdCargaReal2');
+            if (elC1) elC1.textContent = p1.toFixed(1);
+            if (elC2) elC2.textContent = p2.toFixed(1);
+            const actualPowerKW_1 = tr * getPowerFromRPM(t1Mot);
+            const actualPowerKW_2 = tr * getPowerFromRPM(t2Mot);
+            const fuelConsumption = tug.enginesOn ? interpolate(actualPowerKW_1, fuelCurve, 'kw', 'lph') + interpolate(actualPowerKW_2, fuelCurve, 'kw', 'lph') : 0;
+            uiControls.tugFuelConsumption.valEl.innerText = fuelConsumption.toFixed(1);
+            uiControls.shipTotalResistance.valEl.innerText = (ship.totalResistance / 1000).toFixed(1);
+            uiControls.beaufort.valEl.innerText = 'F' + getBeaufortFromWaveHeight(simParams.waveHeight);
+
+            // Trancos (ondas) na “Tensão extrema”: atenua com cabo longo; usa tração de referência (N), não a variável morta cableTension
+            let waveInducedTension = 0;
+            if (simParams.waveHeight > 0.5) {
+                const h = simParams.waveHeight;
+                const tRefN = Math.max(8e3, 0.42 * (towF.TensionN || 0));
+                const Lm = Math.max(40, cable.length);
+                const attenL = 1 / (1 + Lm / 380);
+                const baseAmp = tRefN * 0.006 * h * h * attenL;
+                const capAmp = tRefN * 0.055 * attenL;
+                const amplitude = Math.min(baseAmp, capAmp);
+                const waveFrequency = (0.28 + 0.1 * Math.min(h, 5)) * (0.4 + 0.6 * attenL);
+                waveInducedTension = amplitude * Math.abs(Math.sin(clock.getElapsedTime() * waveFrequency));
+            }
+            const extremeRaw = towF.TensionN + waveInducedTension;
+            const kEma = 0.065;
+            if (!Number.isFinite(_extremeTensionEma) || _extremeTensionEma <= 0) _extremeTensionEma = extremeRaw;
+            _extremeTensionEma += (extremeRaw - _extremeTensionEma) * kEma;
+            extremeTension = _extremeTensionEma;
+            uiControls.extremeTension.valEl.innerText = (extremeTension / 1000).toFixed(1);
+
+            // Atualiza o painel de configuração do reboque de forma otimizada
+            updateTowingSetupPanel(TowSafety.currentKey, cable.length);
+        }
+        // Atualiza a direção e o comprimento das setas que representam vento e corrente
+        function updateEnvironmentVisuals() {
+            const windAngleRad = (simParams.windDir - 90) * Math.PI / 180;
+            const windDirVec = new THREE.Vector3(Math.cos(windAngleRad), 0, -Math.sin(windAngleRad));
+            windArrow.setDirection(windDirVec);
+            windArrow.setLength(simParams.windSpeed * 2, 10, 5);
+            const currentAngleRad = (simParams.currentDir - 90) * Math.PI / 180;
+            const currentDirVec = new THREE.Vector3(Math.cos(currentAngleRad), 0, -Math.sin(currentAngleRad));
+            currentArrow.setDirection(currentDirVec);
+            currentArrow.setLength(simParams.currentSpeed * 20, 15, 8);
+
+            // Atualiza a posição do fundo do mar com base na profundidade definida na UI
+            if (seabedMesh) {
+                seabedMesh.position.y = water_level - simParams.seabedDepth;
+            }
+        }
+
+        // Converte a altura da onda (m) para a escala Beaufort
+        function getBeaufortFromWaveHeight(h) {
+            if (h < 0.1) return 0;
+            if (h < 0.5) return 1;
+            if (h < 1.25) return 2;
+            if (h < 2.5) return 3;
+            if (h < 4) return 4;
+            if (h < 6) return 5;
+            if (h < 9) return 6;
+            if (h < 14) return 7;
+            return 8;
+        }
+
+        // Atualiza a visibilidade, direção e comprimento dos jatos de água dos propulsores
+        function updatePropulsorJets() {
+            const t1M = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : 0;
+            const t2M = (typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : 0;
+            const t1RPM = (tug.driveEngaged ? t1M : 0);
+            const t2RPM = (tug.driveEngaged ? (simParams.isTwinMode ? t1M : t2M) : 0);
+            const t1Azimuth = simParams.thruster1Azimuth;
+            const t2Azimuth = simParams.isTwinMode ? t1Azimuth : simParams.thruster2Azimuth;
+            // Jato segue RPM real (descida inercial após parar motores)
+            const jetPct = (rpm) => (rpm < 8) ? 0 : Math.max(0, Math.min(100, (rpm / 1800) * 100));
+            const t1Power = jetPct(t1RPM);
+            const t2Power = jetPct(t2RPM);
+
+            if (t1Power > 1) {
+                tug.jet1.visible = true;
+                const thrustAngle = (t1Azimuth - 90) * Math.PI / 180;
+                const jetDir = new THREE.Vector3(-Math.cos(thrustAngle), 0, Math.sin(thrustAngle) );
+                tug.jet1.setDirection(jetDir.normalize());
+                tug.jet1.setLength(t1Power / 100 * 30, 5, 3);
+                tug.jet1.line.material.opacity = t1Power / 100;
+                tug.jet1.cone.material.opacity = t1Power / 100;
+            } else {
+                tug.jet1.visible = false;
+            }
+
+             if (t2Power > 1) {
+                tug.jet2.visible = true;
+                const thrustAngle = (t2Azimuth - 90) * Math.PI / 180;
+                const jetDir = new THREE.Vector3(-Math.cos(thrustAngle), 0, Math.sin(thrustAngle) );
+                tug.jet2.setDirection(jetDir.normalize());
+                tug.jet2.setLength(t2Power / 100 * 30, 5, 3);
+                tug.jet2.line.material.opacity = t2Power / 100;
+                tug.jet2.cone.material.opacity = t2Power / 100;
+            } else {
+                tug.jet2.visible = false;
+            }
+        }
+
+        // Adiciona movimento às bóias de acordo com o estado do mar
+        function updateBuoys() {
+            const time = clock.getElapsedTime();
+            const waveHeight = simParams.waveHeight;
+            const waveSpeed = 1.5;
+
+            // Propriedades da corrente para calcular a inclinação
+            const currentSpeed = simParams.currentSpeed;
+            const currentAngleRad = (simParams.currentDir - 90) * DEG2RAD;
+            const currentDirVec = new THREE.Vector3(Math.cos(currentAngleRad), 0, -Math.sin(currentAngleRad));
+
+            // Cálculo da inclinação
+            const maxTiltAngle = Math.PI / 6; // 30 graus de inclinação máxima
+            const maxTiltSpeed = 3.0; // Velocidade da corrente (m/s) para atingir a inclinação máxima
+            const tiltAngle = (Math.min(currentSpeed, maxTiltSpeed) / maxTiltSpeed) * maxTiltAngle;
+
+            // O eixo de rotação é perpendicular à direção da corrente
+            const rotationAxis = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), currentDirVec).normalize();
+
+            buoys.forEach(buoy => {
+                // 1. Oscilação vertical devido às ondas (não se aplica se estiver sendo arrastada)
+                if (buoy !== draggedObject) {
+                    // Calcula o deslocamento da onda com base no tempo e na posição da bóia para um efeito mais natural
+                    const waveX = Math.sin(buoy.position.x / 20 + time * waveSpeed);
+                    const waveZ = Math.cos(buoy.position.z / 20 + time * waveSpeed);
+                    const y_offset = (waveX + waveZ) * waveHeight * 0.5; // Amplitude do movimento
+                    buoy.position.y = (water_level + 4) + y_offset;
+                }
+
+                // 2. Inclinação devido à corrente (aplica-se sempre)
+                if (tiltAngle > 0.01 && rotationAxis.lengthSq() > 0) {
+                    buoy.quaternion.setFromAxisAngle(rotationAxis, tiltAngle);
+                } else {
+                    buoy.quaternion.set(0, 0, 0, 1); // Reseta a inclinação se não houver corrente
+                }
+            });
+        }
+
+        // Adiciona movimento de ondas (heave, pitch, roll) às embarcações
+        function updateVesselMotions() {
+            const time = clock.getElapsedTime();
+            const waveHeight = simParams.waveHeight;
+
+            // Se não houver ondas, reseta a rotação e a posição vertical para o padrão.
+            if (waveHeight <= 0.1) {
+                if(ship.mesh.rotation.x !== 0 || ship.mesh.rotation.z !== 0) {
+                    ship.mesh.rotation.x = 0;
+                    ship.mesh.rotation.z = 0;
+                    tug.mesh.rotation.x = 0;
+                    tug.mesh.rotation.z = 0;
+                    updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+                    updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
+                }
+                return;
+            }
+
+            const waveSpeed = 1.0, rollFrequency = 0.8, pitchFrequency = 0.6;
+
+            // --- Movimento do Navio ---
+            const shipWaveX = Math.sin(ship.position.x / 50 + time * waveSpeed);
+            const shipWaveZ = Math.cos(ship.position.z / 50 + time * waveSpeed);
+            
+            // Heave (movimento vertical)
+            const shipHeave = (shipWaveX + shipWaveZ) * waveHeight * 0.4;
+            updateVesselYPosition(ship, ship.mesh.geometry.parameters.height); // Define a posição Y baseada no calado
+            ship.mesh.position.y += shipHeave; // Adiciona o offset da onda
+
+            // Pitch (rotação proa-popa) e Roll (rotação bordo-bordo)
+            ship.mesh.rotation.x = Math.cos(ship.position.z / (ship.length * 2) + time * pitchFrequency) * (waveHeight / (ship.length * 0.5)) * 0.5;
+            ship.mesh.rotation.z = Math.sin(ship.position.x / (ship.beam * 4) + time * rollFrequency) * (waveHeight / (ship.beam * 2.0)) * 0.6;
+
+            // --- Movimento do Rebocador (mais responsivo por ser menor) ---
+            const tugWaveX = Math.sin(tug.position.x / 40 + time * waveSpeed * 1.2);
+            const tugWaveZ = Math.cos(tug.position.z / 40 + time * waveSpeed * 1.2);
+
+            // Heave
+            const tugHeave = (tugWaveX + tugWaveZ) * waveHeight * 0.5;
+            updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
+            tug.mesh.position.y += tugHeave;
+
+            // Pitch e Roll
+            tug.mesh.rotation.x = Math.cos(tug.position.z / (tug.length * 2) + time * pitchFrequency * 1.3) * (waveHeight / (tug.length * 0.5)) * 0.6;
+            tug.mesh.rotation.z = Math.sin(tug.position.x / (tug.beam * 4) + time * rollFrequency * 1.5) * (waveHeight / (tug.beam * 2.0)) * 0.8;
+        }
+
+        // Função para lidar com o redimensionamento da janela do navegador
+        function onWindowResize(){
+            const container = document.getElementById('sim-container');
+            if (container) {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        }
+        window.addEventListener('resize', onWindowResize, false);
+
+        // --- 10. LOOP DE ANIMAÇÃO E INICIALIZAÇÃO ---
+        function animate() { requestAnimationFrame(animate); updatePhysics();
+            updateCatenary();
+            updateUI();
+            updateEnvironmentVisuals();
+            updatePropulsorJets();
+            updateBuoys();
+            updateVesselMotions();
+            if(!draggedObject) controls_cam.update();
+            renderer.render(scene, camera);
+        }
+
+        // Inicia a simulação e o loop de animação
+        uiControls.tugDraft.el.dispatchEvent(new Event('input'));
+        animate();
+    </script>
+  <script>
+    (function () {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const openBtn = document.getElementById('btnMobileMenu');
+      const closeBtn = document.getElementById('btnCloseMenu');
+      if (!sidebar || !overlay || !openBtn) return;
+      function toggleMenu() {
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+        requestAnimationFrame(function () {
+          overlay.classList.toggle('opacity-0');
+        });
+      }
+      openBtn.addEventListener('click', toggleMenu);
+      if (closeBtn) closeBtn.addEventListener('click', toggleMenu);
+      overlay.addEventListener('click', toggleMenu);
+    })();
+  </script>
+</body>
+</html>

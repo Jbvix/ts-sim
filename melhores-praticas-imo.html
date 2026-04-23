@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Melhores práticas • Reboque oceânico (IMO MSC/Circ.884)</title>
+  <meta name="description" content="Resumo operacional das Guidelines for Safe Ocean Towing (IMO MSC/Circ.884) para planeamento e execução de reboques comerciais." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'media',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-image: radial-gradient(circle at 100% 0%, rgba(14,165,233,0.12) 0%, transparent 28%),
+                        radial-gradient(circle at 0% 100%, rgba(79,70,229,0.12) 0%, transparent 28%);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      .glass-card {
+        background: rgba(30, 41, 59, 0.55);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+    a:focus-visible { outline: 2px solid rgb(14 165 233); outline-offset: 2px; }
+    .prose-imo h2 { scroll-margin-top: 5rem; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 text-[15px] leading-relaxed">
+  <header class="sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/80 backdrop-blur-md">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+      <a href="index.html" class="text-sm font-semibold text-sky-600 dark:text-sky-400 hover:underline">← T‑Sim</a>
+      <div class="flex items-center gap-2 text-sm">
+        <a href="reboqueoceanico242TSIM.html" class="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-medium">Simulador 3D</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-10 pb-20 prose-imo">
+    <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-400">Organização Marítima Internacional</p>
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">Melhores práticas para reboque oceânico</h1>
+    <p class="text-slate-600 dark:text-slate-400 mt-2">Síntese com base no documento <strong>MSC/Circ.884</strong> — <em>Guidelines for Safe Ocean Towing</em> (21 de dezembro de 1998). O texto completo e os anexos oficiais: <a href="imo-guidelines-for-safe-ocean-towing.pdf" class="text-sky-600 dark:text-sky-400 font-medium hover:underline">abrir PDF local (imo-guidelines-for-safe-ocean-towing.pdf)</a>.</p>
+
+    <div class="mt-6 glass-card rounded-2xl p-5 border-l-4 border-amber-500 text-sm text-amber-950/90 dark:text-amber-100/90 dark:bg-amber-950/20">
+      <strong>Nota.</strong> Estas diretrizes são de natureza <strong>consultiva</strong>. Aplicam-se a <strong>reboques comerciais em alto mar</strong>, distintos de operações de salvamento ou de socorro. A organização, o planeamento e a execução devem sempre cumprir a legislação e os regulamentos nacionais e os manuais da embarcação.
+    </div>
+
+    <section id="objectivos" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">1. Objetivos e âmbito</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li>Promover a <strong>segurança da vida humana</strong> no mar, a prevenção de lesões, a <strong>proteção do ambiente</strong> (em particular o marinho) e dos bens.</li>
+        <li><strong>Reboque oceânico</strong> (definição do circular): distância entre portos de refúgio ou ancoragem segura ao longo da rota <strong>superior a 24 h</strong>, com as condições meteorológicas em conta — não se confunde com reboque costeiro de curto prazo se a lógica de exposição for diferente.</li>
+        <li>Aplicam-se a reboques <strong>internacionais</strong> de um Estado para outro; o conteúdo pode apoiar outros reboques no oceano.</li>
+        <li>Reforço de competências a partir da resolução A.765(18) sobre objetos rebocados e reboque de estruturas no mar (contexto geral, distinto de salvamento comercial de tipo <em>salvage</em>).</li>
+      </ul>
+    </section>
+
+    <section id="definicoes" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">2. Definições operacionais (extrato)</h2>
+      <dl class="mt-3 space-y-3 text-slate-700 dark:text-slate-300">
+        <div class="glass-card rounded-xl p-4">
+          <dt class="font-semibold text-slate-900 dark:text-white">Bollard pull (BP)</dt>
+          <dd>Tração contínua à bolina, <strong>documentada</strong>.</dd>
+        </div>
+        <div class="glass-card rounded-xl p-4">
+          <dt class="font-semibold text-slate-900 dark:text-white">Breaking load (BL) / MBL</dt>
+          <dd>Carga mínima de rotura <strong>documentada</strong> (minimum breaking load).</dd>
+        </div>
+        <div class="glass-card rounded-xl p-4">
+          <dt class="font-semibold text-slate-900 dark:text-white">Tow (conjunto de reboque)</dt>
+          <dd>Navio de reboque, equipamento de reboque, <strong>objeto rebocado</strong>, respetivo equipamento, carga e arrumação de carga que integra a operação.</dd>
+        </div>
+        <div class="glass-card rounded-xl p-4">
+          <dt class="font-semibold text-slate-900 dark:text-white">Towing master</dt>
+          <dd>Responsável global pelo <strong>reboque</strong>; muitas vezes o <em>master</em> do rebocador (ou o do rebocador líder, em convés duplo). A autoridade do <em>master</em> em lei marítima conserva-se.</dd>
+        </div>
+        <div class="glass-card rounded-xl p-4">
+          <dt class="font-semibold text-slate-900 dark:text-white">Períodos de retorno 1 e 10 anos</dt>
+          <dd>Combinação estatística desfavorável de vento, onda e corrente que se espera, em média, uma vez por ano / por dez anos — usada no desenho de <strong>condições ambientais de referência</strong>.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section id="responsabilidades" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">3. Responsabilidades e tripulação</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li>Definir <strong>linhas de comando e funções</strong> antes de largar; o <strong>towing master</strong> conduz a operação, integrando as presentes diretrizes, o regulamento aplicável e as medidas de segurança adicionais que imponha.</li>
+        <li>Rebocador em regime <strong>24 h</strong>, alinhado ao Código STCW, com efectivos suficientes para <strong>restabelecer a ligação de reboque</strong> e, se previsto, embarcar no rebocado <strong>à deriva ou não tripulado</strong> em emergência.</li>
+        <li>Rebocado <strong>tripulado</strong>: restringir pessoal ao mínimo necessário. Transferências rebocador ↔ rebocado em emergência: <strong>coletes / fatos de imersão</strong>, rádio portátil, luzes, escolha de fato de imerso adequada à perda de calor da zona.</li>
+      </ul>
+    </section>
+
+    <section id="planeamento" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">4. Planeamento, preparação e vistoria</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li><strong>Planeamento</strong>: condições ambientais máximas previstas (incl. marés, correntes, calados), tamanho, <strong>área lateral (exposta)</strong>, deslocamento e calado do rebocado, carga e <strong>arrumação e amarragem de carga</strong>; cálculo de forças em arrumações excepcionais; <strong>weather routeing</strong> quando apropriado; <strong>bollard pull</strong> compatível; procedimentos que minimizem risco a pessoal.</li>
+        <li><strong>Contingência</strong> para agravamento do tempo: <strong>parar, abrigar, reduzir exposição</strong>; pessoal familiarizado com o plano. Se o rebocado estiver tripulado, o plano de contingência deve estar também aí a bordo.</li>
+        <li><strong>Período de desenho ambiental (orientação) — duração do reboque</strong>: &lt; 5 dias → <strong>período de retorno 1 ano</strong>; &gt; 5 dias → <strong>10 anos</strong> (pior combinação ao longo da rota, cf. anexo).</li>
+        <li><strong>Preparação</strong>: o conjunto (tow) <strong>não</strong> deve largar sem inspecção <strong>satisfatória</strong> pelo towing master (e, se pedido, por outra pessoa competente). Só com condições actuais e previstas que permitam ganhar <strong>mar com margem</strong> face a costa de sotavento e demais riscos.</li>
+        <li><strong>Vistoria adicional</strong> por organização competente: quando o risco for elevado ou não for julgável só por experiência de mar.</li>
+      </ul>
+    </section>
+
+    <section id="ambiente" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">5. Condições ambientais de desenho e meteo</h2>
+      <p class="mt-3 text-slate-700 dark:text-slate-300">O objeto rebocado, com carga e amarrações, deve resistir às <strong>piores condições</strong> sazonais e de área previstas. Em rotas longas com mar diferente, usar o <strong>pior estado de mar</strong> da rota para carga e estanqueidade.</p>
+      <p class="mt-4 text-slate-700 dark:text-slate-300"><strong>Critério de referência para manter posição do conjunto (BP)</strong> — atuando <strong>na mesma direção</strong> (documento: vento, onda e corrente alinhados no critério de desenho):</p>
+      <ul class="mt-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li>Vento: <strong>20 m/s</strong></li>
+        <li>Altura de onda significativa: <strong>5 m</strong></li>
+        <li>Corrente: <strong>0,5 m/s</strong></li>
+      </ul>
+      <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">Outros critérios podem ser aceites se a previsão meteorológica e a experiência local forem muito fidedignas.</p>
+      <p class="mt-4 text-slate-700 dark:text-slate-300"><strong>Previsão do tempo</strong> (mínimo): sinopse; vento; altura e período de onda; altura e período de swell; <strong>perspectiva 48 h</strong>. Fonte disponível 24 h quando possível; reboque longo: previsão pelo menos a cada <strong>24 h</strong>; risco elevado: considerar <strong>segunda opinião</strong> meteo.</p>
+    </section>
+
+    <section id="rebocador" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">6. Requisitos do navio de reboque</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li>Certificados de navio de carga válidos, conforme dimensão; <strong>documentação de bollard pull</strong> e de <strong>todo o equipamento de reboque</strong> (seção 12).</li>
+        <li>BP contínuo à potência máxima contínua <strong>documentado</strong>; teste conforme <strong>Apêndice A</strong> (ou procedimento equivalente).</li>
+        <li>Reserva de <strong>combustível</strong> adequada à duração; reabastecimento em rota acordado antes de largar.</li>
+        <li><strong>Registo de reboque</strong> (Apêndice B) e registo de motor; <strong>manutenção</strong> de comunicações, navegação, propulsão, leme e aparelho de reboque.</li>
+        <li>Requisitos mínimos: radar, combate a incêndio autónomo, VHF (DSC se não GMDSS), bússola, eco à proa, leitor de posição, cartas e publicações, etc. (ver circular).</li>
+      </ul>
+    </section>
+
+    <section id="equipamento" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">7. Equipamento de reboque (resumo)</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li>Projeto e normas reconhecidas; conjunto com <strong>resistência adequada</strong> à operação em causa.</li>
+        <li><strong>Guincho de reboque</strong>; travões com <strong>capacidade de retenção estática</strong> compatível com a <strong>MBL</strong> do cabo (camada no tambor onde se reboca).</li>
+        <li>Liberação de <strong>emergência</strong> da tração; extremo do cabo no tambor como <strong>elo fraco</strong>; possibilidade de sequência de emergência após <em>black-out</em>.</li>
+        <li>Medição de <strong>tração no cabo</strong> (média e picos) recomendada, com indicação na ponte de comando.</li>
+        <li><strong>Proteção</strong> contra freadura (abrasão) do cabo; sem arestas vivas na popa; luvas de sobra.</li>
+        <li>Comprimento mínimo do <strong>cabo de reboque principal</strong>, na ausência de outro critério: L = (BP/BL) × 1800 m, com BL = carga de rotura documentada, BP = bollard pull (seção 12.9 do circular).</li>
+        <li>Todos os cabos de aço de serviço com o <strong>mesmo sentido de torção</strong> (lay).</li>
+        <li>Terminações com <strong>olhais reforçados / sockets</strong>, excepto a ligação ao tambor.</li>
+        <li>Manilhas, anéis, etc.: capacidade <strong>≥ 1,5 × MBL</strong> do arranjo de reboque usado (50% de margem sobre MBL — ver texto inglês: “50% in excess of MBL”).</li>
+        <li><strong>Pennant em fibra</strong> (fibre rope): regras de múltiplos da MBL do cabo principal conforme faixa de BP; construção em grommet, olhais, evitar ligação directa no vértice do briddle.</li>
+        <li><strong>Cabodeira sobressalente</strong> a bordo, satisfazendo o mesmo; se dois tambores, arrumação e mudança rápida; dois reboques independentes requerem peça de reserva adicional, conforme circular.</li>
+        <li>Inspecionar o cabo após <strong>cada</strong> reboque; recusar uso se <strong>desgaste &gt; 10%</strong> de secção, torção severa, ou terminais danificados.</li>
+      </ul>
+
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mt-6">Tabela 12.11 — MBL mínima (tf) do cabo principal (extracto)</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400">BP em toneladas de força (tf); MBL mínima documentada. Valores adaptados do texto original; consultar tabela no PDF.</p>
+      <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+        <table class="w-full text-sm text-left">
+          <thead>
+            <tr class="bg-slate-200/80 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100">
+              <th class="p-2 sm:p-3">Bollard pull (BP) tf</th>
+              <th class="p-2 sm:p-3">MBL mínima (regra)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-slate-200 dark:border-slate-700">
+              <td class="p-2 sm:p-3">&lt; 40</td>
+              <td class="p-2 sm:p-3">MBL = <strong>3,0 × BP</strong></td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+              <td class="p-2 sm:p-3">40 a 90</td>
+              <td class="p-2 sm:p-3">MBL = <strong>(3,8 − BP/50) × BP</strong></td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700">
+              <td class="p-2 sm:p-3">&gt; 90</td>
+              <td class="p-2 sm:p-3">MBL = <strong>2,0 × BP</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="rebocado" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">8. Objeto rebocado</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li><strong>Aptidão</strong> para reboque documentada: estabilidade intacta (e avariada se aplicável), integridade de casco e carga, condições de <strong>estanqueidade e integridade a intempéries</strong>.</li>
+        <li><strong>Brida de reboque</strong> (<em>bridle</em>, espelho) de uso corrente na ligação do cabo à embarcação; <strong>corrente</strong> em zonas de freadura; cada perna e ligação com MBL <strong>superior</strong> à do arranjo de cabo; fundações a <strong>≥ 1,3 × MBL</strong> do trecho a fixar; corrediças (<em>fairleads</em>) com forma que limite flexão local na corrente.</li>
+        <li>Meios de <strong>recuperar a brida</strong> após rotura, se o plano o prever; <strong>reboque de emergência</strong> em popa, com reserva flutuante se possível.</li>
+        <li>Luces, formas, sinais sonoros (se tripulado) conforme COLREG; luzes duplicadas quando praticável. Meios de embarque em ambos os bordos. Leme ao meio, veio parado, quando aplicável.</li>
+        <li>Aparelho de <strong>salvamento</strong> (coletes, bóias) e, estando pessoal a bordo por tempo longo, <strong>jangadas</strong>; freeboard &gt; 4,5 m: davits para jangada se razoável.</li>
+        <li>Âncora e cabo (ou cabo de aço) em condições de <strong>largar em emergência</strong>; restringir óleo a bordo para reduzir risco de poluição.</li>
+      </ul>
+    </section>
+
+    <section id="emergencia" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">9. Em emergência</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li>Se o reboque constituir <strong>perigo direto</strong> à navegação, estruturas ou costa (ex.: a deriva), o <em>master</em> do rebocador está sujeito ao art. V/2 do SOLAS: comunicar por todos os meios às unidades no raio e às <strong>autoridades costeiras</strong> competentes, logo que possível.</li>
+        <li>Recuperar o reboque à deriva com <strong>boa prática de mar</strong> e com atenção a estação e área.</li>
+      </ul>
+    </section>
+
+    <section id="alinhamento-tsim" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">10. Alinhamento com o T‑Sim (dashboard e 3D)</h2>
+      <p class="mt-3 text-slate-700 dark:text-slate-300">O T‑Sim é um <strong>modelo reduzido</strong> para estudar catenária, tração, limites de linha e resistência de um comboio. Não implementa a totalidade do MSC/Circ.884, mas estes campos reutilizam as <strong>mesmas grandezas e ordens de grandeza</strong> do circular:</p>
+      <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-slate-200/80 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100">
+              <th class="p-2 sm:p-3">IMO / documento</th>
+              <th class="p-2 sm:p-3">Onde no T‑Sim</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-slate-200 dark:border-slate-700">
+              <td class="p-2 sm:p-3">BP documentado; limite de tração do rebocador</td>
+              <td class="p-2 sm:p-3">Painel <strong>Bollard Pull (80 tf</strong> por defeito); a tração em <em>T</em> fica limitada a BP no <a href="index.html#calc" class="text-sky-600 dark:text-sky-400 underline">calculador 2D</a>. No <a href="reboqueoceanico242TSIM.html" class="text-sky-600 dark:text-sky-400 underline">3D</a> a soma de força nas hélices é tectada a <strong>~80 tf</strong> (coerente com o mesmo ponto de partida).</td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+              <td class="p-2 sm:p-3">Tabela 12.11 e fórmula de comprimento mínimo (sec. 12.9)</td>
+              <td class="p-2 sm:p-3">No acordeão <em>Limites Avançados &amp; Safety</em> do <a href="index.html#calc" class="text-sky-600 dark:text-sky-400 underline">index</a>, o painel <strong>MSC/Circ.884</strong> compara o seu MBL (kN) ao mínimo indicativo e calcula <strong>L mín. = (BP/BL) × 1800 m</strong> com o MBL que introduziu (BL e BP em tf, como no circular).</td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700">
+              <td class="p-2 sm:p-3">Vento 20 m/s, H<sub>s</sub> 5 m, corrente 0,5 m/s, alinhados</td>
+              <td class="p-2 sm:p-3">No 3D, o botão <strong>«MSC/Circ.884 — ambiente de referência»</strong> aplica 20 m/s, 5 m de onda, 0,5 m/s de corrente, com <strong>vento e corrente à mesma direção</strong> (90°) para o critério “na mesma direção”. A <strong>corrente por defeito</strong> (0,5 m/s) coincide já com o documento. Na <a href="index.html#tabelaVelocidade" class="text-sky-600 dark:text-sky-400 underline">tabela por velocidade</a>, o botão <strong>Hs 5</strong> ajusta a altura de onda para o mesmo H<sub>s</sub> de referência (via modelo de R<sub class="lowercase">T</sub>).</td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+              <td class="p-2 sm:p-3">BKI Vol.12 — V<sub>w</sub> 20 m/s, V<sub>c</sub> 1,0 m/s (proa; Sec.3 B.3.2)</td>
+              <td class="p-2 sm:p-3">No 3D, o botão <strong>«BKI Vol.12 — ref.»</strong> aplica vento 20 m/s, corrente <strong>1,0 m/s</strong> e H<sub>s</sub> 5 m (para comparar com o predef. IMO). Detalhe e limites fora de catenária: <a href="#bki-vol12" class="text-sky-600 dark:text-sky-400 underline">secção 11 abaixo</a>.</td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700">
+              <td class="p-2 sm:p-3">CCS (GD 02-2012) — 20/5/0,5; zona <em>benigna</em> 15/2</td>
+              <td class="p-2 sm:p-3">Mesmo critério normativo que o MSC. Zona de mar mais calmo: 15 m/s e H<sub>s</sub> 2 m. Predefinido 3D <strong>«Zona benigna (CCS)»</strong>. Tabela MBL e comprimentos: <a href="#ccs-towage-2012" class="text-sky-600 dark:text-sky-400 underline">secção 12</a>.</td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+              <td class="p-2 sm:p-3">WLL / MBL, fator de utilização, guincho</td>
+              <td class="p-2 sm:p-3">WLL e MBL alimentam o tecto de tração; no 3D, o submódulo de segurança do cabo usa <strong>MBL</strong> e códigos de cor na linha (faixas de utilização), em linha com a lógica de <strong>não aproximar a rotura</strong> do documento (sem substituir inspecção e certificados).</td>
+            </tr>
+            <tr class="border-t border-slate-200 dark:border-slate-700">
+              <td class="p-2 sm:p-3">Período de retorno, planeamento 24/48 h, STCW, COLREG, SMS</td>
+              <td class="p-2 sm:p-3">Fora de âmbito do simulador; use o <a href="imo-guidelines-for-safe-ocean-towing.pdf" class="text-sky-600 dark:text-sky-400 underline">PDF</a> e o procedimento da sua empresa.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="bki-vol12" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">11. Complemento: BKI Pt.1 Vol.12 (2021)</h2>
+      <p class="mt-2 text-slate-600 dark:text-slate-400 text-sm">As <em>Guidelines for Safe Ocean Towing</em> do Biro Klasifikasi Indonesia (edição 2021) alinham a estrutura com documentos da IMO e requisitos IACS, mas acrescentam <strong>regras de classificação</strong> (reboque, guincho, provas) e formulações de <strong>“controlled transport”</strong> além do que o T‑Sim modela. Ficheiro local: <a href="651289698-BKI-Guidelines-for-Safe-Ocean-Towing.pdf" class="text-sky-600 dark:text-sky-400 font-medium hover:underline">651289698-BKI-Guidelines-for-Safe-Ocean-Towing.pdf</a>.</p>
+
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mt-5">O que reforça o mesmo enquadramento do IMO</h3>
+      <ul class="mt-2 space-y-1.5 list-disc pl-5 text-slate-700 dark:text-slate-300 text-sm">
+        <li>Reboque <strong>oceânico</strong> vs <strong>local</strong> com o mesmo critério de <strong>24 h</strong> (com meteorologia) entre portos de refúgio ou ancoragem segura (Sec.1).</li>
+        <li>Definições de <strong>BP</strong>, <strong>BL/MBL</strong>, <em>tow</em>, <em>towing master</em>, períodos de retorno <strong>1 e 10 anos</strong> (Sec.1).</li>
+        <li>Ênfase em documentação, boa prática de mar, inspecção do reboque quando o tempo o permitir, e comunicação com sociedade classificadora em operações sujeitas a certificação (Sec.3).</li>
+      </ul>
+
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mt-5">Diferenças ou extras úteis face ao simulador / MSC/Circ.884</h3>
+      <ul class="mt-2 space-y-1.5 list-disc pl-5 text-slate-700 dark:text-slate-300 text-sm">
+        <li><strong>Referência “manter o reboque em posição” (Sec.3 B.3.2):</strong> o BKI cita, como valor geral, vento de proa <strong>V<sub>w</sub> = 20 m/s</strong> e corrente de proa <strong>V<sub>c</sub> = 1 m/s</strong> (sem combinar, no mesmo parágrafo, H<sub>s</sub> = 5 m como o MSC/Circ.884). A nota de rodapé esclarece que <strong>derivar controlado</strong> com condições piores no mar aberto pode ser aceitável; o critério é orientador, não “limite de segurança” em todas as fases do reboque. No T‑Sim existe um <strong>segundo predefinido 3D</strong> (BKI) com <strong>corrente 1,0 m/s</strong> para comparar com o predefinido MSC (0,5 m/s).</li>
+        <li><strong>“Extremo” em transporte controlado (Sec.3 D.2.2.4):</strong> condições tidas como extremas para aceitar deriva de proa: vento <strong>&gt; 20 m/s</strong>, H<sub>s</sub> <strong>&gt; 7,5 m</strong>, corrente <strong>&gt; 1 m/s</strong> — serve de <em>faixa de referência</em> para leitura de cenários, não implementada como alarme no T‑Sim.</li>
+        <li><strong>Mar pesado (Sec.3 D.2.2.6):</strong> a velocidade de reboque V<sub>s</sub> pode ser limitada a <strong>2 nós</strong> (o PDF escreve “2 kN”, o que, no contexto, corresponde a 2 nós) quando o encontro onda–casco cumpre critérios de comprimento de onda vs comprimento do rebocado. O T‑Sim não dimensiona V<sub>s</sub> por criterio onda/comprimento; a <a href="index.html#tabelaVelocidade" class="text-sky-600 dark:text-sky-400 underline">tabela por velocidade</a> continua a ser a ferramenta para explorar T/subida e tração em função de nós.</li>
+        <li><strong>Cabo vs tração (Sec.2 B.2):</strong> com a tração de serviço <em>T</em>, o cabo deve apresentar pelo menos <strong>2,5×</strong> de margem em relação à carga mínima de rotura (formulação de segurança ao material). Isto <strong>complementa</strong> a tabela MBL vs BP do IMO: no dashboard pode cruzar-se <span class="font-mono">T</span> com <span class="font-mono">MBL/2,5</span> para uma verificação rápida de ordem de grandeza.</li>
+        <li><strong>Pontos de amarra no rebocado (Sec.3 C.4.2):</strong> pontos fortes a resistir a pelo menos <strong>1,2×</strong> a rotura do cabo/corrente; rebitagens de guia com esforço de dimensionamento <strong>+20 %</strong> face à rotura do cabo (D.3.2.3) — o <strong>IMO</strong> usa em vários sítios <strong>1,3×</strong> MBL nas fundações; trata-se de requisitos de projeto, fora do âmbito de catenária do T‑Sim.</li>
+        <li><strong>Estimativa de T a partir de potência (Sec.2 B.1.3):</strong> com bocal Kort até <strong>245 N/kW</strong> (~18 kg/HP), sem bocal até <strong>160 N/kW</strong> (~12 kg/HP), quando T não é conhecida. Pode servir de <em>sanity check</em> ao BP inserido (não calculado automaticamente no T‑Sim).</li>
+        <li><strong>Diâmetro do tambor (Sec.2 C.3):</strong> o diâmetro do tambor do guincho ≥ <strong>14×</strong> o diâmetro do cabo de reboque — parâmetro de construção, útil se um dia quiserem acrescentar preset por Ø do cabo.</li>
+        <li><strong>Prova de bollard pull a bordo (Sec.2 D.2.2):</strong> registo de rumo, vento, corrente, extensão de linha (~100 m) — o mesmo “pacote de contexto” que o MSC pede de forma análoga; reforça a ideia de que o 3D é ilustrativo e não um relatório de ensaio.</li>
+      </ul>
+
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mt-5">O que <em>não</em> faz sentido “colar” no simulador sem outro módulo</h3>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Tabelas de carga de prova PL em função de T (Tabela 2.1), soldadura de gancho, critério Category III do sistema de libertação, espectros de análise de cargo em “controlled transport” (D.2) e cálculo estatístico de T<sub>s</sub> com fórmula logarítmica (D.2.3.2) exigem <strong>inputs de rota, espectro de mar, massa de carga e integração temporal</strong> — estão fora do escopo actual do T‑Sim (catenária + R<sub class="lowercase">T</sub> + condição ambiental simplificada).</p>
+    </section>
+
+    <section id="ccs-towage-2012" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">12. CCS — <em>Guidelines for Towage at Sea</em> (GD 02-2012)</h2>
+      <p class="mt-2 text-slate-600 dark:text-slate-400 text-sm">Documento da <strong>China Classification Society (CCS)</strong>, notas de orientação <strong>GD 02-2012</strong>, com eficácia a <strong>1 de janeiro de 2012</strong> (ficheiro local: <a href="Guidelines%20for%20Towage%20at%20Sea,%202011.pdf" class="text-sky-600 dark:text-sky-400 font-medium hover:underline">Guidelines for Towage at Sea, 2011.pdf</a> — título com “2011”, vigência 2012 na capa). Aplica-se a reboque no mar <strong>comercial</strong>, fora de salvamento, em linha com a estrutura IMO/IACS descrita noutros guias de sociedade.</p>
+
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mt-5">Validação (coerente com o que já usam no T‑Sim)</h3>
+      <ul class="mt-2 space-y-1.5 list-disc pl-5 text-slate-700 dark:text-slate-300 text-sm">
+        <li><strong>Condições ambientais “normativas” (Def. 1.4.15):</strong> idênticas às do MSC/Circ.884 — vento <strong>20 m/s</strong>, altura de onda significativa <strong>5 m</strong>, corrente <strong>0,5 m/s</strong>, <strong>na mesma direção</strong> para contrabalançar a tração exigida ao conjunto. O predefinido <strong>MSC</strong> no 3D reproduz este trio.</li>
+        <li><strong>Definição de bollard pull (1.4.4):</strong> tração contínua certificada com navio a <strong>velocidade zero</strong> em água calma, vento <strong>≤ 5 m/s</strong> (Bft &lt; 3) e corrente <strong>≤ 0,5 m/s</strong> — alinhado ao espírito do Apêndice A do circular IMO.</li>
+        <li><strong>Tabela 5.3.8 — MBL mínima do cabo (kN) em função de BP (kN):</strong> a mesma lógica em três faixas que a tabela 12.11 do IMO (em tf): BP <strong>&lt; 392 kN</strong> → <strong>3,0×BP</strong>; <strong>392–883 kN</strong> → <strong>(3,8 − BP/491)×BP</strong> (note: 491 kN ≈ 50 t × 9,81); BP <strong>&gt; 883 kN</strong> → <strong>2,0×BP</strong>. O painel do T‑Sim converte com BP em <strong>tf</strong>; os números indicativos coincidem.</li>
+        <li><strong>Comprimento do cabo principal (Tabela 5.3.8):</strong> a parte proporcional <strong>BP/MBL×1800 m</strong> é a mesma fórmula do IMO para reboque <strong>longo</strong> (&gt; 72 h). A CCS distingue ainda 24–72 h e &lt; 24 h com <strong>×1200 m</strong> e <strong>comprimentos mínimos absolutos</strong> (p.ex. 650 m / 500 m) — ainda <strong>não</strong> exibidos no dashboard (só a regra 1800 m).</li>
+        <li><strong>Acessórios (5.3.1(4)):</strong> manilhas, anéis, etc. com MBL <strong>≥ 1,5×</strong> a do cabo; pontos de reboque no rebocado (5.3.10) com <strong>1,3×</strong> MBL do cabo — já mencionado no resumo IMO.</li>
+        <li><strong>Rejeitar cabo (4.1.8):</strong> desgaste &gt; <strong>10 %</strong> de secção, torção severa, terminais danificados — igual em espírito ao circular IMO.</li>
+      </ul>
+
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mt-5">Complementos úteis (parcialmente aplicáveis no simulador)</h3>
+      <ul class="mt-2 space-y-1.5 list-disc pl-5 text-slate-700 dark:text-slate-300 text-sm">
+        <li><strong>Zona <em>benigna</em> (Def. 1.4.16):</strong> vento <strong>15 m/s</strong>, H<sub>s</sub> <strong>2 m</strong> (com exclusões geográficas de monções). No 3D existe o predefinido <strong>«Zona benigna (CCS)»</strong> (15 m/s, 2 m, corrente 0,5 m/s) para cenários mais leves que o triplo 20/5/0,5.</li>
+        <li><strong>Reboque à popa (4.1.3):</strong> o documento indica reforçar a ordem de grandeza do BP em cerca de <strong>+20 %</strong> quando a forma do comboio piora a manutenção de rumo; pode lembrar-se ao ajustar o BP no painel, mas o T‑Sim não aplica o factor automaticamente.</li>
+        <li><strong>Velocidades mínimas de serviço em água calma (4.1.5):</strong> ex.: <strong>6 kn</strong> para rebocado “tipo navio”, <strong>5 kn</strong> formas especiais, <strong>4 kn</strong> plataformas — servem de <em>enquadramento</em> da <a href="index.html#tabelaVelocidade" class="text-sky-600 dark:text-sky-400 underline">tabela por velocidade</a>, não como alarme no canvas.</li>
+        <li><strong>Apêndice 2 — resistência de reboque oceânico R<sub class="lowercase">T</sub>:</strong> fórmula empírica <strong>1,15 (R<sub>f</sub>+R<sub>B</sub>+R<sub>ft</sub>+R<sub>Bt</sub>)</strong> com parcelas de atrito e residual do rebocador e do rebocado; o T‑Sim usa outro <strong>modelo reduzido</strong> (curvas de casco + mar do 3D). Ambos são <strong>aproximações</strong> — bons para comparar ordens de grandeza, não para “provar” um certificado CCS.</li>
+        <li><strong>Prova de BP (Apêndice 3):</strong> similar ao IMO: linha <strong>≥ 300 m</strong> (ou <strong>≥ 2×</strong> comprimento do navio), profundidade, <strong>10 min</strong> de média, calado, etc. — o 3D não simula a prova.</li>
+        <li><strong>Travão do guincho (5.2.2):</strong> capacidade estática da ordem de <strong>1,1× MBL</strong> do cabo; <strong>elo fraco</strong> no tambor 98 kN a 15 % MBL (5.2.9) — parâmetros de projecto, não calculados no T‑Sim 2D.</li>
+      </ul>
+
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mt-5">Fora do âmbito do T‑Sim actual</h3>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Certificado CCS de <em>fitness for towage</em>, requisitos de tripulação, Apêndice 1 (esforços em carga e amarras com vento 50 m/s nalguns cálculos), múltiplos reboques (Apêndice 5) e tabelas completas de movimentos (Apêndice 1) exigem <strong>dados de classe, carga, rota e aprovação</strong>.</p>
+    </section>
+
+    <section id="anexos" class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">13. Apêndices do circular IMO (PDF)</h2>
+      <ul class="mt-3 space-y-2 list-disc pl-5 text-slate-700 dark:text-slate-300">
+        <li><strong>Apêndice A</strong> — Procedimento de <strong>teste de bollard pull</strong> (condições de calado, comprimento mínimo de linha de ensaio, duração 10 min, vento e corrente limitados, célula de carga, etc.).</li>
+        <li><strong>Apêndice B</strong> — Modelo de <strong>registo de reboque</strong> (cabo, sobressalente, ligação, notas, condições ambientais, tensões, etc.).</li>
+      </ul>
+    </section>
+
+    <div class="mt-12 p-4 rounded-2xl bg-slate-200/30 dark:bg-slate-800/50 border border-slate-300/50 dark:border-slate-600/40 text-sm text-slate-600 dark:text-slate-400">
+      <strong class="text-slate-800 dark:text-slate-200">Aviso legal e técnico.</strong> Isto é um resumo educativo. Não substitui a leitura do <strong>MSC/Circ.884</strong>, da legislação e regulamentos aplicáveis, do SMS da empresa, nem de manuais de equipamento e de rebocador/rebocado. A <strong>Organização Marítima Internacional (IMO)</strong> e os títulos citados pertencem aos respetivos titulares.
+    </div>
+
+    <p class="mt-8 text-center text-sm text-slate-500">
+      <a href="index.html" class="text-sky-600 dark:text-sky-400 font-medium hover:underline">Voltar ao T‑Sim</a>
+      ·
+      <a href="reboqueoceanico242TSIM.html" class="text-sky-600 dark:text-sky-400 font-medium hover:underline">Simulador 3D</a>
+    </p>
+  </main>
+</body>
+</html>
