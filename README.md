@@ -1,8 +1,10 @@
-# T‑Sim (ts-sim)
+# T‑Sim (`ts-sim`)
 
 **TugLife Systems** — Catenária, tração em reboque oceânico e simulador 3D (ASD, cabo, ambiente).
 
-- **Jossian Brito** · TugLife Systems
+**Autoria:** Jossian Brito · TugLife Systems
+
+Repositório: [github.com/Jbvix/ts-sim](https://github.com/Jbvix/ts-sim)
 
 ## Conteúdo
 
@@ -24,13 +26,13 @@ Abrir `index.html` no browser (ou `reboqueoceanico242TSIM.html`).
 
 ## Deploy (Netlify)
 
-1. Ligar o repositório GitHub a **Netlify** → *Add new site* → *Import an existing project* → escolher `Jbvix/ts-sim`.
-2. **Build command:** vazio, ou o valor em `netlify.toml` (echo).
-3. **Publish directory:** `.` (raiz do repositório).
-4. **Domínio:** em *Domain settings* configure o subdomínio `*.netlify.app` ou domínio próprio.
+1. [Netlify](https://app.netlify.com) → *Add new site* → *Import an existing project* → escolher **Jbvix/ts-sim** (GitHub).
+2. **Build command:** deixe vazio; o `netlify.toml` define `echo T-Sim static site` (site estático).
+3. **Publish directory:** `.` (raiz).
+4. *Deploy site* — o site fica em `https://<subdomínio>.netlify.app`.
 
-> PDFs de referência (guías IMO, BKI, USN) estão no repositório para consulta; são grandes — clone pode demorar.
+> PDFs de referência (guías IMO, BKI, USN) estão no repositório; o clone pode ser pesado.
 
 ## Licença
 
-Ver `LICENSE` (MIT, se presente no remoto) ou a licença do projeto original.
+MIT — ver ficheiro `LICENSE` no repositório.
