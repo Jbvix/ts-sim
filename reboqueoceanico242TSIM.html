@@ -167,7 +167,8 @@
 
          <div id="winchPanel" class="panel hidden">
             <h4>Guincho e Cabo</h4>
-            <p class="text-[10px] leading-snug mb-2 border-b border-slate-600/50 pb-2" style="color:#8da4b7;">O peso do cabo na água dá a <strong>flecha e o seio</strong> da catenária: essa <strong>dinâmica de curva</strong> (ângulo e tração na boca) é o que, na prática, mais <strong>amortece e filtra</strong> puxo entre navio e rebocador. No simulador, quando o <strong>vão 3D &gt; cabo pago</strong> (<span class="font-mono">S₃ &gt; L</span>), o alongamento <strong>axial</strong> por rigidez <span class="font-mono">EA</span> atua como <strong>“mola” numérica</strong> no modelo (simplificador) — <em>não nega</em> a imagem física do seio: são camadas de descrição. Com muito cabo no fundo, o atrito altera ainda o puxo horizontal.</p>
+            <p class="text-[10px] leading-snug mb-1.5 border-b border-slate-600/50 pb-0" style="color:#8da4b7;"><strong>1 — Geometria da catenária (regime de serviço)</strong> — O peso do cabo na água dá <strong>flecha e seio</strong>; a resposta vem de <strong>flecha/seio</strong>, <strong>rotação do ângulo na boca</strong>, <strong>redistribuição do peso suspenso</strong> e <strong>troca entre energia cinética do comboio e energia potencial da curva</strong>. Esse é o <strong>amortecimento percebido</strong> no reboque: <em>não</em> é amortecedor viscoso puro nem aço a esticar como mola helicoidal — é a <strong>geometria da linha</strong> a absorver e devolver energia.</p>
+            <p class="text-[10px] leading-snug mb-2 border-b border-slate-600/50 pb-2" style="color:#8da4b7;"><strong>2 — Rigidez axial <span class="font-mono">EA</span> (condição limite)</strong> — Quando <span class="font-mono">S₃ &gt; L</span> (vão 3D maior que o cabo pago), o modelo precisa de um <strong>canal numérico</strong> para não colapsar a solução: aí entra o termo de alongamento com rigidez <span class="font-mono">EA</span> como <strong>fecho de regime esticado</strong>. Isto <em>não</em> é a explicação principal da “moleza” do tow; domina quando a catenária, na prática, <strong>quase deixou de existir</strong>. Com muito cabo no fundo, o atrito altera ainda o puxo horizontal.</p>
              <div class="control-row">
                 <label>Aparelho de reboque</label>
                 <span class="text-[11px] leading-tight" style="color:#9cc0d4;max-width:14rem;">Aparelho completo: cabo aço + <strong>shock-line em poliamida (nylon)</strong> + corrente + ferragens — peso e EA efetivos no modelo.</span>
@@ -213,7 +214,18 @@
 
         <div id="catenaryGuidePanel" class="panel hidden">
             <h4>Catenária, trancos e procedimento</h4>
-            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;">Com <strong>folga</strong>, o reboque “respira” sobretudo pela <strong>catenária</strong> (flecha, seio, variação de ângulo e tração na boca). O código, quando o <strong>vão 3D &gt; cabo pago</strong>, adiciona <strong>alongamento elástico axial (EA)</strong> e interpola com <span class="font-mono">w</span> — é um <strong>simplificador</strong> para não saltar a força; a imagem física do <strong>seio a trabalhar</strong> mantém-se. <strong>Se retardarmos</strong> a resposta axial (no modelo: suavização de <span class="font-mono">w</span> e teto dT/dt), a <strong>compliance “vertical”</strong> associada à geometria e ao peso da catenária <strong>influencia o comportamento em mais ciclos instantâneos</strong> antes de dominar a rigidez de esticado — não são “duas molas” desacopladas, mas a <strong>ordem no tempo</strong> muda. Trancos surgem nesse <strong>limite</strong> ou por carga/mar bruscos. <strong>Guia didático</strong> — operação real: plano, SMS/DOF, carta.</p>
+            <p class="text-[10px] leading-snug mb-1.5" style="color:#8da4b7;"><strong>Regime 1 — Dominado pela geometria da catenária</strong> — Com <strong>folga</strong>, o reboque “respira” pela curva: <strong>flecha e seio</strong>, <strong>ângulo na boca</strong>, <strong>redistribuição do peso suspenso</strong> e <strong>troca entre energia cinética do comboio e energia potencial da curva</strong>. Esse é o <strong>amortecimento percebido</strong> no serviço (não um amortecedor viscoso puro, nem aço como mola helicoidal) — a <strong>linha</strong>, na geometria, a amortecer e devolver energia.</p>
+            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;"><strong>Regime 2 — Dominado pela rigidez axial (<span class="font-mono">EA</span>)</strong> — Em <strong>condição limite</strong> com <span class="font-mono">S₃ &gt; L</span>, o código adiciona <strong>alongamento elástico axial (EA)</strong> e interpola com <span class="font-mono">w</span> para <strong>fechar numericamente</strong> o regime em que a catenária praticamente <strong>deixou de existir</strong>. O <span class="font-mono">EA</span> é <em>fecho</em> desse esticado — <strong>não</strong> a explicação principal da “moleza” do tow. Suavização de <span class="font-mono">w</span> e teto dT/dt no modelo alteram a <strong>ordem no tempo</strong> entre contributos. Trancos: nesse <strong>limite</strong> ou com carga/mar bruscos. <strong>Guia didático</strong> — operação: plano, SMS/DOF, carta.</p>
+            <div class="mb-2 rounded-md border border-slate-500/50 p-2" style="background:rgba(0,0,0,0.2);">
+                <div class="control-row mb-0">
+                    <label for="catModelPreset" class="font-semibold">Preset do modelo</label>
+                    <select id="catModelPreset" title="Calibração do blend entre geometria da catenária e fecho EA no limite S₃>L.">
+                        <option value="conservador">Conservador (prioriza geometria)</option>
+                        <option value="medio" selected>Médio (equilíbrio)</option>
+                        <option value="agressivo">Agressivo (entra em EA mais cedo)</option>
+                    </select>
+                </div>
+            </div>
             <div class="mb-2 rounded-md border border-slate-500/50 p-2" style="background:rgba(0,0,0,0.2);">
                 <div class="flex items-center justify-between gap-2 mb-1.5">
                     <span class="text-[10px] font-bold" style="color:#7dd3fc;">Risco de tranco (modelo)</span>
@@ -225,7 +237,7 @@
             </div>
             <div class="text-[10px] space-y-1 mb-2 font-mono" style="color:#94a3b8;">
                 <div class="flex justify-between gap-2"><span>Estado (cabo)</span><span id="cat-guide-state">—</span></div>
-                <div class="flex justify-between gap-2"><span>w: catenária ↔ along. (EA)</span><span id="cat-guide-wblend" title="w pesa a interpolação: 0 ≈ efeito catenário (folgado); 1 ≈ vão 3D maior que o cabo, domina a rigidez axial (EA) no código. ↓w favorece curva.">—</span></div>
+                <div class="flex justify-between gap-2"><span>w: geometria cat. ↔ EA (limite)</span><span id="cat-guide-wblend" title="w funde regime de geometria (catenária, folgado) e regime de rigidez axial (EA) quando S₃&gt;L. 0 ≈ peso da geometria; 1 ≈ domina o fecho EA (esticado). Não confundir EA com a ‘moleza’ do serviço em catenária real.">—</span></div>
                 <div class="flex justify-between gap-2"><span>Excesso (S₃−L) m</span><span id="cat-guide-excess">—</span></div>
                 <div class="flex justify-between gap-2"><span>Folga (L−S₃) m</span><span id="cat-guide-folga">—</span></div>
                 <div class="flex justify-between gap-2" title="|(v_reb−v_nav)·û| ao longo do cabo 3D."><span>|v<sub>rel</sub>·û| (m/s)</span><span id="cat-guide-vrel">—</span></div>
@@ -237,8 +249,8 @@
             <p class="text-[9px] font-semibold mb-1" style="color:#7dd3fc;">Procedimento (prevenir tranco, manter catenária)</p>
             <ol class="list-decimal pl-4 space-y-1.5 text-[10px] leading-relaxed" style="color:#cbd5e1;">
                 <li><strong>Antes de acelerar o comboio</strong> — Confirme <strong>cabo pago L</strong> &gt; vão 3D entre amarras S₃ (margem: dezenas de metros em reboque oceânico, conforme plano e o valor de <strong>Folga</strong> exibida aqui e no Guincho).</li>
-                <li><strong>Manter catenária</strong> — Recuse operar de forma contínua em <strong>Reboque (esticado)</strong> ou com <strong>w</strong> elevado (código a injetar muito <strong>EA axial</strong>). Lance mais cabo (guincho) <strong>ou</strong> reduza a velocidade relativa que “fecha” o vão, até o estado voltar a <strong>Catenária (folgado)</strong>.</li>
-                <li><strong>Evitar trancos</strong> — Varie <strong>RPM de comando</strong> e o <strong>comprimento pago</strong> em <strong>passos suaves</strong>; evite 650→máx. em segundos. Aproxime <strong>SOG</strong> e tração de forma a não excitar a <strong>transição catenária ↔ esticado (EA no modelo)</strong> (monitorize <strong>dT/dt</strong> e o painel Towline Safety).</li>
+                <li><strong>Manter catenária</strong> — Evite operar de forma contínua em <strong>Reboque (esticado)</strong> ou com <strong>w</strong> elevado (muito <strong>fecho EA</strong> no limite <span class="font-mono">S₃ &gt; L</span>). Lance mais cabo (guincho) <strong>ou</strong> reduza a velocidade relativa que “fecha” o vão, até o estado voltar a <strong>Catenária (folgado)</strong>.</li>
+                <li><strong>Evitar trancos</strong> — Varie <strong>RPM de comando</strong> e o <strong>comprimento pago</strong> em <strong>passos suaves</strong>; evite 650→máx. em segundos. Aproxime <strong>SOG</strong> e tração de forma a não excitar a <strong>transição geometria (curva) ↔ esticado com EA (modelo)</strong> (monitorize <strong>dT/dt</strong> e o painel Towline Safety).</li>
                 <li><strong>Mar e fundo</strong> — Ondas e trecho de cabo no fundo (Lb) adicionam ruído à tração. Para perceber só a <strong>curva de equilíbrio</strong>, use mar mais calmo (Ambiente) e profundidade coerente com o reboque em curso.</li>
                 <li><strong>Cabo muito pago (L &gt; ~300 m)</strong> — O modelo aplica suavizações; mantenha o mesmo cuidado com mudanças bruscas de carga. Se notar pico, priorize <strong>folga</strong> e <strong>RPM</strong> contínuos, não “salto” de comando.</li>
                 <li><strong>Reboque em curso</strong> — Reveja a cada manobra: S₃, L, tensão, vento e corrente; ajuste guincho e governo com antecedência a fechos de vão (mapa, vista 3D, KPIs). Em caso de dúvida, reduza a energia de fechamento (velocidade / empuxo) antes de forçar o cabo.</li>
@@ -638,6 +650,48 @@ const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}
     dTmaxScaleLong: 0.65
   };
   window.CABLE_INERTIA = CABLE_INERTIA;
+  const CAT_MODEL_PRESETS = {
+    conservador: {
+      name: 'Conservador',
+      engageFracOfTLo: 0.30,
+      wPowBase: 1.55,
+      wPowLongAdd: 0.15,
+      wEnergySlackPenalty: 0.68,
+      sagRetShort: 0.48,
+      sagRetLong: 0.36,
+      lbAttenuation: 0.60,
+      catStateMaxW: 0.10,
+      tautStateMinW: 0.985
+    },
+    medio: {
+      name: 'Médio',
+      engageFracOfTLo: 0.20,
+      wPowBase: 1.35,
+      wPowLongAdd: 0.10,
+      wEnergySlackPenalty: 0.75,
+      sagRetShort: 0.58,
+      sagRetLong: 0.45,
+      lbAttenuation: 0.70,
+      catStateMaxW: 0.08,
+      tautStateMinW: 0.97
+    },
+    agressivo: {
+      name: 'Agressivo',
+      engageFracOfTLo: 0.12,
+      wPowBase: 1.15,
+      wPowLongAdd: 0.05,
+      wEnergySlackPenalty: 0.88,
+      sagRetShort: 0.70,
+      sagRetLong: 0.56,
+      lbAttenuation: 0.82,
+      catStateMaxW: 0.06,
+      tautStateMinW: 0.94
+    }
+  };
+  function getCatModelPreset() {
+    const key = simParams.catModelPreset || 'medio';
+    return CAT_MODEL_PRESETS[key] || CAT_MODEL_PRESETS.medio;
+  }
 
   // Função de interpolação suave para a transição de regimes
   const smoothstep = (a, b, x) => {
@@ -777,9 +831,13 @@ const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}
     
     let T_line = 0, H_trans = 0, T_end_report = 0, sag = 0, a = 0, Lb = 0, state = "CATENARY";
     const excess = S3 - scope_m;
+    const ext = Math.max(0, excess);
+    const slackM = Math.max(0, scope_m - S3);
+    const slackRatio = slackM / Math.max(scope_m, 1e-6);
     /*
      * T-Sim 2.8.3 — cabo longo: janela de mistura alargada, w mais inercial (CABLE_INERTIA), menos mola EA “a saltar”.
      */
+    const preset = getCatModelPreset();
     const scCap = Math.min(scope_m, 2e3);
     const isLongScope = scope_m >= (CABLE_INERTIA.longScopeM || 300);
     const longBoost = isLongScope ? (CABLE_INERTIA.blendSpanScale || 1.4) : 1.0;
@@ -813,12 +871,13 @@ const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}
     const c_geo = Math.max(2.5e4, 180 * wNpm * Math.sqrt(Math.max(scope_m, 1)));
     const dampingGeom = Math.max(0, -c_geo * sagRateCat);
 
-    // --- Mola radial (T≈0 quando excesso ≤ tLo) — rigidez axial com menos “martelo” ---
+    // --- Fecho axial EA no regime limite esticado (não domina em folga geométrica) ---
+    const K_ax = axialK_fromEA(scope_m, towCable);
+    const tautEngage = Math.max(0.02, tLo * preset.engageFracOfTLo);
     let T_taut = 0;
-    if (excess > tLo) {
-        const K_ax = axialK_fromEA(scope_m, towCable);
-        const ext = Math.max(0, excess);
-        const T_elastic = K_ax * ext;
+    if (ext > tautEngage) {
+        const extEff = Math.max(0, ext - tautEngage);
+        const T_elastic = K_ax * extEff;
         const cCrit = 2 * Math.sqrt(TOW_M_RED_EST * K_ax + 1);
         const c_ax = Math.max(0.05 * K_ax, 0.22 * cCrit);
         const relV = vShip.clone().sub(vTug);
@@ -830,14 +889,17 @@ const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}
         T_taut = Math.max(0, softAx * T_elastic + T_damping);
     }
 
-    // --- w ∈ [0,1]: catenária vs axial (smoothstep + viés, EMA) ---
+    // --- w ∈ [0,1]: regime geométrico da catenária ↔ fecho axial EA no limite ---
     if (!Number.isFinite(window._towWBlendEma)) window._towWBlendEma = 0;
-    let wRaw = 0;
-    if (excess >= tHi) wRaw = 1;
-    else if (excess > tLo) wRaw = (excess - tLo) / (tHi - tLo + 1e-9);
-    wRaw = wRaw * wRaw * (3 - 2 * wRaw);
-    const wPow = 1.85 + (isLongScope ? (CABLE_INERTIA.powExtra || 0) : 0);
-    wRaw = Math.pow(wRaw, wPow);
+    // Proxy de energia: curva (geométrica) vs alongamento axial (EA).
+    const E_geo = Math.max(0, Tend_cat * sag_cat);
+    const E_ax = 0.5 * K_ax * ext * ext;
+    let wEnergy = E_ax / Math.max(E_geo + E_ax, 1e-6);
+    if (slackRatio > 0.02) wEnergy *= preset.wEnergySlackPenalty;
+    const wGap = smoothstep(tLo, tHi, ext);
+    let wRaw = Math.max(wGap, Math.pow(Math.max(0, Math.min(1, wEnergy)), 0.85));
+    const wPow = preset.wPowBase + (isLongScope ? preset.wPowLongAdd : 0);
+    wRaw = Math.pow(Math.max(0, Math.min(1, wRaw)), wPow);
     const dtSimW = (typeof window._towSimDt === "number" && window._towSimDt > 0) ? window._towSimDt : 0.018;
     let tauW = 0.65;
     if (isLongScope) {
@@ -852,12 +914,12 @@ const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}
     T_end_report = Math.max(0, T_mix - dampingGeom);
     T_line = Math.max(0, H_mix - 0.65 * dampingGeom);
     H_trans = T_line;
-    const sagRetW = isLongScope ? 0.58 : 0.72;
+    const sagRetW = isLongScope ? preset.sagRetLong : preset.sagRetShort;
     const sagRetention = 1 - sagRetW * wBlend;
     sag = Math.max(0, sag_cat * sagRetention);
-    Lb = (1 - 0.85 * wBlend) * Lb_cat;
-    if (wBlend < 0.04) { state = "CATENARY"; a = a_cat; }
-    else if (wBlend > 0.96) { state = "TAUT"; sag = 0; a = Infinity; Lb = 0; H_trans = T_taut; T_line = T_taut; T_end_report = T_taut; }
+    Lb = (1 - preset.lbAttenuation * wBlend) * Lb_cat;
+    if (wBlend < preset.catStateMaxW && ext <= tautEngage) { state = "CATENARY"; a = a_cat; }
+    else if (wBlend > preset.tautStateMinW && ext > tHi) { state = "TAUT"; sag = 0; a = Infinity; Lb = 0; H_trans = T_taut; T_line = T_taut; T_end_report = T_taut; }
     else { state = "BLEND"; a = (1 - wBlend) * a_cat; }
 
     let T_body = T_end_report;
@@ -1084,6 +1146,7 @@ const mouse = new THREE.Vector2();
 let simParams = {
     windSpeed: 5, windDir: 90, currentSpeed: 0.5, currentDir: 180, waveHeight: 1,
     seabedDepth: 50, thruster1RPM: 0, thruster1Azimuth: 0, thruster2RPM: 0, thruster2Azimuth: 0, isTwinMode: true,
+    catModelPreset: 'medio',
 };
 // Mapeamento dos elementos HTML para fácil acesso no código
 const uiControls = {
@@ -1125,7 +1188,8 @@ const uiControls = {
     extremeTension: { valEl: document.getElementById('extremeTensionValue') },
     cableStateValue: { valEl: document.getElementById('cableStateValue') },
     cableSagVariationValue: { valEl: document.getElementById('cableSagVariationValue') },
-    maxDeploymentSpeedValue: { valEl: document.getElementById('maxDeploymentSpeedValue') }
+    maxDeploymentSpeedValue: { valEl: document.getElementById('maxDeploymentSpeedValue') },
+    catModelPreset: { el: document.getElementById('catModelPreset') }
 };
 
 // --- Funções Utilitárias ---
@@ -1393,6 +1457,15 @@ document.getElementById('btnBkiRefEnv')?.addEventListener('click', () => {
 document.getElementById('btnCcsBenignEnv')?.addEventListener('click', () => {
     applyEnvPreset({ windSpeed: 15, windDir: 90, currentSpeed: 0.5, currentDir: 90, waveHeight: 2 });
 });
+if (uiControls.catModelPreset.el) {
+    uiControls.catModelPreset.el.value = simParams.catModelPreset;
+    uiControls.catModelPreset.el.addEventListener('change', (e) => {
+        const v = String(e.target.value || 'medio');
+        simParams.catModelPreset = CAT_MODEL_PRESETS[v] ? v : 'medio';
+        // Reinicia a memória do blend para aplicar o novo preset sem arrasto do estado anterior.
+        window._towWBlendEma = 0;
+    });
+}
 for (const key in uiControls) {
     if (uiControls[key].el && uiControls[key].el.type === 'range') {
         uiControls[key].el.addEventListener('input', (e) => {
@@ -2092,7 +2165,7 @@ function calculateTotalShipResistance() {
     return R;
 }
 
-// Forma do cabo: em folga, amortecimento vem da dinâmica da catenária (flecha/tração boca). Em S₃>L, EA axial no towF dá a “mola” numérica (interp. w).
+// Forma do cabo: em folga, resposta dominada pela geometria (flecha/seio, boca). Em S₃>L, fecho numérico com EA axial no towF (interp. w) — regime esticado, não a “moleza” do serviço em curva.
 // Uma **única** geometria: corda 3D + flecha em parábola; depois o fundo limita (sem segundo algoritmo
 // quando Lb>0 — o modelo antigo misturava Lb com interpolação linear e mudava a forma de forma brusca).
 let _cableSagEma = 0;
@@ -2652,7 +2725,7 @@ function updateCatenaryGuide() {
     const sEl = document.getElementById('cat-guide-state');
     if (sEl) sEl.textContent = (st && st !== '—' && (st === 'CATENARY' || st === 'BLEND' || st === 'TAUT')) ? mapCableStateToUI(st) : '—';
     const wEl = document.getElementById('cat-guide-wblend');
-    if (wEl) wEl.textContent = (100 * wb).toFixed(0) + ' % (↓w → mais peso no seio, menos EA axial no modelo)';
+    if (wEl) wEl.textContent = (100 * wb).toFixed(0) + ' % (↓w → mais regime geometria/seio, menos fecho EA no limite)';
     const eEl = document.getElementById('cat-guide-excess');
     if (eEl) eEl.textContent = (exc).toFixed(1) + ' m';
     const fEl = document.getElementById('cat-guide-folga');
@@ -2664,7 +2737,8 @@ function updateCatenaryGuide() {
 
     const hintEl = document.getElementById('cat-guide-cable-hint');
     if (hintEl) {
-        let sHint = 'Parâmetros-alvo (modelo): manter <strong>w &lt; ~35 %</strong> (o modelo usa <strong>w</strong> para fundir <strong>catenária</strong> e <strong>along. axial EA</strong> quando o vão exige) e <strong>folga</strong> (L−S₃) confortável. ';
+        const presetName = getCatModelPreset().name;
+        let sHint = '<strong>Preset:</strong> ' + presetName + '. Parâmetros-alvo (modelo): manter <strong>w &lt; ~35 %</strong> (<strong>w</strong> funde <strong>geometria da catenária</strong> e <strong>fecho EA</strong> em <span class="font-mono">S₃ &gt; L</span> — o EA <em>não</em> é a “moleza” do serviço em curva) e <strong>folga</strong> (L−S₃) confortável. ';
         if (wb > 0.35) {
             const step = Math.min(200, 25 + Math.round(55 * (wb - 0.35)));
             sHint += 'Para descer w: experimente <strong>+' + step + ' m</strong> no cabo pago (guincho), em passo único, e observe a folga e o estado. ';
@@ -2677,12 +2751,12 @@ function updateCatenaryGuide() {
     const tips = [];
     if (surge) tips.push('Alerta de surge (modelo): variação rápida de tensão — reduza passos de carga, aumente folga de cabo ou baixe excitação (onda/RPM) até dT/dt acalmar.');
     if (st === 'TAUT' || folga < 0) tips.push('Cabo <strong>esticado</strong> ou vão &gt; pago: lance <strong>mais cabo</strong> (slider Guincho) e/ou reduza a aproximação do comboio (menos vago fechado por velocidade).');
-    if (st === 'BLEND' && wb > 0.3) tips.push('Zona <strong>misturada</strong> (seio + rigidez axial no código): instável. Lance cabo de forma <strong>contínua</strong> ou reduza ligeiramente RPM até o “Estado” preferir <strong>Catenária (folgado)</strong>.');
+    if (st === 'BLEND' && wb > 0.3) tips.push('Zona <strong>misturada</strong> (seio + fecho <span class="font-mono">EA</span> no limite): instável. Lance cabo de forma <strong>contínua</strong> ou reduza ligeiramente RPM até o “Estado” preferir <strong>Catenária (folgado)</strong>.');
     if (dtdtKns > 25) tips.push('dT/dt elevado: evite saccadas de <strong>comando (RPM)</strong>; o modelo suaviza, mas a disciplina de comando ainda pesa no tranco percebido.');
     if (wh > 2.5) tips.push('Mar agitado: a tensão extrema e a flecha oscilam. Para estudar <strong>só a catenária</strong>, reduza “Altura ondas” no Ambiente.');
     if (vrel > 1.2) tips.push('Velocidade relativa |v_rel| elevada: alinhe melhor o comboio (governo, mesma ordem de nós) para não "fechar" o vão de relance.');
     if (r < 36 && tips.length === 0) tips.push('Indicador <strong>verde</strong>: mantenha L &gt; S₃ com folga, alterações de guincho e RPM em <strong>rampas suaves</strong> (já alinhado ao teto nós do modelo).');
-    if (tips.length === 0) tips.push('Observe <strong>w</strong> (catenária vs EA) e a <strong>folga</strong>; se w subir, priorize <strong>mais cabo pago</strong> ou <strong>menos energia</strong> a fechar o vão.');
+    if (tips.length === 0) tips.push('Observe <strong>w</strong> (geometria da curva vs fecho <span class="font-mono">EA</span> no limite) e a <strong>folga</strong>; se w subir, priorize <strong>mais cabo pago</strong> ou <strong>menos energia</strong> a fechar o vão.');
     const uTips = document.getElementById('cat-guide-tips');
     if (uTips) uTips.innerHTML = tips.map(t => '<li style="color:#e2e8f0;">' + t + '</li>').join('');
 }
