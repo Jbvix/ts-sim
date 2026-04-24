@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br" class="scroll-smooth">
+<html lang="pt-BR" class="scroll-smooth">
 <head>
   <!-- Jossian Brito 2025 -->
   <meta charset="utf-8" />
@@ -14,6 +14,7 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <link rel="stylesheet" href="assets/tw.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
   <!-- Importando Pixi.js v7 e html2canvas -->
   <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -126,6 +127,23 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 .sim-rail-active { background:#0ea5e9; color:#0f172a; border-color:#38bdf8; box-shadow:0 0 0 1px rgba(14,165,233,.25);}
 @media (prefers-color-scheme: dark) { .sim-rail-active { color:#f8fafc; } }
 .hidden { display: none !important; }
+/* Mini-mapa: costa / Baía de Guanabara (1 u 3D ≈ 1 m; +X=E, +Z=N) */
+#geo-mapa-wrap {
+  position: fixed; top: 5.25rem; right: 10px; z-index: 32; width: min(40vw, 19rem);
+  max-width: calc(100vw - 1rem - 3.5rem); pointer-events: auto;
+  border-radius: 10px; border: 1px solid rgba(100, 116, 139, 0.45);
+  background: rgba(15, 23, 42, 0.92); box-shadow: 0 10px 32px rgba(0,0,0,0.35);
+  overflow: hidden; font-size: 11px; color: #e2e8f0;
+}
+#geo-mapa-wrap .leaflet-container { background: #0f172a; font-family: ui-sans-serif, system-ui, sans-serif; }
+#geo-mapa-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-bottom: 1px solid rgba(100, 116, 139, 0.35); background: rgba(15, 23, 42, 0.98); }
+#geo-mapa { height: 11.5rem; width: 100%; min-height: 150px; }
+#geo-mapa-min { width: 1.75rem; height: 1.75rem; border-radius: 6px; border: 1px solid rgba(148, 163, 184, 0.5); background: rgba(30, 41, 59, 0.9); color: #e2e8f0; line-height: 1; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+#geo-mapa-min:hover { background: rgba(51, 65, 85, 0.95); }
+@media (max-width: 640px) {
+  #geo-mapa-wrap { width: min(88vw, 17rem); right: 6px; top: 4.5rem; }
+  #geo-mapa { height: 9.5rem; }
+}
 #sim-float-root { position: fixed; inset: 0; top: 4rem; pointer-events: none; z-index: 40; }
 #sim-float-root .sim-float-window { pointer-events: auto; }
 .sim-float-window {
@@ -246,6 +264,9 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 #asd-thruster-dock .asd-rpm-gauge { margin-top: 2px; }
 #asd-thruster-dock .asd-rpm-track { height: 4px; border-radius: 3px; background: rgba(0,0,0,0.35); border: 1px solid rgba(100, 116, 139, 0.35); overflow: hidden; }
 #asd-thruster-dock .asd-rpm-fill { height: 100%; width: 0%; border-radius: 2px; background: linear-gradient(90deg, #0284c7, #4ade80 85%); transition: width 0.12s ease-out; }
+#sim-float-root .sim-float-body .cam-mode-btn { font-size: 11px; line-height: 1.2; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(100, 116, 139, 0.55); background: rgba(30, 41, 59, 0.92); color: #e2e8f0; cursor: pointer; width: 100%; text-align: left; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+#sim-float-root .sim-float-body .cam-mode-btn:hover { background: rgba(51, 65, 85, 0.95); border-color: rgba(125, 211, 252, 0.45); }
+#sim-float-root .sim-float-body .cam-mode-btn[aria-pressed="true"] { background: rgba(14, 165, 233, 0.35); border-color: #38bdf8; color: #f8fafc; box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35); }
 #asd-thruster-dock .asd-thruster-be .asd-rpm-fill { background: linear-gradient(90deg, #c2410c, #fbbf24 90%); }
 #asdPanel .asd-section .control-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 6px; row-gap: 2px; align-items: center; font-size: 11px; margin-bottom: 4px; min-width: 0; }
 #asdPanel .asd-section .control-row:has(> input[type="range"]) > label { grid-column: 1 / -1; }
@@ -308,6 +329,12 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
           <button type="button" class="sim-rail" data-panel-group="towline" title="Towline Safety (MBL, tensão, modo)" aria-pressed="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22V8"/><path d="M5 12H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4h-3"/><circle cx="12" cy="5" r="3"/></svg>
           </button>
+          <button type="button" class="sim-rail" data-panel-group="catGuide" title="Catenária, trancos e procedimento" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8"/><path d="M8 11h5"/></svg>
+          </button>
+          <button type="button" class="sim-rail" data-panel-group="camera" title="Câmera 3D: vista, pivô (rebocador, navio, comboio)" aria-pressed="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </button>
           <button type="button" class="sim-rail" data-panel-group="asd" title="Governo ASD" aria-pressed="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -316,6 +343,9 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
           </button>
           <button type="button" class="sim-rail" data-panel-group="buoy" title="Bóias" aria-pressed="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+          </button>
+          <button type="button" class="sim-rail sim-rail-active" id="btn-sidebar-geo-mapa" data-map-toggle="true" title="Ocultar mapa (Rio / OSM)" aria-pressed="true" aria-controls="geo-mapa-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
           </button>
         </nav>
     </aside>
@@ -343,7 +373,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         </div>
          <div id="vesselPanel" class="panel">
             <h4>Navio e rebocador</h4>
-            <p style="font-size:10px;color:#8da4b7;margin:0 0 8px;">Reboque oceânico: em regra <strong>lento</strong> (~3–6 n, conforme plano, mar e sispás). <strong>Escoteiro</strong> (experiência no modelo) ~<strong>11 n @ 1300 rpm</strong>; 8+ n raramente é serviço “longo” de reboque. Curva = histórico (nós).</p>
+            <p style="font-size:10px;color:#8da4b7;margin:0 0 8px;">Reboque oceânico: em regra <strong>lento</strong> (~3–6 n, conforme plano, mar e operação). <strong>Escoteiro</strong> (experiência no modelo) ~<strong>11 n @ 1300 rpm</strong>; 8+ n raramente é serviço “longo” de reboque. Curva = histórico (nós).</p>
             <div class="fleet-compare">
                 <div class="fleet-col">
                     <h5>Navio (rebocado)</h5>
@@ -351,10 +381,10 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                         <label for="shipPreset">Tipo:</label>
                         <select id="shipPreset">
                             <option value="generic">Cargueiro Genérico</option>
-                            <option value="feeder">Porta-Contentores (Feeder)</option>
-                            <option value="handy">Porta-Contentores (Handy)</option>
-                            <option value="panamax">Porta-Contentores (Panamax)</option>
-                            <option value="postpanamax">Porta-Contentores (UCLV)</option>
+                            <option value="feeder">Porta-contêineres (Feeder)</option>
+                            <option value="handy">Porta-contêineres (Handy)</option>
+                            <option value="panamax">Porta-contêineres (Panamax)</option>
+                            <option value="postpanamax">Porta-contêineres (UCLV)</option>
                             <option value="aframax">Petroleiro (Aframax)</option>
                         </select>
                     </div>
@@ -363,13 +393,16 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                     <hr>
                     <div class="control-row"><label title="Massa vs calado (aprox.)">Massa (ton):</label><span id="shipMassValue">0</span></div>
                     <div class="control-row"><label>Comprimento (m):</label><span id="shipLengthValue">0</span></div>
-                    <div class="control-row"><label>Velocidade (nós):</label><span id="shipSpeedValue">0.00</span></div>
+                    <div class="control-row" title="Módulo |v| (3D) — referência, não o eixo do comboio."><label>SOG (nós):</label><span id="shipSpeedValue">0.00</span></div>
+                    <div class="control-row" title="Projeção 3D de v no eixo bita–bita (cabo); métrica principal para tranco e acompanhamento."><label>Navio ∥ cabo (nós):</label><span id="shipSpeedAlongTowValue">0.00</span></div>
+                    <div class="control-row" title="(v_reb − v_nav)·û; û do cabo 3D; + quando o rebocador ganha ao longo da linha."><label>Rel. reboque ∥ cabo (nós):</label><span id="relTowAlongValue">0.00</span></div>
                     <div class="control-row"><label>Resist. (kN):</label><span id="shipTotalResistanceValue">0.0</span></div>
                 </div>
                 <div class="fleet-col">
                     <h5>Rebocador (desempenho)</h5>
                     <div class="control-row"><label>Massa (ton):</label><span id="tugMassValue">0</span></div>
-                    <div class="control-row"><label>Velocidade (nós):</label><span id="tugSpeedValue">0.00</span></div>
+                    <div class="control-row" title="Módulo |v| (3D)."><label>SOG (nós):</label><span id="tugSpeedValue">0.00</span></div>
+                    <div class="control-row" title="v·û no eixo 3D do cabo."><label>Reb. ∥ cabo (nós):</label><span id="tugSpeedAlongTowValue">0.00</span></div>
                     <div class="control-row" title="Carga: tração×f_calado×f(RPM)×f(SOG). ref. escoteiro livre: 11 n @ 1300 → ~54–60% (f_RPM=57% aqui). 100%: 5 m, 11+ n, 1800 rpm, tração 1. Teto SOG: 650→0,58 n, 1300→11 n, 1800→12,5 n. Suav ~0,4 s.">
                         <label>Carga real (%):</label><span id="tugCargaRealValue">0.0</span>
                     </div>
@@ -377,11 +410,11 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 </div>
             </div>
             <div class="speed-chart-block">
-                <h5>Velocidades ao longo do tempo (nós)</h5>
-                <canvas id="speedHistoryChart" width="300" height="100" aria-label="Gráfico de velocidades do navio e do rebocador em nós"></canvas>
+                <h5>Velocidades ao longo do tempo (nós) — SOG</h5>
+                <canvas id="speedHistoryChart" width="300" height="100" aria-label="Gráfico de SOG: módulo da velocidade do navio e do rebocador em nós"></canvas>
                 <div class="chart-legend">
-                    <span class="leg-ship">— Navio</span>
-                    <span class="leg-tug">— Rebocador</span>
+                    <span class="leg-ship">— Navio (SOG)</span>
+                    <span class="leg-tug">— Rebocador (SOG)</span>
                 </div>
             </div>
             <div class="resize-handle"></div>
@@ -389,7 +422,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 
          <div id="winchPanel" class="panel hidden">
             <h4>Guincho e Cabo</h4>
-            <p class="text-[10px] leading-snug mb-2 border-b border-slate-600/50 pb-2" style="color:#8da4b7;">Peso do cabo na água sustenta a catenária: a linha afunda, mantém <span class="font-mono">H</span> e liga o comboio (amortece e transmite). Com muito cabo no fundo, o atrito altera o puxo horizontal.</p>
+            <p class="text-[10px] leading-snug mb-2 border-b border-slate-600/50 pb-2" style="color:#8da4b7;">O peso do cabo na água dá a <strong>flecha e o seio</strong> da catenária: essa <strong>dinâmica de curva</strong> (ângulo e tração na boca) é o que, na prática, mais <strong>amortece e filtra</strong> puxo entre navio e rebocador. No simulador, quando o <strong>vão 3D &gt; cabo pago</strong> (<span class="font-mono">S₃ &gt; L</span>), o alongamento <strong>axial</strong> por rigidez <span class="font-mono">EA</span> atua como <strong>“mola” numérica</strong> no modelo (simplificador) — <em>não nega</em> a imagem física do seio: são camadas de descrição. Com muito cabo no fundo, o atrito altera ainda o puxo horizontal.</p>
              <div class="control-row">
                 <label>Aparelho de reboque</label>
                 <span class="text-[11px] leading-tight" style="color:#9cc0d4;max-width:14rem;">Aparelho completo: cabo aço + <strong>shock-line em poliamida (nylon)</strong> + corrente + ferragens — peso e EA efetivos no modelo.</span>
@@ -397,7 +430,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             </div>
             <hr>
             <div class="control-row"><label>Cabo Lançado (m):</label><input type="range" id="cableLength" min="50" max="800" value="320" step="10"><span id="cableLengthValue">320</span></div>
-            <div class="control-row"><label>Cabo Real (m):</label><span id="actualCableLengthValue">320.0</span></div>
+            <div class="control-row"><label>Comprimento real (m):</label><span id="actualCableLengthValue">320.0</span></div>
             <div class="control-row"><label>Vão 3D entre amarras (m):</label><span id="distanceBowSternValue">0.0</span></div>
             <div class="control-row"><label>Vão horizontal, planta (m):</label><span id="distanceFairleadHzValue">0.0</span></div>
             <hr>
@@ -433,14 +466,49 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             <div class="resize-handle"></div>
         </div>
 
+        <div id="catenaryGuidePanel" class="panel hidden">
+            <h4>Catenária, trancos e procedimento</h4>
+            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;">Com <strong>folga</strong>, o reboque “respira” sobretudo pela <strong>catenária</strong> (flecha, seio, variação de ângulo e tração na boca). O código, quando o <strong>vão 3D &gt; cabo pago</strong>, adiciona <strong>alongamento elástico axial (EA)</strong> e interpola com <span class="font-mono">w</span> — é um <strong>simplificador</strong> para não saltar a força; a imagem física do <strong>seio a trabalhar</strong> mantém-se. <strong>Se retardarmos</strong> a resposta axial (no modelo: suavização de <span class="font-mono">w</span> e teto dT/dt), a <strong>compliance “vertical”</strong> associada à geometria e ao peso da catenária <strong>influencia o comportamento em mais ciclos instantâneos</strong> antes de dominar a rigidez de esticado — não são “duas molas” desacopladas, mas a <strong>ordem no tempo</strong> muda. Trancos surgem nesse <strong>limite</strong> ou por carga/mar bruscos. <strong>Guia didático</strong> — operação real: plano, SMS/DOF, carta.</p>
+            <div class="mb-2 rounded-md border border-slate-500/50 p-2" style="background:rgba(0,0,0,0.2);">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <span class="text-[10px] font-bold" style="color:#7dd3fc;">Risco de tranco (modelo)</span>
+                    <span id="cat-guide-risk-name" class="text-[10px] font-bold" style="color:#4ade80;">—</span>
+                </div>
+                <div class="h-1.5 w-full rounded-full overflow-hidden" style="background:#334155;">
+                    <div id="cat-guide-risk-bar" class="h-full rounded-full transition-all duration-200" style="width:0%; background:#4ade80;"></div>
+                </div>
+            </div>
+            <div class="text-[10px] space-y-1 mb-2 font-mono" style="color:#94a3b8;">
+                <div class="flex justify-between gap-2"><span>Estado (cabo)</span><span id="cat-guide-state">—</span></div>
+                <div class="flex justify-between gap-2"><span>w: catenária ↔ along. (EA)</span><span id="cat-guide-wblend" title="w pesa a interpolação: 0 ≈ efeito catenário (folgado); 1 ≈ vão 3D maior que o cabo, domina a rigidez axial (EA) no código. ↓w favorece curva.">—</span></div>
+                <div class="flex justify-between gap-2"><span>Excesso (S₃−L) m</span><span id="cat-guide-excess">—</span></div>
+                <div class="flex justify-between gap-2"><span>Folga (L−S₃) m</span><span id="cat-guide-folga">—</span></div>
+                <div class="flex justify-between gap-2" title="|(v_reb−v_nav)·û| ao longo do cabo 3D."><span>|v<sub>rel</sub>·û| (m/s)</span><span id="cat-guide-vrel">—</span></div>
+                <div class="flex justify-between gap-2"><span>dT/dt (kN/s)</span><span id="cat-guide-dtdt">—</span></div>
+            </div>
+            <p id="cat-guide-cable-hint" class="text-[10px] leading-snug mb-2 rounded border border-sky-500/30 px-2 py-1.5" style="color:#bae6fd;background:rgba(14,165,233,0.08);">—</p>
+            <p class="text-[9px] font-semibold mb-0.5" style="color:#7dd3fc;">Sugestões imediatas</p>
+            <ul id="cat-guide-tips" class="list-disc pl-4 space-y-1 text-[10px] leading-relaxed mb-3" style="color:#e2e8f0;"><li>—</li></ul>
+            <p class="text-[9px] font-semibold mb-1" style="color:#7dd3fc;">Procedimento (prevenir tranco, manter catenária)</p>
+            <ol class="list-decimal pl-4 space-y-1.5 text-[10px] leading-relaxed" style="color:#cbd5e1;">
+                <li><strong>Antes de acelerar o comboio</strong> — Confirme <strong>cabo pago L</strong> &gt; vão 3D entre amarras S₃ (margem: dezenas de metros em reboque oceânico, conforme plano e o valor de <strong>Folga</strong> exibida aqui e no Guincho).</li>
+                <li><strong>Manter catenária</strong> — Recuse operar de forma contínua em <strong>Reboque (esticado)</strong> ou com <strong>w</strong> elevado (código a injetar muito <strong>EA axial</strong>). Lance mais cabo (guincho) <strong>ou</strong> reduza a velocidade relativa que “fecha” o vão, até o estado voltar a <strong>Catenária (folgado)</strong>.</li>
+                <li><strong>Evitar trancos</strong> — Varie <strong>RPM de comando</strong> e o <strong>comprimento pago</strong> em <strong>passos suaves</strong>; evite 650→máx. em segundos. Aproxime <strong>SOG</strong> e tração de forma a não excitar a <strong>transição catenária ↔ esticado (EA no modelo)</strong> (monitorize <strong>dT/dt</strong> e o painel Towline Safety).</li>
+                <li><strong>Mar e fundo</strong> — Ondas e trecho de cabo no fundo (Lb) adicionam ruído à tração. Para perceber só a <strong>curva de equilíbrio</strong>, use mar mais calmo (Ambiente) e profundidade coerente com o reboque em curso.</li>
+                <li><strong>Cabo muito pago (L &gt; ~300 m)</strong> — O modelo aplica suavizações; mantenha o mesmo cuidado com mudanças bruscas de carga. Se notar pico, priorize <strong>folga</strong> e <strong>RPM</strong> contínuos, não “salto” de comando.</li>
+                <li><strong>Reboque em curso</strong> — Reveja a cada manobra: S₃, L, tensão, vento e corrente; ajuste guincho e governo com antecedência a fechos de vão (mapa, vista 3D, KPIs). Em caso de dúvida, reduza a energia de fechamento (velocidade / empuxo) antes de forçar o cabo.</li>
+            </ol>
+            <div class="resize-handle"></div>
+        </div>
+
         <div id="buoyPanel" class="panel hidden">
             <h4>Marcadores (Bóias)</h4>
             <p class="text-[11px] leading-snug mb-2" style="color:#8da4b7;">Escolha a cor, depois <strong>clique na água</strong> na vista 3D para colocar a bóia.</p>
             <div style="display: flex; gap: 10px;">
                 <button type="button" id="addGreenBuoy" style="flex: 1;" title="Cor verde; em seguida clique no mar (vista 3D)">Bóia verde</button>
-                <button type="button" id="addRedBuoy" style="flex: 1;" title="Cor encarnada; em seguida clique no mar (vista 3D)">Bóia encarnada</button>
+                <button type="button" id="addRedBuoy" style="flex: 1;" title="Cor vermelha; em seguida clique no mar (vista 3D)">Bóia vermelha</button>
             </div>
-            <button id="clearBuoys" style="margin-top: 15px; background-color: #522;">Limpar Todas as Bóias</button>
+            <button id="clearBuoys" style="margin-top: 15px; background-color: #522;">Limpar todas as bóias</button>
             <div class="resize-handle"></div>
         </div>
         
@@ -455,7 +523,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             </div>
             <div class="asd-clutch-row">
                 <button type="button" id="asdDriveEngage" class="asd-btn asd-btn-clutch" title="Transmissão acoplada: tração na água (RPM mín. 650 em operação)">Acoplar</button>
-                <button type="button" id="asdDriveDisengage" class="asd-btn asd-btn-clutch is-active" title="Padrão ao iniciar. Sem tração; hélice segue o veio a baixa rotação (inércia)">Desacoplar</button>
+                <button type="button" id="asdDriveDisengage" class="asd-btn asd-btn-clutch is-active" title="Padrão ao iniciar. Sem tração; hélice segue o eixo a baixa rotação (inércia)">Desacoplar</button>
             </div>
             <div class="resize-handle"></div>
         </div>
@@ -470,6 +538,18 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 <li><strong>Limites e KPIs</strong>: monitore <strong>tensão no cabo</strong>, <strong>tensão extrema</strong> e o painel <strong>Navio e rebocador</strong> (cargas) — o T‑Sim é <em>educativo</em>.</li>
             </ul>
             <p class="text-[10px] mt-3 leading-snug" style="color:#64748b;">Em caso de dúvida, siga o <a href="index.html#safety" class="text-sky-500 hover:underline">conteúdo de segurança do dashboard</a> e a documentação do reboque.</p>
+            <div class="resize-handle"></div>
+        </div>
+
+        <div id="cameraPanel" class="panel hidden">
+            <h4>Câmera 3D</h4>
+            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;">Vista: órbita livre (mouse) ou pivô a acompanhar o <strong>rebocador</strong>, o <strong>navio</strong> ou o <strong>comboio</strong>. Controle também pelo ícone de câmera no trilho à esquerda.</p>
+            <div class="flex flex-col gap-1.5">
+                <button type="button" class="cam-mode-btn" data-cam-mode="free" data-cam-from="panel" title="Rotação, zoom e pan livres" aria-pressed="true">Órbita livre</button>
+                <button type="button" class="cam-mode-btn" data-cam-mode="tug" data-cam-from="panel" title="Pivô no rebocador" aria-pressed="false">Rebocador</button>
+                <button type="button" class="cam-mode-btn" data-cam-mode="ship" data-cam-from="panel" title="Pivô no navio rebocado" aria-pressed="false">Navio</button>
+                <button type="button" class="cam-mode-btn" data-cam-mode="convoy" data-cam-from="panel" title="Pivô no centro do comboio" aria-pressed="false">Comboio</button>
+            </div>
             <div class="resize-handle"></div>
         </div>
     </div>
@@ -564,6 +644,16 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
     </main>
   </div>
   <div id="sim-float-root" aria-live="polite"></div>
+  <div id="geo-mapa-wrap" role="complementary" aria-label="Mapa de contexto — costa do Rio (OpenStreetMap e marcações OpenSeaMap)">
+    <div id="geo-mapa-header">
+      <span class="text-[10px] sm:text-xs font-semibold text-slate-200 leading-tight" title="Origem: Baía de Guanabara. Eixos 3D: +X Leste, +Z Norte. Unidade ≈ 1 m. Não constitui carta náutica para navegação.">Rio · mar (OSM+OpenSeaMap)</span>
+      <button type="button" id="geo-mapa-min" aria-controls="geo-mapa-body" aria-expanded="true" title="Recolher ou expandir o mapa">−</button>
+    </div>
+    <div id="geo-mapa-body">
+      <div id="geo-mapa" aria-hidden="true"></div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
   <script>
   (function () {
     const TITLES = {
@@ -571,11 +661,13 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
       vesselPanel: 'Navio, rebocador e desempenho',
       winchPanel: 'Guincho e cabo',
       towlinePanel: 'Towline Safety',
+      catenaryGuidePanel: 'Catenária e trancos',
       buoyPanel: 'Bóias',
       asdPanel: 'Governo ASD (rebocador)',
       twinSafetyPanel: 'TWIN e segurança',
+      cameraPanel: 'Câmera 3D',
     };
-    const ORDER = ['envPanel', 'vesselPanel', 'winchPanel', 'towlinePanel', 'buoyPanel', 'asdPanel', 'twinSafetyPanel'];
+    const ORDER = ['envPanel', 'vesselPanel', 'winchPanel', 'towlinePanel', 'catenaryGuidePanel', 'buoyPanel', 'asdPanel', 'twinSafetyPanel', 'cameraPanel'];
     const root = document.getElementById('sim-float-root');
     if (!root) return;
     let zStack = 50;
@@ -722,10 +814,11 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
       attachResize(wrap, resize);
     });
 
-    const GROUP_TO_ID = { env: 'envPanel', vessel: 'vesselPanel', winch: 'winchPanel', towline: 'towlinePanel', asd: 'asdPanel', twinSafety: 'twinSafetyPanel', buoy: 'buoyPanel' };
+    const GROUP_TO_ID = { env: 'envPanel', vessel: 'vesselPanel', winch: 'winchPanel', towline: 'towlinePanel', catGuide: 'catenaryGuidePanel', asd: 'asdPanel', twinSafety: 'twinSafetyPanel', buoy: 'buoyPanel', camera: 'cameraPanel' };
 
     function syncRail() {
       document.querySelectorAll('.sim-rail').forEach((btn) => {
+        if (btn.dataset.mapToggle === 'true') return;
         const gid = btn.dataset.panelGroup;
         const pid = GROUP_TO_ID[gid];
         const w = byGroup[pid];
@@ -846,9 +939,10 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
               MBL: 2.45e6,
               // Rigidez efetiva: aço + shock em nylon (alta extensibilidade) + corrente
               EA_MN: 115,
-              wNpm_air: 155,
-              buoy_factor: 0.18,
-              d: 0.070,
+              // Peso no ar (N/m) — reforçado: cabo/chain + tramo pesado (~+32% vs. valor anterior) na catenária
+              wNpm_air: 205,
+              buoy_factor: 0.17,
+              d: 0.074,
               Cd: 1.15,
               FoS: { auto: 3, brake: 5, pawl: 7 }
             }
@@ -935,7 +1029,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
               const pillClass = utilMBL < this.thresholds.mbl.safe ? 'ok' : utilMBL < this.thresholds.mbl.warn ? 'warn' : 'danger';
               stEl.innerHTML = `<span class="pill ${pillClass}">${surge ? 'SURGE' : (pillClass==='ok'?'Seguro': pillClass==='warn'?'Atenção':'Limite')}</span>`;
             },
-            // Função principal do módulo, chamada a cada quadro para actualizar a lógica de segurança
+            // Função principal do módulo, chamada a cada quadro para atualizar a lógica de segurança
             update(dt, tensionN){
               this.ensureStyles(); this.ensureHUD();
               dt = (isFinite(dt) && dt>0) ? dt : 0.016;
@@ -980,10 +1074,19 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
           }
           // Massa reduzida típica (ordem 10³–10⁴ t) para ordenar c próximo de amortecimento crítico: c_cr ≈ 2√(m K).
           const TOW_M_RED_EST = 5.5e5;
-          let _towTbodyRateLimited = 0;
-          /** Transição BRAKE/esticado: EMA p/ não oscilar 0–1 com cabo longo (ex.: 450 m) */
-          let _wBlendEma = -1;
-          
+          /* Cabo longo: a catenária deve "acompanhar" a dinâmica (mais compliance, menos salto w→esticado) */
+          const CABLE_INERTIA = {
+            longScopeM: 300,
+            powExtra: 0.32,
+            tauWExtraPerM: 0.00075,
+            tauWCap: 1.45,
+            blendSpanScale: 1.4,
+            tautTolAddM: 0.55,
+            softElasticLong: 0.86,
+            dTmaxScaleLong: 0.65
+          };
+          window.CABLE_INERTIA = CABLE_INERTIA;
+
           // Função de interpolação suave para a transição de regimes
           const smoothstep = (a, b, x) => {
             const t = Math.max(0, Math.min(1, (x - a) / (b - a || 1e-6)));
@@ -1113,8 +1216,8 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 d3n = c.length() > 1e-5 ? c.normalize() : new THREE.Vector3(0, 0, 1);
             }
             
-            // Peso linear efetivo em água (N/m) — usado em H, flecha, Lb, atrito no fundo. Não confundir com wNpm_air/9,81 (kg/m no ar) na UI.
-            const wNpm = towCable.wNpm_air * (1 - (towCable.buoy_factor || 0.12));
+            // Peso linear efetivo em água (N/m) — usado em H, flecha, Lb, atrito no fundo. Sincronizar com UI (cableWetNpmFromPreset). Usar ?? para b=0 explícito.
+            const wNpm = towCable.wNpm_air * (1 - (towCable.buoy_factor ?? 0.12));
 
             // Arrasto distribuído (metade em cada corpo)
             const { Dmag, Dvec } = towlineDragForce(vTug, vShip, S, scope_m, towCable); // S = S_hz
@@ -1122,11 +1225,15 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             
             let T_line = 0, H_trans = 0, T_end_report = 0, sag = 0, a = 0, Lb = 0, state = "CATENARY";
             const excess = S3 - scope_m;
-            // Faixa de transição um pouco mais larga com cabo pago longo: menos sensibilidade a micro-vãos
-            const scMin = Math.min(scope_m, 2e3);
-            const tautSlackTol = Math.max(0.22, 0.00045 * scMin);
-            const blendSpan = Math.max(0.55, 0.0009 * scMin) * (1.0 + 0.18 * (scMin / 450));
-            const tLo = Math.max(0, tautSlackTol - 0.2 * blendSpan);
+            /*
+             * T-Sim 2.8.3 — cabo longo: janela de mistura alargada, w mais inercial (CABLE_INERTIA), menos mola EA “a saltar”.
+             */
+            const scCap = Math.min(scope_m, 2e3);
+            const isLongScope = scope_m >= (CABLE_INERTIA.longScopeM || 300);
+            const longBoost = isLongScope ? (CABLE_INERTIA.blendSpanScale || 1.4) : 1.0;
+            const tautSlackTol = Math.max(0.28, 0.00060 * scCap) + (isLongScope ? (CABLE_INERTIA.tautTolAddM || 0) : 0);
+            const blendSpan = Math.max(1.10, 0.00180 * scCap) * longBoost;
+            const tLo = Math.max(0, tautSlackTol - 0.15 * blendSpan);
             const tHi = tautSlackTol + blendSpan;
 
             // --- Catenária (pólo “folgado”; sempre, para interpo­lar com a mola sem degrau) ---
@@ -1147,54 +1254,73 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             const sag_cat = cat.sag;
             const a_cat = cat.a;
 
-            // --- Mola radial (T≈0 quando excesso ≤ tLo) ---
+            if (!Number.isFinite(window._towSagCatPrev)) window._towSagCatPrev = sag_cat;
+            const dtSimSag = (typeof window._towSimDt === "number" && window._towSimDt > 0) ? window._towSimDt : 0.018;
+            const sagRateCat = (sag_cat - window._towSagCatPrev) / Math.max(dtSimSag, 1e-6);
+            window._towSagCatPrev = sag_cat;
+            const c_geo = Math.max(2.5e4, 180 * wNpm * Math.sqrt(Math.max(scope_m, 1)));
+            const dampingGeom = Math.max(0, -c_geo * sagRateCat);
+
+            // --- Mola radial (T≈0 quando excesso ≤ tLo) — rigidez axial com menos “martelo” ---
             let T_taut = 0;
             if (excess > tLo) {
                 const K_ax = axialK_fromEA(scope_m, towCable);
                 const ext = Math.max(0, excess);
                 const T_elastic = K_ax * ext;
                 const cCrit = 2 * Math.sqrt(TOW_M_RED_EST * K_ax + 1);
-                const c_ax = Math.max(0.16 * K_ax, 0.5 * cCrit) * (1.0 + 0.45 * Math.min(1, scope_m / 500));
+                const c_ax = Math.max(0.05 * K_ax, 0.22 * cCrit);
                 const relV = vShip.clone().sub(vTug);
                 const velAlong = relV.dot(d3n);
                 let T_damping = c_ax * velAlong;
-                const cap = 0.8 * Math.max(1, T_elastic) + 2e3 * (scope_m / 1e3);
+                const cap = 0.42 * Math.max(1, T_elastic) + 1.2e3 * (scope_m / 1e3);
                 T_damping = Math.max(-cap, Math.min(cap, T_damping));
-                T_taut = Math.max(0, T_elastic + T_damping);
+                const softAx = (isLongScope && CABLE_INERTIA.softElasticLong) ? CABLE_INERTIA.softElasticLong : 0.88;
+                T_taut = Math.max(0, softAx * T_elastic + T_damping);
             }
 
-            // --- Peso w ∈ [0,1] entre catenária e mola (smoothstep) — evita degrau de força (picos) ---
-            let wBlend = 0;
-            if (excess >= tHi) wBlend = 1;
-            else if (excess > tLo) wBlend = (excess - tLo) / (tHi - tLo + 1e-9);
-            wBlend = wBlend * wBlend * (3 - 2 * wBlend);
-            const dtW = (typeof window._towSimDt === "number" && window._towSimDt > 0) ? window._towSimDt : 0.018;
-            const wBlendK = Math.min(0.45, 4.0 * dtW / (1.0 + scope_m / 420));
-            if (_wBlendEma < 0) _wBlendEma = wBlend;
-            _wBlendEma += (wBlend - _wBlendEma) * wBlendK;
-            wBlend = _wBlendEma;
-            T_end_report = (1 - wBlend) * Tend_cat + wBlend * T_taut;
-            T_line = (1 - wBlend) * H_cat + wBlend * T_taut;
+            // --- w ∈ [0,1]: catenária vs axial (smoothstep + viés, EMA) ---
+            if (!Number.isFinite(window._towWBlendEma)) window._towWBlendEma = 0;
+            let wRaw = 0;
+            if (excess >= tHi) wRaw = 1;
+            else if (excess > tLo) wRaw = (excess - tLo) / (tHi - tLo + 1e-9);
+            wRaw = wRaw * wRaw * (3 - 2 * wRaw);
+            const wPow = 1.85 + (isLongScope ? (CABLE_INERTIA.powExtra || 0) : 0);
+            wRaw = Math.pow(wRaw, wPow);
+            const dtSimW = (typeof window._towSimDt === "number" && window._towSimDt > 0) ? window._towSimDt : 0.018;
+            let tauW = 0.65;
+            if (isLongScope) {
+                tauW = Math.min(CABLE_INERTIA.tauWCap || 1.45, 0.65 + Math.max(0, scope_m - (CABLE_INERTIA.longScopeM || 300)) * (CABLE_INERTIA.tauWExtraPerM || 0));
+            }
+            const alphaW = Math.min(1, dtSimW / Math.max(tauW, 1e-3));
+            window._towWBlendEma += (wRaw - window._towWBlendEma) * alphaW;
+            const wBlend = Math.max(0, Math.min(1, window._towWBlendEma));
+
+            const T_mix = (1 - wBlend) * Tend_cat + wBlend * T_taut;
+            const H_mix = (1 - wBlend) * H_cat + wBlend * T_taut;
+            T_end_report = Math.max(0, T_mix - dampingGeom);
+            T_line = Math.max(0, H_mix - 0.65 * dampingGeom);
             H_trans = T_line;
-            sag = (1 - wBlend) * sag_cat;
-            Lb = (1 - wBlend) * Lb_cat;
+            const sagRetW = isLongScope ? 0.58 : 0.72;
+            const sagRetention = 1 - sagRetW * wBlend;
+            sag = Math.max(0, sag_cat * sagRetention);
+            Lb = (1 - 0.85 * wBlend) * Lb_cat;
             if (wBlend < 0.04) { state = "CATENARY"; a = a_cat; }
             else if (wBlend > 0.96) { state = "TAUT"; sag = 0; a = Infinity; Lb = 0; H_trans = T_taut; T_line = T_taut; T_end_report = T_taut; }
             else { state = "BLEND"; a = (1 - wBlend) * a_cat; }
 
-            // Limite de taxa dT/dt na mola e na transição (integração de Euler + cabo muito duro) — inactivo puro em cat. folgada
             let T_body = T_end_report;
-            if (wBlend > 0.07) {
+            if (wBlend > 0.02 || excess > tLo * 0.65) {
                 const dtSim = (typeof window._towSimDt === "number" && window._towSimDt > 0) ? window._towSimDt : 0.018;
-                // Cabo longo: não aumentar a taxa máx. de dT (antes favorecia «trancos»); tecto contínuo mais baixo
-                const s100 = Math.min(220, scope_m / 1e2);
-                const dTmax = 1.05e5 + 6.5e2 * s100;
+                let dTmax = 1.45e5 + 1.15e3 * (scope_m / 1e2);
+                if (isLongScope) dTmax *= (CABLE_INERTIA.dTmaxScaleLong != null) ? CABLE_INERTIA.dTmaxScaleLong : 0.65;
                 const dStep = dTmax * dtSim;
-                if (!Number.isFinite(_towTbodyRateLimited) || _towTbodyRateLimited < 0) _towTbodyRateLimited = T_body;
-                T_body = Math.max(_towTbodyRateLimited - dStep, Math.min(_towTbodyRateLimited + dStep, T_body));
-                _towTbodyRateLimited = T_body;
+                if (!Number.isFinite(window._towLastBodyT)) window._towLastBodyT = T_body;
+                const delta = T_body - window._towLastBodyT;
+                if (delta > dStep) T_body = window._towLastBodyT + dStep;
+                else if (delta < -dStep) T_body = window._towLastBodyT - dStep;
+                window._towLastBodyT = T_body;
             } else {
-                _towTbodyRateLimited = T_body;
+                window._towLastBodyT = T_body;
             }
             T_end_report = T_body;
 
@@ -1205,7 +1331,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             F_onShip = sane(F_onShip);
             F_onTug = sane(F_onTug);
 
-            // Tecto físico: evita T astronómica (integração + mola) a contaminar o HUD e TowSafety
+            // Teto físico: evita T astronômica (integração + mola) a contaminar o HUD e TowSafety
             const mbl0 = towCable.MBL > 0 ? towCable.MBL : 2.45e6;
             const tLineMax = mbl0 * 1.08;
             if (Number.isFinite(T_body) && T_body > tLineMax) {
@@ -1219,7 +1345,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             let TensionHUD = Math.max(0, T_body) + Math.max(0, Dmag);
             TensionHUD = Math.min(TensionHUD, mbl0 * 1.12 + Dmag);
 
-            return { F_onTug, F_onShip, TensionN: TensionHUD, H: H_trans, T_end: T_end_report, sag, a, Lb, state };
+            return { F_onTug, F_onShip, TensionN: TensionHUD, H: H_trans, T_end: T_end_report, sag, a, Lb, state, wBlend, excessM: excess, S3, scope_m };
           };
 
         })();
@@ -1260,10 +1386,10 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         // --- 5. BASES DE DADOS E OBJETOS DE SIMULAÇÃO ---
         const shipPresets = {
             'generic': { name: 'Cargueiro Genérico', length: 160, beam: 25, height: 18, minDraft: 6, maxDraft: 12, minMass: 15000, maxMass: 30000, sailArea: 1500, propArea: 20 },
-            'feeder': { name: 'Porta-Contentores (Feeder)', length: 90, beam: 18, height: 10, minDraft: 4, maxDraft: 7, minMass: 4000, maxMass: 8000, sailArea: 800, propArea: 10 },
-            'handy': { name: 'Porta-Contentores (Handy)', length: 110, beam: 20, height: 12, minDraft: 5, maxDraft: 9, minMass: 8000, maxMass: 15000, sailArea: 1000, propArea: 15 },
-            'panamax': { name: 'Porta-Contentores (Panamax)', length: 150, beam: 24, height: 16, minDraft: 7, maxDraft: 12, minMass: 12000, maxMass: 25000, sailArea: 1400, propArea: 20 },
-            'postpanamax': { name: 'Porta-Contentores (UCLV)', length: 180, beam: 30, height: 20, minDraft: 8, maxDraft: 14, minMass: 20000, maxMass: 45000, sailArea: 2000, propArea: 25 },
+            'feeder': { name: 'Porta-contêineres (Feeder)', length: 90, beam: 18, height: 10, minDraft: 4, maxDraft: 7, minMass: 4000, maxMass: 8000, sailArea: 800, propArea: 10 },
+            'handy': { name: 'Porta-contêineres (Handy)', length: 110, beam: 20, height: 12, minDraft: 5, maxDraft: 9, minMass: 8000, maxMass: 15000, sailArea: 1000, propArea: 15 },
+            'panamax': { name: 'Porta-contêineres (Panamax)', length: 150, beam: 24, height: 16, minDraft: 7, maxDraft: 12, minMass: 12000, maxMass: 25000, sailArea: 1400, propArea: 20 },
+            'postpanamax': { name: 'Porta-contêineres (UCLV)', length: 180, beam: 30, height: 20, minDraft: 8, maxDraft: 14, minMass: 20000, maxMass: 45000, sailArea: 2000, propArea: 25 },
             'aframax': { name: 'Petroleiro (Aframax)', length: 140, beam: 28, height: 15, minDraft: 7, maxDraft: 11, minMass: 15000, maxMass: 35000, sailArea: 1300, propArea: 18 },
         };
 
@@ -1318,12 +1444,74 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         tug.jet2.line.material.transparent = true;
         tug.mesh.add(tug.jet1, tug.jet2);
 
+        // --- Câmera: órbita livre vs pivô no rebocador / navio / comboio ---
+        let _simCameraMode = 'free';
+        let _simCamLastAim = null;
+        const _simCamTmpShip = new THREE.Vector3();
+        const _simCamTmpTug = new THREE.Vector3();
+        function getWorldAimForCameraMode(mode) {
+            ship.mesh.updateMatrixWorld(true);
+            tug.mesh.updateMatrixWorld(true);
+            ship.mesh.getWorldPosition(_simCamTmpShip);
+            tug.mesh.getWorldPosition(_simCamTmpTug);
+            const o = new THREE.Vector3();
+            if (mode === 'tug') {
+                o.copy(_simCamTmpTug);
+                o.y += 6;
+            } else if (mode === 'ship') {
+                o.copy(_simCamTmpShip);
+                o.y += 10;
+            } else {
+                o.lerpVectors(_simCamTmpTug, _simCamTmpShip, 0.5);
+                o.y = Math.max(_simCamTmpShip.y, _simCamTmpTug.y) + 14;
+            }
+            return o;
+        }
+        function setCameraMode(mode) {
+            if (!['free', 'tug', 'ship', 'convoy'].includes(mode)) return;
+            _simCameraMode = mode;
+            _simCamLastAim = null;
+            document.querySelectorAll('.cam-mode-btn[data-cam-mode]').forEach((btn) => {
+                const on = btn.getAttribute('data-cam-mode') === mode;
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
+        function stepCameraFollow() {
+            if (_simCameraMode === 'free') return;
+            const aim = getWorldAimForCameraMode(_simCameraMode);
+            if (_simCamLastAim === null) {
+                const offset = new THREE.Vector3().subVectors(camera.position, controls_cam.target);
+                controls_cam.target.copy(aim);
+                camera.position.copy(aim).add(offset);
+                _simCamLastAim = aim.clone();
+            } else {
+                const d = new THREE.Vector3().subVectors(aim, _simCamLastAim);
+                camera.position.add(d);
+                controls_cam.target.copy(aim);
+                _simCamLastAim.copy(aim);
+            }
+        }
+        document.addEventListener('click', (e) => {
+            const b = e.target.closest && e.target.closest('.cam-mode-btn[data-cam-mode]');
+            if (!b) return;
+            setCameraMode(b.getAttribute('data-cam-mode'));
+        });
+        if (typeof window !== 'undefined') {
+            window.__simGetCameraMode = () => _simCameraMode;
+            window.__simSetCameraMode = (m) => setCameraMode(m);
+        }
 
         // Estado do cabo e sua representação visual
         const cable = { length: 320, targetLength: 320, springConstant: 0, damping: 0, weightPerMeter: 0, numSegments: 50 };
         let cableTension = 0, maxSag = 0, catenaryPullForce = 0, extremeTension = 0, _extremeTensionEma = 0, towF = {};
         let _towF_onShipEma = null, _towF_onTugEma = null;
         let lastSag = 0, sagVariation = 0;
+        /** Projeção em planta: resposta do rebocado à tração (validação vs. T, RPM) */
+        let shipTowResponse = {
+            vAlong: 0, vAlongKn: 0, FAlongN: 0, FAlongCable3dN: 0, addedCableMass: 0, mShipEff: 0,
+            /** eixo 3D cabo (bita–bita): v·û, (v_tug−v_nav)·û — alinhado à análise de comboio */
+            shipTowLineMs: 0, shipTowLineKn: 0, tugTowLineMs: 0, tugTowLineKn: 0, relTowLineMs: 0, relTowLineKn: 0
+        };
         const cablePoints = Array.from({ length: cable.numSegments + 1 }, () => new THREE.Vector3());
         const cableLine = new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(cablePoints),
@@ -1361,6 +1549,9 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             asdModeToggle: { el: document.getElementById('asdModeToggle') },
             engineStartStop: { el: document.getElementById('engineStartStop') },
             shipSpeed: { valEl: document.getElementById('shipSpeedValue') },
+            shipSpeedAlongTow: { valEl: document.getElementById('shipSpeedAlongTowValue') },
+            relTowAlong: { valEl: document.getElementById('relTowAlongValue') },
+            tugSpeedAlongTow: { valEl: document.getElementById('tugSpeedAlongTowValue') },
             shipLength: { valEl: document.getElementById('shipLengthValue') },
             tugSpeed: { valEl: document.getElementById('tugSpeedValue') },
             cableTension: { valEl: document.getElementById('cableTensionValue') },
@@ -1426,33 +1617,41 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             if (!Number.isFinite(avgRpm) || avgRpm < TUG_RPM_MIN) return 0;
             return Math.min(1, (avgRpm - TUG_RPM_MIN) / (TUG_RPM_MAX - TUG_RPM_MIN));
         }
+        /** alisa [0,1] → [0,1] (tangentes nulas em 0/1) — reutil.em rampa bollard, carga, f_RPM e teto nós. */
+        function _smoothRpmRamp(t) {
+            const u = Math.min(1, Math.max(0, t));
+            return u * u * (3 - 2 * u);
+        }
         function tugBollardEqMpsFromAvgRpm(avgRpm) {
+            const t = rpmNormClamped(avgRpm);
             return TUG_BOLL_V_MPS_AT_RPM_MIN
-                + (TUG_BOLL_V_MPS_AT_RPM_MAX - TUG_BOLL_V_MPS_AT_RPM_MIN) * rpmNormClamped(avgRpm);
+                + (TUG_BOLL_V_MPS_AT_RPM_MAX - TUG_BOLL_V_MPS_AT_RPM_MIN) * _smoothRpmRamp(t);
         }
         function tugCargaMinSogKnFromAvgRpm(avgRpm) {
+            const t = rpmNormClamped(avgRpm);
             return TUG_CARGA_V_KN_AT_RPM_MIN
-                + (TUG_CARGA_V_KN_AT_RPM_MAX - TUG_CARGA_V_KN_AT_RPM_MIN) * rpmNormClamped(avgRpm);
+                + (TUG_CARGA_V_KN_AT_RPM_MAX - TUG_CARGA_V_KN_AT_RPM_MIN) * _smoothRpmRamp(t);
         }
         function tugCargaRpmWeight(rpm) {
             if (!tug.enginesOn || !Number.isFinite(rpm) || rpm < TUG_RPM_MIN) return 0;
             const r = Math.min(TUG_RPM_MAX, Math.max(TUG_RPM_MIN, rpm));
             if (r <= TUG_CARGA_RPM_PIVOT) {
                 const t = (r - TUG_RPM_MIN) / (TUG_CARGA_RPM_PIVOT - TUG_RPM_MIN);
-                return TUG_CARGA_RPM_FLOOR + (TUG_CARGA_RPM_PIVOT_W - TUG_CARGA_RPM_FLOOR) * t;
+                return TUG_CARGA_RPM_FLOOR + (TUG_CARGA_RPM_PIVOT_W - TUG_CARGA_RPM_FLOOR) * _smoothRpmRamp(t);
             }
             if (r <= TUG_CARGA_RPM_ESCORT_RPM) {
                 const t = (r - TUG_CARGA_RPM_PIVOT) / (TUG_CARGA_RPM_ESCORT_RPM - TUG_CARGA_RPM_PIVOT);
                 return TUG_CARGA_RPM_PIVOT_W
-                    + (TUG_CARGA_RPM_ESCORT_W - TUG_CARGA_RPM_PIVOT_W) * t;
+                    + (TUG_CARGA_RPM_ESCORT_W - TUG_CARGA_RPM_PIVOT_W) * _smoothRpmRamp(t);
             }
             const t2 = (r - TUG_CARGA_RPM_ESCORT_RPM) / (TUG_RPM_MAX - TUG_CARGA_RPM_ESCORT_RPM);
-            return TUG_CARGA_RPM_ESCORT_W + (1 - TUG_CARGA_RPM_ESCORT_W) * t2;
+            return TUG_CARGA_RPM_ESCORT_W + (1 - TUG_CARGA_RPM_ESCORT_W) * _smoothRpmRamp(t2);
         }
         function tugCargaSogWeightForTowing(vKn) {
             if (!Number.isFinite(vKn) || vKn < 0) return TUG_CARGA_SOG_FLOOR;
             const t = vKn / Math.max(0.35, TUG_CARGA_SOG_REF_KN);
-            return TUG_CARGA_SOG_FLOOR + (1 - TUG_CARGA_SOG_FLOOR) * Math.min(1, t);
+            const u = Math.min(1, t);
+            return TUG_CARGA_SOG_FLOOR + (1 - TUG_CARGA_SOG_FLOOR) * _smoothRpmRamp(u);
         }
         /**
          * Calado: f_calado = (calado m) / 5, limitado. Com 5 m exatamente 1 → ponto de escala 100% juntamente com
@@ -1469,18 +1668,20 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
          * f(SOG) pleno (≈1) em ref. 11 n alinha a experiência; indicador 100%: 5 m, 1800 rpm, SOG no teto, f_calado=1, tração 1.
          */
         const TUG_SOG_CAP_KN_AT_RPM_MIN = 0.58;
-        /** teto nós na rampa, por RPM de comando (650–1800) */
+        /** teto nós (SOG) por RPM: 650 → ~0,58 n, 1300 → 11 n, 1800 → 12,5 n; curva C¹ (smoothstep por troço) */
         function tugSogCapKnFromRpm(rpm) {
             if (!Number.isFinite(rpm) || rpm < TUG_RPM_MIN) return TUG_SOG_CAP_KN_AT_RPM_MIN;
             const r = Math.min(TUG_RPM_MAX, Math.max(TUG_RPM_MIN, rpm));
             if (r <= TUG_SOG_EXPERIENCE_RPM) {
                 const t = (r - TUG_RPM_MIN) / (TUG_SOG_EXPERIENCE_RPM - TUG_RPM_MIN);
+                const s = _smoothRpmRamp(t);
                 return TUG_SOG_CAP_KN_AT_RPM_MIN
-                    + (TUG_SOG_EXPERIENCE_SOG_KN - TUG_SOG_CAP_KN_AT_RPM_MIN) * t;
+                    + (TUG_SOG_EXPERIENCE_SOG_KN - TUG_SOG_CAP_KN_AT_RPM_MIN) * s;
             }
             const t2 = (r - TUG_SOG_EXPERIENCE_RPM) / (TUG_RPM_MAX - TUG_SOG_EXPERIENCE_RPM);
+            const s2 = _smoothRpmRamp(t2);
             return TUG_SOG_EXPERIENCE_SOG_KN
-                + (TUG_SOG_CAP_KN_AT_RPM_MAX - TUG_SOG_EXPERIENCE_SOG_KN) * t2;
+                + (TUG_SOG_CAP_KN_AT_RPM_MAX - TUG_SOG_EXPERIENCE_SOG_KN) * s2;
         }
         function clampTugVelocityToRpmSogLimit() {
             if (!tug.enginesOn || !tug.driveEngaged) return;
@@ -1747,13 +1948,26 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         });
         syncAsdViz();
         syncDriveClutchUI();
-        // Preenchido na secção das bóias: ao sair do painel “Bóias” cancela cor pendente (evita cliques no mar fora do contexto)
+        // Preenchido na seção das bóias: ao sair do painel “Bóias” cancela cor pendente (evita cliques no mar fora do contexto)
         let clearPendingBuoyPick = () => {};
         window.__simClearBuoyPick = () => { clearPendingBuoyPick(); };
         document.querySelectorAll('.sim-rail').forEach((btn) => {
             btn.addEventListener('click', () => {
+                if (btn.dataset.mapToggle === 'true') {
+                    const wrap = document.getElementById('geo-mapa-wrap');
+                    if (wrap) {
+                        const willHide = !wrap.classList.contains('hidden');
+                        wrap.classList.toggle('hidden', willHide);
+                        const visible = !wrap.classList.contains('hidden');
+                        btn.classList.toggle('sim-rail-active', visible);
+                        btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+                        btn.title = visible ? 'Ocultar mapa (Rio / OSM)' : 'Mostrar mapa (Rio / OSM)';
+                        setTimeout(() => { try { if (_rioMap) _rioMap.invalidateSize(); } catch (e) { /* */ } }, 200);
+                    }
+                    return;
+                }
                 const g = btn.dataset.panelGroup;
-                if (g === 'winch' || g === 'towline' || g === 'vessel' || g === 'env' || g === 'asd' || g === 'twinSafety') clearPendingBuoyPick();
+                if (g === 'winch' || g === 'towline' || g === 'catGuide' || g === 'vessel' || g === 'env' || g === 'asd' || g === 'twinSafety') clearPendingBuoyPick();
                 if (window.__simFloat && window.__simFloat.openGroup) {
                     window.__simFloat.openGroup(g);
                 }
@@ -1913,7 +2127,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             startWidth: 0, startHeight: 0
         };
 
-        // plano de arrasto: paralelo ao mar (XZ) na altura da bóia (NÃO deixe new Plane() "nuo" — def. é o plano YZ em x=0 e intersecta o raio noutro sítio)
+        // plano de arrasto: paralelo ao mar (XZ) na altura da bóia (NÃO deixe new Plane() "nuo" — def. é o plano YZ em x=0 e intersecta o raio em outro ponto)
         let dragPlane = new THREE.Plane();
         const planePoint = new THREE.Vector3();
         const planeNormal = new THREE.Vector3(0, 1, 0);
@@ -2177,15 +2391,110 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             return p;
         }
         
-        /** Factor menor que 1: o ASD em reboque não usa a área proa×calado a 100%; calibra ordem 3–6 n */
+        /** Fator menor que 1: o ASD em reboque não usa a área proa×calado a 100%; calibra ordem 3–6 n */
         const TUG_DRAG_TOW_BALANCE = 0.64;
-        // Calcula a força de arrasto hidrodinâmico (rebocador com factor próprio; navio inalterado)
+        // Calcula a força de arrasto hidrodinâmico (rebocador com fator próprio; navio inalterado)
         function calculateDragForce(vessel) {
             const frontalArea = vessel.beam * vessel.draft;
             const dragCoeff = 0.78;
             let forceMag = 0.5 * RHO_WATER * vessel.velocity.lengthSq() * dragCoeff * frontalArea;
             if (vessel === tug) forceMag *= TUG_DRAG_TOW_BALANCE;
             return vessel.velocity.clone().normalize().multiplyScalar(-forceMag);
+        }
+
+        /*
+         * T-Sim 2.8.1 / 2.8.2 — resposta do rebocado: reforço longitudinal, EMA anisotrópico, assist resistência, acoplamento comboio
+         * SHIP_TOW_SPEED: ponto único para rever / amplificar velocidade de proa (menos F resistiva, mais tração útil, comboio + rápido).
+         */
+        const SHIP_TOW_SPEED = {
+            /** Ganho da componente de tração ao longo do cabo 3D (aumenta → rebocado acompanha mais cedo) */
+            shapeLong: 1.30,
+            /** Ganho do resto (lateral+vertical) — manter < shapeLong p/ não guinar em excesso */
+            shapeRes: 0.85,
+            /** EMA: mais alto em long = reage mais cedo no eixo do comboio; mais baixo em lat = não filtra guinada/oscilação lateral de forma tão lenta */
+            emaLong: 0.38,
+            emaLat: 0.07,
+            /** Só no navio rebocado: o modelo simples de vento/corrente não deve dominar o cabo (0,55–0,70 e 0,70–0,85) */
+            envWindScaleShip: 0.62,
+            envCurrentScaleShip: 0.78,
+            /** Resistência total ao avanço (0,3–0,5 típ. comboio); ↑ amplifica nós (menos mola a vencer) */
+            resistGlobal: 0.45,
+            /** Redução adicional do arrasto *ao longo de dirF* (menor = navio + rápido em sintonia) */
+            assistDragTight: 0.78,
+            assistDragMed: 0.85,
+            /** assist = convoyAssisScale * min(T/100,1,4) * rel * convoyNScale; ↑ amplifica “embolo” do comboio */
+            convoyAssisScale: 0.07,
+            convoyNScale: 1.0e5,
+            /** T mín. (kN) para activar assist; ↓ = começa a empurrar cedo (mais nós) */
+            convoyMinTensionkN: 35,
+            /** T (N) acima do qual o termo “convoy assist” reforçado puxa o rebocado (≈ 80 tf) */
+            convoyTensionFullN: 8e4,
+            /** N por (m/s) de relAlong extra quando T acima e geometria boa (acoplamento longitudinal do modelo) */
+            convoyAlongGain: 6000,
+            /** Fracção da massa do cabo suspenso em m_eff; ↓ = menos inércia, acelera + rápido */
+            addedCableFrac: 0.32
+        };
+        window.SHIP_TOW_SPEED = SHIP_TOW_SPEED;
+
+        let _shipTowAssistDrag = 1.0;
+        let _shipTowDirF = null;
+
+        function shapeTowForceForShip(forceTowVec, towDirUnit) {
+            const f = forceTowVec.clone();
+            if (!towDirUnit || towDirUnit.lengthSq() < 1e-12) return f;
+            const u = towDirUnit.clone();
+            u.normalize();
+            const fLongMag = f.dot(u);
+            const fLong = u.clone().multiplyScalar(fLongMag);
+            const fResidual = f.clone().sub(fLong);
+            const longitudinalGain = SHIP_TOW_SPEED.shapeLong;
+            const residualGain = SHIP_TOW_SPEED.shapeRes;
+            return fLong.multiplyScalar(longitudinalGain).add(fResidual.multiplyScalar(residualGain));
+        }
+
+        function emaTowForceShip(prevForce, newForce, towDirUnit, alphaLong, alphaLat) {
+            const aL = (alphaLong != null) ? alphaLong : SHIP_TOW_SPEED.emaLong;
+            const aB = (alphaLat != null) ? alphaLat : SHIP_TOW_SPEED.emaLat;
+            if (!towDirUnit || towDirUnit.lengthSq() < 1e-12) return newForce.clone();
+            const u = towDirUnit.clone().normalize();
+            const prevLongMag = prevForce.dot(u);
+            const newLongMag = newForce.dot(u);
+            const prevLong = u.clone().multiplyScalar(prevLongMag);
+            const newLong = u.clone().multiplyScalar(newLongMag);
+            const prevLat = prevForce.clone().sub(prevLong);
+            const newLat = newForce.clone().sub(newLong);
+            const outLong = new THREE.Vector3().copy(prevLong).lerp(newLong, Math.min(1, aL));
+            const outLat = new THREE.Vector3().copy(prevLat).lerp(newLat, Math.min(1, aB));
+            return outLong.add(outLat);
+        }
+
+        function getTowAssistDragFactor(relTowSpeedMs, towlineTensionN) {
+            const rel = Math.abs(relTowSpeedMs);
+            const tensionkN = towlineTensionN / 1000;
+            if (tensionkN > 80 && rel < 0.35) return SHIP_TOW_SPEED.assistDragTight;
+            if (tensionkN > 50 && rel < 0.50) return SHIP_TOW_SPEED.assistDragMed;
+            return 1.0;
+        }
+
+        function computeTowConvoyAssist({ tugVelocity, shipVelocity, towDirUnit, towlineTensionN, lcRatio, waterClearanceM }) {
+            const tensionkN = towlineTensionN / 1000;
+            if (!towDirUnit || towDirUnit.lengthSq() < 0.1) return new THREE.Vector3(0, 0, 0);
+            const tux = towDirUnit.x, tuz = towDirUnit.z;
+            const tugAlong = tugVelocity.x * tux + tugVelocity.z * tuz;
+            const shipAlong = shipVelocity.x * tux + shipVelocity.z * tuz;
+            const relAlong = tugAlong - shipAlong;
+            const geometryGood = (lcRatio == null || !Number.isFinite(lcRatio) || lcRatio >= 7.5) &&
+                (waterClearanceM == null || !Number.isFinite(waterClearanceM) || waterClearanceM >= 8);
+            if (!geometryGood || tensionkN < SHIP_TOW_SPEED.convoyMinTensionkN || relAlong <= 0) {
+                return new THREE.Vector3(0, 0, 0);
+            }
+            const assistGain = SHIP_TOW_SPEED.convoyAssisScale * Math.min(tensionkN / 100, 1.4);
+            let assistN = assistGain * relAlong * SHIP_TOW_SPEED.convoyNScale;
+            const TF = SHIP_TOW_SPEED.convoyTensionFullN;
+            if (Number.isFinite(TF) && towlineTensionN >= TF) {
+                assistN += relAlong * (SHIP_TOW_SPEED.convoyAlongGain || 6000);
+            }
+            return new THREE.Vector3(tux, 0, tuz).normalize().multiplyScalar(assistN);
         }
 
         // Calcula a resistência total ao avanço do navio (casco, hélice, estado do mar)
@@ -2214,16 +2523,24 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             
             let totalResistanceMagnitude = rh + rp + rs;
             
-            // --- AJUSTE DE EQUILÍBRIO ---
-            // Redutor global 0,40 (já abaixo do 0,7 original) — comboio, não prova a velocidade de escoteiro
-            totalResistanceMagnitude *= 0.4;
+            // --- AJUSTE DE EQUILÍBRIO (SHIP_TOW_SPEED.resistGlobal) — comboio, não prova a velocidade de escoteiro
+            totalResistanceMagnitude *= SHIP_TOW_SPEED.resistGlobal;
 
             ship.totalResistance = totalResistanceMagnitude;
             
-            return shipDirection.clone().multiplyScalar(-totalResistanceMagnitude);
+            let R = shipDirection.clone().multiplyScalar(-totalResistanceMagnitude);
+            if (typeof _shipTowAssistDrag === 'number' && _shipTowAssistDrag < 0.999 && _shipTowDirF && _shipTowDirF.lengthSq() > 0.1) {
+                const e = _shipTowDirF.clone();
+                e.y = 0;
+                e.normalize();
+                const Rl = e.clone().multiplyScalar(R.dot(e));
+                const Rp = R.clone().sub(Rl);
+                R = Rl.multiplyScalar(_shipTowAssistDrag).add(Rp);
+            }
+            return R;
         }
         
-        // Forma do cabo: a catenária actua como “mola”/amortecedor do comboio (a física já vem de towF).
+        // Forma do cabo: em folga, amortecimento vem da dinâmica da catenária (flecha/tração boca). Em S₃>L, EA axial no towF dá a “mola” numérica (interp. w).
         // Uma **única** geometria: corda 3D + flecha em parábola; depois o fundo limita (sem segundo algoritmo
         // quando Lb>0 — o modelo antigo misturava Lb com interpolação linear e mudava a forma de forma brusca).
         let _cableSagEma = 0;
@@ -2232,7 +2549,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             const seabed_y = water_level - simParams.seabedDepth;
 
             const rawSag = (towF.sag != null && Number.isFinite(towF.sag)) ? Math.max(0, towF.sag) : 0;
-            const blend = 0.2; // suaviza flecha; cabos longos com mais inércia no comboio: menos “tremer” na polilinha
+            const blend = (cable.length > 300) ? 0.1 : 0.2; // L>300: flecha ainda mais inercial — menos treme na polilinha
             _cableSagEma = _cableSagEma + blend * (rawSag - _cableSagEma);
             const sag_for_render = _cableSagEma;
 
@@ -2264,12 +2581,22 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 const spanVec = shipAttachPoint.clone().sub(tugAttachPoint);
                 const S_now = spanVec.length();
                 const scope = cable.length;
-                const stiffTol = 0.12 + 0.00012 * Math.min(scope, 800);
+                let stiffTol = 0.12 + 0.00012 * Math.min(scope, 800) + (scope > 300 ? 0.08 + 0.00015 * (scope - 300) : 0);
+                if (scope > 400) stiffTol += 0.45 + 0.00025 * (scope - 400);
+                else if (scope > 320) stiffTol += 0.22 + 0.0002 * (scope - 320);
                 if (S_now <= scope + stiffTol) return;
                 const dir = spanVec.clone().normalize();
                 let excess = S_now - scope;
-                const maxExcess = 0.22 + 0.00035 * Math.min(scope, 800);
+                let maxExcess = 0.22 + 0.00035 * Math.min(scope, 800) + (scope > 300 ? 0.12 + 0.0002 * (scope - 300) : 0);
+                if (scope > 350) maxExcess += 0.35 + 0.0002 * (scope - 350);
                 excess = Math.min(excess, maxExcess);
+                if (scope > 300) {
+                    // Várias correções parciais em vez de um salto: reduz trancos com L_pago > 300 m
+                    const relax = 300 / (300 + 0.5 * (scope - 300));
+                    let exf = 0.28 + 0.62 * relax;
+                    if (scope > 400) exf = Math.max(0.2, exf * 0.88);
+                    excess *= exf;
+                }
                 const mS = Math.max(1, ship.mass || 1);
                 const mT = Math.max(1, tug.mass || 1);
                 let wS = mT / (mS + mT);
@@ -2284,8 +2611,9 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 const vRel = ship.velocity.clone().sub(tug.velocity);
                 const vAlong = vRel.dot(dir);
                 if (vAlong > 0) {
-                    ship.velocity.addScaledVector(dir, -vAlong * wS);
-                    tug.velocity.addScaledVector(dir, vAlong * wT);
+                    const vm = (scope > 400) ? 0.55 : (scope > 320) ? 0.72 : 1.0;
+                    ship.velocity.addScaledVector(dir, -vAlong * wS * vm);
+                    tug.velocity.addScaledVector(dir, vAlong * wT * vm);
                 }
             } catch (e) { /* ok */ }
         }
@@ -2295,6 +2623,8 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             const raw_dt = clock.getDelta();
             const dt = clamp(raw_dt, 0.005, 0.03); // Delta time, com teto e piso para estabilidade
             if (isNaN(dt) || !ship.mass) return;
+            _shipTowAssistDrag = 1.0;
+            _shipTowDirF = null;
 
             updateTugMotorSpool(dt);
 
@@ -2327,6 +2657,9 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             const S_hz = Math.hypot(dxa, dza);
             const d3v = new THREE.Vector3().subVectors(shipAttachPoint, tugAttachPoint);
             const S3 = d3v.length();
+            const d3u = d3v.clone();
+            if (d3u.lengthSq() < 1e-12) d3u.set(0, 0, 1);
+            else d3u.normalize();
             const dirF = S_hz > 1e-4
                 ? new THREE.Vector3(dxa, 0, dza).normalize()
                 : (() => {
@@ -2339,17 +2672,55 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 tug.position, tug.velocity, ship.position, ship.velocity, cable.length,
                 { S3, S_hz, dir: dirF, d3: d3v }
             );
-            const Lcab = Math.max(1, cable.length);
-            const kTowF = (Math.min(0.5, 20 * dt)) * (1 / (1 + (Lcab * Lcab) / (500 * 500)));
-            if (!_towF_onShipEma) {
-                _towF_onShipEma = towF.F_onShip.clone();
+            if (!_towF_onTugEma) {
                 _towF_onTugEma = towF.F_onTug.clone();
             } else {
-                _towF_onShipEma.lerp(towF.F_onShip, kTowF);
-                _towF_onTugEma.lerp(towF.F_onTug, kTowF);
+                _towF_onTugEma = emaTowForceShip(_towF_onTugEma, towF.F_onTug, d3u, SHIP_TOW_SPEED.emaLong, SHIP_TOW_SPEED.emaLat);
+            }
+            towF.F_onTug.copy(_towF_onTugEma);
+            if (!_towF_onShipEma) {
+                _towF_onShipEma = towF.F_onShip.clone();
+            } else {
+                _towF_onShipEma = emaTowForceShip(_towF_onShipEma, towF.F_onShip, d3u, SHIP_TOW_SPEED.emaLong, SHIP_TOW_SPEED.emaLat);
             }
             towF.F_onShip.copy(_towF_onShipEma);
-            towF.F_onTug.copy(_towF_onTugEma);
+
+            const forceTow = shapeTowForceForShip(towF.F_onShip.clone(), d3u);
+            const fLen0 = Math.max(1e-9, forceTow.length());
+            const maxVerticalFrac = 0.22;
+            const maxFy = fLen0 * maxVerticalFrac;
+            forceTow.y = Math.max(-maxFy, Math.min(maxFy, forceTow.y));
+
+            const LbM = (towF && Number.isFinite(towF.Lb)) ? Math.max(0, towF.Lb) : 0;
+            const suspendedLength = Math.max(0, cable.length - LbM);
+            const tcC = (window.TowSafety && window.TowSafety.cable) ? window.TowSafety.cable : null;
+            const wNwet = tcC ? (tcC.wNpm_air || 0) * (1 - (tcC.buoy_factor ?? 0.12)) : 0;
+            const cableMassPerM = wNwet / 9.81;
+            const addedCableMass = SHIP_TOW_SPEED.addedCableFrac * suspendedLength * cableMassPerM;
+            const mShipEff = Math.max(1, ship.mass + addedCableMass);
+            shipTowResponse.addedCableMass = addedCableMass;
+            shipTowResponse.mShipEff = mShipEff;
+
+            {
+                const vx = ship.velocity.x, vz = ship.velocity.z;
+                const fx = forceTow.x, fz = forceTow.z;
+                const vA = vx * dirF.x + vz * dirF.z;
+                const fA = fx * dirF.x + fz * dirF.z;
+                shipTowResponse.vAlong = vA;
+                shipTowResponse.vAlongKn = vA * 1.94384;
+                shipTowResponse.FAlongN = fA;
+                const shipTL = ship.velocity.dot(d3u);
+                const tugTL = tug.velocity.dot(d3u);
+                const relTL = tugTL - shipTL;
+                shipTowResponse.shipTowLineMs = shipTL;
+                shipTowResponse.shipTowLineKn = shipTL * 1.94384;
+                shipTowResponse.tugTowLineMs = tugTL;
+                shipTowResponse.tugTowLineKn = tugTL * 1.94384;
+                shipTowResponse.relTowLineMs = relTL;
+                shipTowResponse.relTowLineKn = relTL * 1.94384;
+                shipTowResponse.FAlongCable3dN = forceTow.dot(d3u);
+            }
+            window.shipTowResponse = shipTowResponse;
             
             // Calcula a variação da catenária (d(sag)/dt)
             sagVariation = (towF.sag - lastSag) / Math.max(dt, 1e-6);
@@ -2365,7 +2736,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             // Chame o novo módulo de segurança
             if (window.TowSafety) { window.TowSafety.update(dt, towF.TensionN); }
             
-            // Orçamento ambiental (mesmo sítio usado no rebocador)
+            // Orçamento ambiental (mesmo local usado no rebocador)
             const windForceOnTug = new WindForceStrategy().calculate(tug, simParams);
             const currentForceTug = calculateCurrentForce(tug.beam * tug.draft, tug.angle);
             // Carga (0–1) por potência: P_dem = F·v com v ≥ mín. escala 650–1800 rpm; P_disp = Σ P_motor(RPM) → carga = P_dem / P_disp.
@@ -2404,13 +2775,33 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             }
             // Carga “real” exibida (proporcional a RPM e SOG) é calculada no update do HUD, não aqui
             
+            _shipTowDirF = dirF.clone();
+            {
+                const relVAlong = (tug.velocity.x - ship.velocity.x) * dirF.x + (tug.velocity.z - ship.velocity.z) * dirF.z;
+                const relAbs = Math.abs(relVAlong);
+                _shipTowAssistDrag = getTowAssistDragFactor(relAbs, towF.TensionN || 0);
+            }
+
             // --- Integração Numérica (Euler Simples) ---
             // VERSÃO REATORADA COM O PADRÃO STRATEGY
             const shipForce = new THREE.Vector3();
             shipForceStrategies.forEach(strategy => {
                 shipForce.add(strategy.calculate(ship, simParams));
             });
-            shipForce.add(towF.F_onShip); // Aplica a força do cabo de reboque no navio
+            // Tração no ponto de amarra (braço p/ guinada + massa do cabo suspenso acoplada a m_eff)
+            shipForce.add(forceTow);
+            {
+                const lcR = (towF.sag > 0.12) ? (cable.length / Math.max(0.01, towF.sag)) : null;
+                const waterC = 18 - simParams.waveHeight * 0.45;
+                shipForce.add(computeTowConvoyAssist({
+                    tugVelocity: tug.velocity,
+                    shipVelocity: ship.velocity,
+                    towDirUnit: dirF,
+                    towlineTensionN: towF.TensionN || 0,
+                    lcRatio: lcR,
+                    waterClearanceM: waterC
+                }));
+            }
             
             // Forças no rebocador
             const tugForce = new THREE.Vector3();
@@ -2418,9 +2809,18 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             tugForce.add(thrustForce).add(dragForceTug).add(windForceOnTug).add(currentForceTug);
             tugForce.add(towF.F_onTug); // Aplica a reação do cabo de reboque no rebocador
             
-            // Integração (velocidade primeiro, depois pequena amortecção com motores off)
-            ship.velocity.add(shipForce.clone().divideScalar(ship.mass).multiplyScalar(dt));
+            // Integração: surge com massa aparente (navio + fração de cabo suspenso)
+            ship.velocity.add(shipForce.clone().divideScalar(mShipEff).multiplyScalar(dt));
             tug.velocity.add(tugForce.clone().divideScalar(tug.mass).multiplyScalar(dt));
+
+            // Momento de guinada: cabo fora do CG (Y+) — r×F, componente eixo Y, convenção 3D
+            const rTow = shipAttachPoint.clone().sub(ship.position);
+            const towTauY = rTow.x * forceTow.z - rTow.z * forceTow.x;
+            const shipInertiaYaw = 0.1 * Math.max(1, ship.mass) * (ship.length * ship.length + ship.beam * ship.beam);
+            ship.angularVelocity += (towTauY / Math.max(1e-6, shipInertiaYaw)) * dt;
+            ship.angularVelocity *= 0.94;
+            ship.angularVelocity = Math.max(-0.14, Math.min(0.14, ship.angularVelocity));
+            ship.angle += ship.angularVelocity * dt;
             if (!tug.enginesOn) {
                 const relV = ship.velocity.clone().sub(tug.velocity);
                 const along = relV.dot(dirF);
@@ -2542,7 +2942,11 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 // Usa a área vélica específica do navio
                 const effectiveArea = (vessel.sailArea || (vessel.beam * 10)) * Math.abs(Math.sin(relativeWindAngle));
                 const forceMag = 0.5 * RHO_AIR * environment.windSpeed**2 * 1.0 * effectiveArea;
-                return new THREE.Vector3(forceMag * Math.cos(windAngleRad), 0, -forceMag * Math.sin(windAngleRad));
+                let f = new THREE.Vector3(forceMag * Math.cos(windAngleRad), 0, -forceMag * Math.sin(windAngleRad));
+                if (vessel === ship && SHIP_TOW_SPEED.envWindScaleShip < 0.999) {
+                    f.multiplyScalar(SHIP_TOW_SPEED.envWindScaleShip);
+                }
+                return f;
             }
         }
 
@@ -2550,7 +2954,11 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         class CurrentForceStrategy extends ForceStrategy {
             calculate(vessel, environment) {
                 const aSub = (vessel.beam || 0) * (vessel.draft || 0);
-                return calculateCurrentForce(aSub, vessel.angle);
+                let f = calculateCurrentForce(aSub, vessel.angle);
+                if (vessel === ship && SHIP_TOW_SPEED.envCurrentScaleShip < 0.999) {
+                    f.multiplyScalar(SHIP_TOW_SPEED.envCurrentScaleShip);
+                }
+                return f;
             }
         }
 
@@ -2574,7 +2982,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 
         // Mapeia o estado interno do cabo para um texto amigável na UI
         function mapCableStateToUI(state) {
-            const map = { "CATENARY": "Catenária (Folgado)", "TAUT": "Reboque (Esticado)" };
+            const map = { "CATENARY": "Catenária (Folgado)", "BLEND": "Misto (transição)", "TAUT": "Reboque (Esticado)" };
             return map[state] || "Indefinido";
         }
 
@@ -2647,6 +3055,86 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             line(speedHistory.tug, '#fb923c');
         }
 
+        function updateCatenaryGuide() {
+            const elName = document.getElementById('cat-guide-risk-name');
+            if (!elName) return;
+            const wb = (towF && Number.isFinite(towF.wBlend)) ? towF.wBlend : 0;
+            const exc = (towF && Number.isFinite(towF.excessM)) ? towF.excessM : 0;
+            const st = (towF && towF.state) ? towF.state : '—';
+            let d3b = 0;
+            try {
+                const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsQuiescent();
+                d3b = shipAttachPoint.distanceTo(tugAttachPoint);
+            } catch (e) { d3b = 0; }
+            const L = Math.max(0, cable.length);
+            const folga = L - d3b;
+            const vrel = (Number.isFinite(shipTowResponse.relTowLineMs))
+                ? Math.abs(shipTowResponse.relTowLineMs)
+                : ((ship && tug && ship.velocity && tug.velocity) ? ship.velocity.clone().sub(tug.velocity).length() : 0);
+            const TS = (typeof window !== 'undefined' && window.TowSafety) ? window.TowSafety : null;
+            const dtdtKns = TS ? (TS.dTdt / 1000) : 0;
+            const surge = TS && TS.surgeOn;
+            const wh = (typeof simParams !== 'undefined' && simParams) ? (simParams.waveHeight || 0) : 0;
+
+            let r = 0;
+            if (wb > 0.45) r += 18;
+            if (wb > 0.65) r += 18;
+            if (st === 'BLEND') r += 12;
+            if (st === 'TAUT') r += 28;
+            if (folga < 0) r += 22;
+            if (folga >= 0 && folga < 15) r += 10;
+            if (surge) r += 22;
+            if (dtdtKns > 50) r += 18;
+            else if (dtdtKns > 20) r += 10;
+            r += Math.min(14, wh * 2.5);
+            r += Math.min(14, vrel * 2.2);
+            r = Math.max(0, Math.min(100, Math.round(r)));
+            const low = r < 36, med = r < 70;
+            const label = low ? 'Baixo' : (med ? 'Médio' : 'Alto');
+            const col = low ? '#4ade80' : (med ? '#facc15' : '#f87171');
+            elName.textContent = label + ' (' + r + '%)';
+            elName.style.color = col;
+            const bar = document.getElementById('cat-guide-risk-bar');
+            if (bar) { bar.style.width = r + '%'; bar.style.background = col; }
+
+            const sEl = document.getElementById('cat-guide-state');
+            if (sEl) sEl.textContent = (st && st !== '—' && (st === 'CATENARY' || st === 'BLEND' || st === 'TAUT')) ? mapCableStateToUI(st) : '—';
+            const wEl = document.getElementById('cat-guide-wblend');
+            if (wEl) wEl.textContent = (100 * wb).toFixed(0) + ' % (↓w → mais peso no seio, menos EA axial no modelo)';
+            const eEl = document.getElementById('cat-guide-excess');
+            if (eEl) eEl.textContent = (exc).toFixed(1) + ' m';
+            const fEl = document.getElementById('cat-guide-folga');
+            if (fEl) fEl.textContent = (folga).toFixed(1) + ' m';
+            const vEl = document.getElementById('cat-guide-vrel');
+            if (vEl) vEl.textContent = vrel.toFixed(2);
+            const dEl = document.getElementById('cat-guide-dtdt');
+            if (dEl) dEl.textContent = dtdtKns.toFixed(1);
+
+            const hintEl = document.getElementById('cat-guide-cable-hint');
+            if (hintEl) {
+                let sHint = 'Parâmetros-alvo (modelo): manter <strong>w &lt; ~35 %</strong> (o modelo usa <strong>w</strong> para fundir <strong>catenária</strong> e <strong>along. axial EA</strong> quando o vão exige) e <strong>folga</strong> (L−S₃) confortável. ';
+                if (wb > 0.35) {
+                    const step = Math.min(200, 25 + Math.round(55 * (wb - 0.35)));
+                    sHint += 'Para descer w: experimente <strong>+' + step + ' m</strong> no cabo pago (guincho), em passo único, e observe a folga e o estado. ';
+                }
+                if (st === 'TAUT' || folga < 0) sHint += '<strong>Prioridade:</strong> lance folga (cabo) e/ou reduza fecho de vão (velocidade / rotação).';
+                else if (r < 40) sHint += 'Neste instante, o modelo indica risco <strong>baixo</strong> — evite ainda mudanças bruscas de RPM/ guincho.';
+                hintEl.innerHTML = sHint;
+            }
+
+            const tips = [];
+            if (surge) tips.push('Alerta de surge (modelo): variação rápida de tensão — reduza passos de carga, aumente folga de cabo ou baixe excitação (onda/RPM) até dT/dt acalmar.');
+            if (st === 'TAUT' || folga < 0) tips.push('Cabo <strong>esticado</strong> ou vão &gt; pago: lance <strong>mais cabo</strong> (slider Guincho) e/ou reduza a aproximação do comboio (menos vago fechado por velocidade).');
+            if (st === 'BLEND' && wb > 0.3) tips.push('Zona <strong>misturada</strong> (seio + rigidez axial no código): instável. Lance cabo de forma <strong>contínua</strong> ou reduza ligeiramente RPM até o “Estado” preferir <strong>Catenária (folgado)</strong>.');
+            if (dtdtKns > 25) tips.push('dT/dt elevado: evite saccadas de <strong>comando (RPM)</strong>; o modelo suaviza, mas a disciplina de comando ainda pesa no tranco percebido.');
+            if (wh > 2.5) tips.push('Mar agitado: a tensão extrema e a flecha oscilam. Para estudar <strong>só a catenária</strong>, reduza “Altura ondas” no Ambiente.');
+            if (vrel > 1.2) tips.push('Velocidade relativa |v_rel| elevada: alinhe melhor o comboio (governo, mesma ordem de nós) para não "fechar" o vão de relance.');
+            if (r < 36 && tips.length === 0) tips.push('Indicador <strong>verde</strong>: mantenha L &gt; S₃ com folga, alterações de guincho e RPM em <strong>rampas suaves</strong> (já alinhado ao teto nós do modelo).');
+            if (tips.length === 0) tips.push('Observe <strong>w</strong> (catenária vs EA) e a <strong>folga</strong>; se w subir, priorize <strong>mais cabo pago</strong> ou <strong>menos energia</strong> a fechar o vão.');
+            const uTips = document.getElementById('cat-guide-tips');
+            if (uTips) uTips.innerHTML = tips.map(t => '<li style="color:#e2e8f0;">' + t + '</li>').join('');
+        }
+
         function updateUI() {
             uiControls.shipMass.valEl.innerText = (ship.mass / 1000).toFixed(0);
             uiControls.shipLength.valEl.innerText = ship.length.toFixed(0);
@@ -2657,6 +3145,25 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             uiControls.shipSpeed.valEl.innerText = knS.toFixed(2);
             uiControls.tugSpeed.valEl.innerText = knT.toFixed(2);
             if (uiControls.tugSpeed.valEl) uiControls.tugSpeed.valEl.title = 'SOG (nós); teto ∝ rpm de comando: 650→0,58 n, 1300→11 n (ref. escoteiro), 1800→12,5 n. f(SOG) pleno ≈ a partir de 11 n; calado 5 m na escala 100%.';
+            const knShipLine = Number.isFinite(shipTowResponse.shipTowLineKn) ? shipTowResponse.shipTowLineKn : 0;
+            const knTugLine = Number.isFinite(shipTowResponse.tugTowLineKn) ? shipTowResponse.tugTowLineKn : 0;
+            const knRelLine = Number.isFinite(shipTowResponse.relTowLineKn) ? shipTowResponse.relTowLineKn : 0;
+            if (uiControls.shipSpeedAlongTow && uiControls.shipSpeedAlongTow.valEl) {
+                uiControls.shipSpeedAlongTow.valEl.innerText = knShipLine.toFixed(2);
+                const f3k = (Number.isFinite(shipTowResponse.FAlongCable3dN) ? shipTowResponse.FAlongCable3dN : 0) / 1000;
+                const vm3 = Number.isFinite(shipTowResponse.shipTowLineMs) ? shipTowResponse.shipTowLineMs : 0;
+                uiControls.shipSpeedAlongTow.valEl.title = 'Eixo 3D bita–bita (cabo): v·û = ' + vm3.toFixed(3) + ' m/s. Tração cabo no eixo 3D: F·û = ' + f3k.toFixed(1) + ' kN. (Projeção horizontal planta: Vel. pl./F_pl no shipTowResponse legado).';
+            }
+            if (uiControls.tugSpeedAlongTow && uiControls.tugSpeedAlongTow.valEl) {
+                uiControls.tugSpeedAlongTow.valEl.innerText = knTugLine.toFixed(2);
+                const vm3t = Number.isFinite(shipTowResponse.tugTowLineMs) ? shipTowResponse.tugTowLineMs : 0;
+                uiControls.tugSpeedAlongTow.valEl.title = 'Rebocador: v·û no eixo 3D do cabo = ' + vm3t.toFixed(3) + ' m/s.';
+            }
+            if (uiControls.relTowAlong && uiControls.relTowAlong.valEl) {
+                uiControls.relTowAlong.valEl.innerText = knRelLine.toFixed(2);
+                const rms = Number.isFinite(shipTowResponse.relTowLineMs) ? shipTowResponse.relTowLineMs : 0;
+                uiControls.relTowAlong.valEl.title = '(v_reb − v_nav)·û = ' + rms.toFixed(3) + ' m/s ao longo do cabo; + indica o rebocador a ganhar nesse eixo (tende a alimentar tranco se a linha estiver apertada).';
+            }
             speedHistory.ship.push(knS);
             speedHistory.tug.push(knT);
             if (speedHistory.ship.length > speedHistory.maxPoints) {
@@ -2669,7 +3176,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             const d3 = shipAttachPoint.distanceTo(tugAttachPoint);
             const dH = Math.hypot(shipAttachPoint.x - tugAttachPoint.x, shipAttachPoint.z - tugAttachPoint.z);
             uiControls.distanceBowStern.valEl.innerText = d3.toFixed(1);
-            uiControls.distanceBowStern.valEl.title = 'Distância em linha recta 3D entre as bitas. Com muito cabo e catenária, a tensão na boca (T_end) puxa ao longo desta recta: o vão tende a encolher, sobretudo com rebocador parado, até ao equilíbrio com vento/àguas.';
+            uiControls.distanceBowStern.valEl.title = 'Distância em linha reta 3D entre as bitas. Com muito cabo e catenária, a tensão na boca (T_end) puxa ao longo dessa reta: o vão tende a encolher, sobretudo com rebocador parado, até o equilíbrio com vento e mar.';
             if (uiControls.distanceFairleadHz && uiControls.distanceFairleadHz.valEl) {
                 uiControls.distanceFairleadHz.valEl.innerText = dH.toFixed(1);
                 uiControls.distanceFairleadHz.valEl.title = 'Vão em planta (X–Z) entre amarras; o mesmo S usado no modelo de H / catenária, sem embandeiramento de onda na leitura.';
@@ -2678,13 +3185,19 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             {
             const p = (typeof window !== 'undefined' && window.CableCatalog && window.TowSafety)
                 ? window.CableCatalog[window.TowSafety.currentKey] : null;
-            const wWetNpm = p ? (p.wNpm_air * (1 - (p.buoy_factor ?? 0.12))) : 0;
-            const tonWet = wWetNpm > 0 ? (wWetNpm * cable.length / 9.81 / 1000) : 0;
-            const tonDry = (cable.length * cable.weightPerMeter / 1000);
+            const wWetNpm = cableWetNpmFromPreset(p);
+            const Lcab = cable.length;
+            const tonWet = wWetNpm > 0 ? cableWetWeightTonnes(p, Lcab) : 0;
+            const tonDry = p ? cableDryWeightTonnes(p, Lcab) : (Lcab * cable.weightPerMeter / 1000);
             uiControls.cableWeight.valEl.innerText = (wWetNpm > 0 ? tonWet : tonDry).toFixed(2);
-            uiControls.cableWeight.valEl.title = wWetNpm > 0
-                ? `Peso aparente total em água (o mesmo w em N/m da catenária). Peso seco no ar ≈ ${tonDry.toFixed(2)} t.`
-                : 'Peso em ton (ar) × comprimento; selecione um tipo de cabo no catálogo.';
+            if (p && wWetNpm > 0) {
+                const ex500 = cableWetWeightTonnes(p, 500);
+                const wAir = p.wNpm_air;
+                const b = p.buoy_factor ?? 0.12;
+                uiControls.cableWeight.valEl.title = `Peso aparente em água (t): t = w_água·L/9,81/1000, w_água = w_ar·(1−b) [N/m] — o mesmo w da catenária. Catálogo: w_ar=${wAir} N/m, b=${b} → w_água=${wWetNpm.toFixed(2)} N/m. Peso seco no ar: ${tonDry.toFixed(2)} t (kg/m = w_ar/9,81). Ex.: 500 m → ≈${ex500.toFixed(2)} t (água).`;
+            } else {
+                uiControls.cableWeight.valEl.title = 'Peso em ton (ar) × comprimento; selecione um tipo de cabo no catálogo.';
+            }
             }
             uiControls.actualCableLength.valEl.innerText = cable.length.toFixed(1);
             const tEndKN = (towF.T_end / 1000).toFixed(1);
@@ -2765,6 +3278,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             _extremeTensionEma += (extremeRaw - _extremeTensionEma) * kEma;
             extremeTension = _extremeTensionEma;
             uiControls.extremeTension.valEl.innerText = (extremeTension / 1000).toFixed(1);
+            updateCatenaryGuide();
         }
         // Atualiza a direção e o comprimento das setas que representam vento e corrente
         function updateEnvironmentVisuals() {
@@ -2784,6 +3298,31 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         }
 
         // Converte a altura da onda (m) para a escala Beaufort
+        /** w em N/m, igual à catenária: w_ar (N/m) × (1 − b). b default 0,12 se omitido. */
+        function cableWetNpmFromPreset(p) {
+            if (!p || !Number.isFinite(p.wNpm_air) || p.wNpm_air <= 0) return 0;
+            return p.wNpm_air * (1 - (p.buoy_factor ?? 0.12));
+        }
+        /**
+         * Peso aparente total (equivalente) em t: t = w_água·L / 9810, com w_água = w_ar·(1−b) [N/m], L = cabo pago [m], 9810 ≈ 9,81·10³.
+         * p.ex. composite_heavy: w_ar=205, b=0,17 → w_água=170,15 N/m; L=500 m → 170,15×500/9,81/1000 ≈ 8,67 t (água). Seco: w_ar·L/9810 ≈ 10,45 t.
+         */
+        function cableWetWeightTonnes(p, L_m) {
+            const w = cableWetNpmFromPreset(p);
+            if (w <= 0 || !Number.isFinite(L_m) || L_m < 0) return 0;
+            return w * L_m / 9.81 / 1000;
+        }
+        function cableDryWeightTonnes(p, L_m) {
+            if (!p || !Number.isFinite(p.wNpm_air) || p.wNpm_air <= 0 || !Number.isFinite(L_m) || L_m < 0) return 0;
+            const kgPerM = p.wNpm_air / 9.81;
+            return L_m * kgPerM / 1000;
+        }
+        if (typeof window !== 'undefined') {
+            window.cableWetNpmFromPreset = cableWetNpmFromPreset;
+            window.cableWetWeightTonnes = cableWetWeightTonnes;
+            window.cableDryWeightTonnes = cableDryWeightTonnes;
+        }
+
         function getBeaufortFromWaveHeight(h) {
             if (h < 0.1) return 0;
             if (h < 0.5) return 1;
@@ -2919,6 +3458,67 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
             tug.mesh.rotation.z = Math.sin(tug.position.x / (tug.beam * 4) + time * rollFrequency * 1.5) * (waveHeight / (tug.beam * 2.0)) * 0.8;
         }
 
+        // — Contexto geográfico (Rio) + OpenSeaMap: plano local tangente, ~1 m = 1 u no modelo 3D
+        const RIO_GEO = {
+            /** Referência: baía de Guanabara, trecho típico de reboque / escoteiro (didático) */
+            originLat: -22.95,
+            originLon: -43.14,
+            mPerDegLat: 110852,
+            mPerDegLon: 111320 * Math.cos(-22.95 * (Math.PI / 180))
+        };
+        function simXZtoLatLng(x, z) {
+            return {
+                lat: RIO_GEO.originLat + z / RIO_GEO.mPerDegLat,
+                lon: RIO_GEO.originLon + x / RIO_GEO.mPerDegLon
+            };
+        }
+        let _rioMap = null, _rioMarkerShip = null, _rioMarkerTug = null, _rioTowPoly = null, _rioMapT = 0;
+        function initRioContextMap() {
+            const Lf = globalThis.L;
+            if (!Lf || !Lf.map) return;
+            if (!document.getElementById('geo-mapa') || _rioMap) return;
+            _rioMap = Lf.map('geo-mapa', { zoomControl: true, attributionControl: true });
+            Lf.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                subdomains: 'abc', maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" rel="noreferrer">OSM</a>'
+            }).addTo(_rioMap);
+            Lf.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: 'OpenSeaMap <a href="https://openseamap.org" rel="noreferrer">seamarks</a>'
+            }).addTo(_rioMap);
+            const icShip = { radius: 7, color: '#075985', fillColor: '#38bdf8', fillOpacity: 0.95, weight: 2 };
+            const icTug  = { radius: 6, color: '#991b1b', fillColor: '#fca5a5', fillOpacity: 0.95, weight: 2 };
+            const ps = simXZtoLatLng(ship.position.x, ship.position.z);
+            const pt = simXZtoLatLng(tug.position.x, tug.position.z);
+            _rioMarkerShip = Lf.circleMarker([ps.lat, ps.lon], icShip).addTo(_rioMap).bindPopup('Navio (rebocado)');
+            _rioMarkerTug  = Lf.circleMarker([pt.lat, pt.lon], icTug).addTo(_rioMap).bindPopup('Rebocador');
+            _rioTowPoly = Lf.polyline([[pt.lat, pt.lon], [ps.lat, ps.lon]], { color: '#7dd3fc', weight: 2, opacity: 0.88 }).addTo(_rioMap);
+            _rioMap.setView([RIO_GEO.originLat, RIO_GEO.originLon], 12);
+            setTimeout(() => { if (_rioMap) _rioMap.invalidateSize(); }, 0);
+            const minBtn = document.getElementById('geo-mapa-min');
+            const body = document.getElementById('geo-mapa-body');
+            if (minBtn && body) {
+                minBtn.addEventListener('click', () => {
+                    body.classList.toggle('hidden');
+                    const on = !body.classList.contains('hidden');
+                    minBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+                    minBtn.textContent = on ? '−' : '+';
+                    setTimeout(() => { if (_rioMap) _rioMap.invalidateSize(); }, 200);
+                });
+            }
+        }
+        function updateRioContextMap() {
+            if (!_rioMap || !_rioMarkerShip || !_rioMarkerTug || !_rioTowPoly) return;
+            const t = performance.now() * 0.001;
+            if (t - _rioMapT < 0.11) return;
+            _rioMapT = t;
+            const s = simXZtoLatLng(ship.position.x, ship.position.z);
+            const u = simXZtoLatLng(tug.position.x, tug.position.z);
+            _rioMarkerShip.setLatLng([s.lat, s.lon]);
+            _rioMarkerTug.setLatLng([u.lat, u.lon]);
+            _rioTowPoly.setLatLngs([[u.lat, u.lon], [s.lat, s.lon]]);
+        }
+
         // Função para lidar com o redimensionamento da janela do navegador
         function onWindowResize(){
             const container = document.getElementById('sim-container');
@@ -2927,6 +3527,7 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
             }
+            if (_rioMap) _rioMap.invalidateSize();
         }
         window.addEventListener('resize', onWindowResize, false);
 
@@ -2934,16 +3535,19 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
         function animate() { requestAnimationFrame(animate); updatePhysics();
             updateCatenary();
             updateUI();
+            updateRioContextMap();
             updateEnvironmentVisuals();
             updatePropulsorJets();
             updateBuoys();
             updateVesselMotions();
+            if (!draggedObject) stepCameraFollow();
             if(!draggedObject) controls_cam.update();
             renderer.render(scene, camera);
         }
 
         // Inicia a simulação e o loop de animação
         uiControls.tugDraft.el.dispatchEvent(new Event('input'));
+        initRioContextMap();
         animate();
     </script>
 </body>

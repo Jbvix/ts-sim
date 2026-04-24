@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br" class="scroll-smooth">
+<html lang="pt-BR" class="scroll-smooth">
 <head>
   <!-- Jossian Brito 2025 -->
   <meta charset="utf-8" />
@@ -274,7 +274,7 @@
       <h2 class="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white break-words text-balance">Veja a linha de reboque, a tração e os limites de uma só vez</h2>
       <p class="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed space-y-2">
         <span class="block"><strong class="text-slate-800 dark:text-slate-200">1.</strong> No painel, introduz o <em>vão</em> entre embarcações, o <em>comprimento de cabo pago</em> e o <em>peso submerso do cabo</em> (e, se abrir o acordoão, limites de linha e do rebocador). O <strong>canvas</strong> desenha a curva (catenária) e mostra, quando aplicável, se há <strong>trecho a repousar no fundo</strong> — o chamado <em>touch-down</em>.</span>
-        <span class="block"><strong class="text-slate-800 dark:text-slate-200">2.</strong> A <a href="#tabelaVelocidade" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/50 underline-offset-2 hover:decoration-sky-500">tabela por velocidade</a> calcula, para cada nó, a <strong>resistência ao avanço</strong> <span class="font-mono text-slate-700 dark:text-slate-300" title="R_T no dashboard: casco, hélice, mar, corrente, vento">R<sub class="lowercase">T</sub></span> com o <strong>mesmo núcleo (casco + hélice + mar)</strong> e o <strong>factor de equilíbrio 0,4</strong> usados no simulador 3D, e ainda <strong>corrente e vento</strong> (campos da tabela) com o <strong>mesmo 0,4</strong> — depois, bissecção de vão <em>D</em> para <code class="text-[0.7rem]">H<sub>pull</sub> ≈ R<sub>T</sub></code> com <code class="text-[0.7rem]">quickCalc</code>.</span>
+        <span class="block"><strong class="text-slate-800 dark:text-slate-200">2.</strong> A <a href="#tabelaVelocidade" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/50 underline-offset-2 hover:decoration-sky-500">tabela por velocidade</a> calcula, para cada nó, a <strong>resistência ao avanço</strong> <span class="font-mono text-slate-700 dark:text-slate-300" title="R_T no dashboard: casco, hélice, mar, corrente, vento">R<sub class="lowercase">T</sub></span> com o <strong>mesmo núcleo (casco + hélice + mar)</strong> e o <strong>fator de equilíbrio 0,4</strong> usados no simulador 3D, e ainda <strong>corrente e vento</strong> (campos da tabela) com o <strong>mesmo 0,4</strong> — depois, bisseção de vão <em>D</em> para <code class="text-[0.7rem]">H<sub>pull</sub> ≈ R<sub>T</sub></code> com <code class="text-[0.7rem]">quickCalc</code>.</span>
         <span class="block"><strong class="text-slate-800 dark:text-slate-200">3.</strong> Os símbolos do painel (ex.: WLL, MBL, bollard pull) estão definidos de forma objetiva no <a href="#glossario" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/50 underline-offset-2 hover:decoration-sky-500">glossário</a>. <a href="documentos/melhores-praticas-imo.html" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/50 underline-offset-2 hover:decoration-sky-500">Diretrizes IMO</a> (reboque comercial) numa página à parte — o T‑Sim é apoio numérico, não substitui registo, classe nem SMS.</span>
       </p>
       <div class="mt-4 flex flex-wrap gap-2" aria-label="Em baixo, no dashboard: em que páginas aprofundar">
@@ -338,7 +338,7 @@
           </div>
           <div class="gloss-item rounded-xl border border-slate-200/60 dark:border-slate-600/40 bg-white/40 dark:bg-slate-800/25 p-3.5" data-terms="WLL carga trabalho working load">
             <h3 class="font-bold text-slate-900 dark:text-slate-100">WLL — Working Load Limit</h3>
-            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Carga de <strong>trabalho máxima admissível</strong> (geralmente MBL com factor de segurança); a linha deveria operar <strong>abaixo</strong> do WLL em serviço.</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Carga de <strong>trabalho máxima admissível</strong> (geralmente MBL com fator de segurança); a linha deveria operar <strong>abaixo</strong> do WLL em serviço.</p>
           </div>
           <div class="gloss-item rounded-xl border border-slate-200/60 dark:border-slate-600/40 bg-white/40 dark:bg-slate-800/25 p-3.5" data-terms="MBL rotura mínima breaking">
             <h3 class="font-bold text-slate-900 dark:text-slate-100">MBL — Minimum Breaking Load</h3>
@@ -346,11 +346,11 @@
           </div>
           <div class="gloss-item rounded-xl border border-slate-200/60 dark:border-slate-600/40 bg-white/40 dark:bg-slate-800/25 p-3.5" data-terms="BP bollard pull rebocador tração estática">
             <h3 class="font-bold text-slate-900 dark:text-slate-100">Bollard Pull (BP)</h3>
-            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Tração <strong>à bolina</strong> (certificação, ordem de ~estática); a tração real em velocidade cai. O painel <strong>limita T</strong> a BP (× <span class="font-mono text-xs">g</span> e tonelada-força) quando preenchido. O defeito <strong>80 tf</strong> alinha o tecto de tração com o <a href="reboqueoceanico242TSIM.html" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/40">simulador 3D</a> e a verificação <a href="documentos/melhores-praticas-imo.html#alinhamento-tsim" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/40">MSC/Circ.884</a> no T‑Sim.</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Tração <strong>à bolina</strong> (certificação, ordem de ~estática); a tração real em velocidade cai. O painel <strong>limita T</strong> a BP (× <span class="font-mono text-xs">g</span> e tonelada-força) quando preenchido. O valor padrão de <strong>80 tf</strong> alinha o teto de tração com o <a href="reboqueoceanico242TSIM.html" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/40">simulador 3D</a> e a verificação <a href="documentos/melhores-praticas-imo.html#alinhamento-tsim" class="text-sky-600 dark:text-sky-400 font-semibold underline decoration-sky-400/40">MSC/Circ.884</a> no T‑Sim.</p>
           </div>
           <div class="gloss-item rounded-xl border border-slate-200/60 dark:border-slate-600/40 bg-white/40 dark:bg-slate-800/25 p-3.5" data-terms="R_T resistência total avanço sim">
             <h3 class="font-bold text-slate-900 dark:text-slate-100">R<sub class="text-[0.8em]">T</sub> — resistência ao avanço</h3>
-            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Somatório (tabela do dashboard) com o <strong>mesmo factor 0,4</strong> do 3D sobre casco, hélice, mar, <strong>corrente e vento</strong> (preencha os nós/onda no painel). O sim 3D aplica ainda ambiente em passos de física ligeiramente distintos; use isto para <strong>ordem de grandeza</strong> e vão alvo <span class="font-mono text-xs">D</span>.</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Somatório (tabela do dashboard) com o <strong>mesmo fator 0,4</strong> do 3D sobre casco, hélice, mar, <strong>corrente e vento</strong> (preencha os nós/onda no painel). O sim 3D aplica ainda ambiente em passos de física ligeiramente distintos; use isto para <strong>ordem de grandeza</strong> e vão alvo <span class="font-mono text-xs">D</span>.</p>
           </div>
           <div class="gloss-item rounded-xl border border-slate-200/60 dark:border-slate-600/40 bg-white/40 dark:bg-slate-800/25 p-3.5" data-terms="L/C ratio scope sag flecha USN">
             <h3 class="font-bold text-slate-900 dark:text-slate-100">L/C — relação escopo / flecha</h3>
@@ -362,7 +362,7 @@
           </div>
           <div class="gloss-item rounded-xl border border-slate-200/60 dark:border-slate-600/40 bg-white/40 dark:bg-slate-800/25 p-3.5" data-terms="EA rigidez axial módulo cabo mola">
             <h3 class="font-bold text-slate-900 dark:text-slate-100">EA (módulo axial)</h3>
-            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Rigidez <strong>estática alongamento</strong> (comprimento pago e secção); determina o <span class="font-mono text-xs">k = EA/L</span> e o período longitudinal na tabela.</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">Rigidez <strong>estática alongamento</strong> (comprimento pago e seção); determina o <span class="font-mono text-xs">k = EA/L</span> e o período longitudinal na tabela.</p>
           </div>
         </div>
         <p id="glossaryEmpty" class="hidden text-sm text-slate-500 dark:text-slate-400 text-center py-6">Nenhum termo corresponde ao filtro. Limpe a pesquisa ou tente outra palavra.</p>
@@ -610,12 +610,12 @@
             </h2>
           </div>
         </div>
-        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-4xl leading-relaxed">A resistência <strong class="text-slate-800 dark:text-slate-200">R<sub class="lowercase">T</sub></strong> soma <strong>casco + hélice + mar + corrente + vento</strong> (campos de onda, corrente e vento) e aplica o <strong>mesmo</strong> factor global <strong>×0,4</strong> usado no bloco de resistência do 3D (hábil para comparar; o 3D trata vento/corrente noutro encadeamento — ordem de grandeza, não identidade ponto a ponto). A <strong>massa</strong> vem de <strong>calado</strong> e <strong>tipo</strong>. Para cada nó, <code class="text-[0.7rem]">solveSpanForHpull</code> ajusta o vão <em>D</em> para \(H_{pull} \approx R_T\); de seguida, <code class="text-[0.7rem]">quickCalc</code> dá flecha, <span class="font-mono">L_b</span>, T<sub>end</sub> (respeitando WLL, MBL, BP).</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-4xl leading-relaxed">A resistência <strong class="text-slate-800 dark:text-slate-200">R<sub class="lowercase">T</sub></strong> soma <strong>casco + hélice + mar + corrente + vento</strong> (campos de onda, corrente e vento) e aplica o <strong>mesmo</strong> fator global <strong>×0,4</strong> usado no bloco de resistência do 3D (útil para comparar; o 3D trata vento/corrente em outro encadeamento — ordem de grandeza, não identidade ponto a ponto). A <strong>massa</strong> vem de <strong>calado</strong> e <strong>tipo</strong>. Para cada nó, <code class="text-[0.7rem]">solveSpanForHpull</code> ajusta o vão <em>D</em> para \(H_{pull} \approx R_T\); em seguida, <code class="text-[0.7rem]">quickCalc</code> dá flecha, <span class="font-mono">L_b</span>, T<sub>end</sub> (respeitando WLL, MBL, BP).</p>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3 p-4 sm:p-5 rounded-2xl bg-slate-100/60 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-600/50">
           <div>
             <label class="block text-[10px] font-bold text-slate-500 uppercase" for="shipType">Tipo de navio</label>
-            <select id="shipType" class="w-full mt-1 px-2 py-1.5 rounded-lg input-glass text-sm" title="Catálogo T‑Sim: massa e factores de casco/vento/corrente">
+            <select id="shipType" class="w-full mt-1 px-2 py-1.5 rounded-lg input-glass text-sm" title="Catálogo T‑Sim: massa e fatores de casco/vento/corrente">
               <option value="bulkcarrier">Graneleiro</option>
               <option value="tanker">Petroleiro</option>
               <option value="containership">Porta-contêiner</option>
@@ -753,7 +753,7 @@
         <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm text-slate-600 dark:text-slate-300">
           <li class="flex gap-3 p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-slate-800/30 border border-slate-200/60 dark:border-slate-600/40 min-w-0">
             <span class="shrink-0 w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-800 dark:text-amber-300 font-bold text-xs">1</span>
-            <span><strong class="text-slate-800 dark:text-slate-100">Parâmetros (ícone de calculadora na barra):</strong> ajuste S, L, w′, h e, se necessário, WLL, MBL, BP e μ no acordeão. Volte a <strong>Dinâmica &amp; canvas</strong> para ver KPIs e o desenho actualizados ao escrever.</span>
+            <span><strong class="text-slate-800 dark:text-slate-100">Parâmetros (ícone de calculadora na barra):</strong> ajuste S, L, w′, h e, se necessário, WLL, MBL, BP e μ no acordeão. Volte a <strong>Dinâmica &amp; canvas</strong> para ver KPIs e o desenho atualizados ao escrever.</span>
           </li>
           <li class="flex gap-3 p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-slate-800/30 border border-slate-200/60 dark:border-slate-600/40 min-w-0">
             <span class="shrink-0 w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-800 dark:text-amber-300 font-bold text-xs">2</span>
@@ -1227,7 +1227,11 @@
         const folga = (r.ymid != null) ? Math.max(0, hD - r.ymid) : null;
         const TrawkN = r.TendRawN / 1000;
         const TlimitedkN = r.TkN;
-        const dTsn = ((Zsnap * dVm) / 1000) * snapGamma;
+        const geomCompliance =
+          (C != null && C > 0 && LC != null)
+            ? Math.max(0.18, Math.min(1.0, 0.55 + 0.45 * (8 / Math.max(LC, 1))))
+            : 1.0;
+        const dTsn = ((Zsnap * dVm) / 1000) * snapGamma * geomCompliance;
         const TsnapRaw = TrawkN + dTsn;
         const TsnapLimited = TlimitedkN + dTsn;
         const pctMblStatic = vals.mbl > 0 ? (100 * TlimitedkN / vals.mbl) : null;
@@ -1238,6 +1242,7 @@
         else if (pctMblSnap != null && pctMblSnap > 100) st = 'MBL!';
         else if (pctMblSnap != null && pctMblSnap > 90) st = 'LIMITE SNAP';
         else if (pctMblStatic != null && pctMblStatic > 90) st = 'LIMITE T';
+        else if (LC != null && LC >= 8 && C != null && C > 0) st = 'CATENÁRIA FAVORÁVEL';
         rows.push({
           v: iv, RT: RTkN, T: TlimitedkN, C, D: Dm, LC, th, folga, Ts: TsnapLimited, pctStatic: pctMblStatic, pctSnap: pctMblSnap, st
         });
@@ -1249,7 +1254,7 @@
           : '—');
         const stClass = (row.st === 'MBL!') ? 'text-rose-600 dark:text-rose-400 font-bold'
           : (row.st === 'TRANCO' || String(row.st).includes('LIMITE')) ? 'text-amber-600 dark:text-amber-400 font-semibold'
-            : (row.st === 'OK' || row.st === 'Repouso' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500');
+            : (row.st === 'OK' || row.st === 'CATENÁRIA FAVORÁVEL' || row.st === 'Repouso' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500');
         if (row.st === '—' || row.T == null) {
           return `<tr class="border-t border-slate-200/80 dark:border-slate-700/80">
             <td class="p-2 sm:p-3">${row.v.toFixed(0)}</td>
@@ -1628,7 +1633,7 @@
       a.addEventListener('click', closeMenuIfOpen);
     });
 
-    // Painéis: um de cada vez; barra e links #id activam a secção (sem scroll longo)
+    // Painéis: um de cada vez; barra e links #id ativam a seção (sem scroll longo)
     const TSIM_PANEL_IDS = ['inicio', 'glossario', 'visao', 'calc', 'formulas', 'safety', 'tabelaVelocidade', 'manual'];
     function getTsimPanelIdFromHash() {
       const h = (location.hash || '').replace(/^#/, '');
