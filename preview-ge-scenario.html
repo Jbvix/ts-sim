@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T-Sim · Preview GE 3D Tiles no cenário</title>
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css" />
+  <style>
+    :root {
+      --panel: rgba(15, 23, 42, 0.92);
+      --line: rgba(148, 163, 184, 0.35);
+      --accent: #38bdf8;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; background: #020617; color: #e2e8f0; }
+    #stage { position: relative; width: 100%; height: 100%; }
+    #cesium-underlay { position: absolute; inset: 0; z-index: 0; }
+    #three-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: auto; }
+    #three-overlay canvas { display: block; width: 100% !important; height: 100% !important; }
+    .cesium-viewer, .cesium-viewer-cesiumWidgetContainer, .cesium-widget, .cesium-widget canvas {
+      width: 100% !important; height: 100% !important;
+    }
+    #banner {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+      padding: 0.45rem 1rem; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35); white-space: nowrap;
+    }
+    #banner em { color: var(--warn); font-style: normal; }
+    #panel {
+      position: absolute; top: 56px; left: 14px; z-index: 20; width: min(320px, calc(100vw - 28px));
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+    }
+    #panel h1 { margin: 0 0 4px; font-size: 0.95rem; font-weight: 700; }
+    #panel p { margin: 0 0 12px; font-size: 0.72rem; line-height: 1.45; color: #94a3b8; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 0.75rem; }
+    .row label { color: #cbd5e1; }
+    .row input[type="range"] { width: 140px; }
+    .row select, .row button {
+      font: inherit; font-size: 0.72rem; font-weight: 600; color: #e2e8f0;
+      background: #1e293b; border: 1px solid rgba(148,163,184,0.45); border-radius: 6px; padding: 0.3rem 0.5rem;
+    }
+    .row button { cursor: pointer; }
+    .row button:hover { border-color: var(--accent); }
+    #status {
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+      font-size: 0.7rem; color: #94a3b8; line-height: 1.4;
+    }
+    #status.ok { color: var(--ok); }
+    #status.err { color: #f87171; }
+    #status.loading { color: var(--warn); }
+    .stack {
+      margin-top: 10px; display: grid; gap: 4px; font-size: 0.65rem; color: #64748b;
+      font-family: ui-monospace, Consolas, monospace;
+    }
+    .stack span { display: flex; justify-content: space-between; gap: 8px; }
+    .stack b { color: #94a3b8; font-weight: 600; }
+    #hint {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 20;
+      font-size: 0.7rem; color: #94a3b8; background: rgba(2,6,23,0.7); padding: 0.35rem 0.75rem;
+      border-radius: 8px; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="cesium-underlay" aria-hidden="true"></div>
+    <div id="three-overlay"></div>
+    <div id="banner">PREVIEW · <em>GE 3D Tiles sob o cenário Three</em> · física do T-Sim não incluída</div>
+    <aside id="panel">
+      <h1>Proposta A — underlay Cesium</h1>
+      <p>Costa Google Photorealistic (Cesium Ion) atrás do canvas Three transparente. Navio, rebocador, cabo e água ficam no Three; a geografia real fica no Cesium.</p>
+      <div class="row">
+        <label for="waterOp">Opacidade da água</label>
+        <input id="waterOp" type="range" min="0" max="100" value="35" />
+      </div>
+      <div class="row">
+        <label for="waterSize">Raio da água (m)</label>
+        <input id="waterSize" type="range" min="400" max="8000" step="100" value="2200" />
+      </div>
+      <div class="row">
+        <label for="underlay">GE 3D Tiles</label>
+        <select id="underlay">
+          <option value="on" selected>ligado</option>
+          <option value="off">desligado (fundo escuro)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="syncCam">Sync câmera</label>
+        <select id="syncCam">
+          <option value="on" selected>Three → Cesium</option>
+          <option value="off">pausar sync</option>
+        </select>
+      </div>
+      <div class="row">
+        <span></span>
+        <button type="button" id="btnReset" title="Repositar câmera">Reset câmera</button>
+      </div>
+      <div id="status" class="loading">A carregar token Cesium Ion…</div>
+      <div class="stack">
+        <span><b>camada 0</b> Cesium / GE Photorealistic</span>
+        <span><b>camada 1</b> Three (água + cascos + cabo)</span>
+        <span><b>origem</b> Baía de Guanabara (−22.95, −43.14)</span>
+      </div>
+    </aside>
+    <div id="hint">Arraste para orbitar · scroll para zoom · ajuste a água para ver a costa</div>
+  </div>
+
+  <script>window.CESIUM_BASE_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/';</script>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js" crossorigin="anonymous"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const RIO = {
+  originLat: -22.95,
+  originLon: -43.14,
+  mPerDegLat: 110852,
+  mPerDegLon: 111320 * Math.cos(-22.95 * Math.PI / 180)
+};
+
+const statusEl = document.getElementById('status');
+const waterOp = document.getElementById('waterOp');
+const waterSize = document.getElementById('waterSize');
+const underlaySel = document.getElementById('underlay');
+const syncCamSel = document.getElementById('syncCam');
+const btnReset = document.getElementById('btnReset');
+
+function setStatus(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = cls || '';
+}
+
+function simToLL(x, z) {
+  return {
+    lat: RIO.originLat + z / RIO.mPerDegLat,
+    lon: RIO.originLon + x / RIO.mPerDegLon
+  };
+}
+
+/* ——— Cesium underlay ——— */
+let viewer = null;
+let tilesReady = false;
+
+async function fetchToken() {
+  const urls = ['/api/cesium-token', '/.netlify/functions/cesium-token'];
+  let last = 'sem resposta';
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.token) return data;
+      last = data.error || ('HTTP ' + res.status);
+    } catch (e) {
+      last = String(e.message || e);
+    }
+  }
+  throw new Error(last);
+}
+
+async function initCesium() {
+  const el = document.getElementById('cesium-underlay');
+  const cfg = await fetchToken();
+  Cesium.Ion.defaultAccessToken = cfg.token;
+  if (cfg.googleMapsApiKey) Cesium.GoogleMaps.defaultApiKey = cfg.googleMapsApiKey;
+
+  viewer = new Cesium.Viewer(el, {
+    animation: false,
+    timeline: false,
+    baseLayerPicker: false,
+    geocoder: false,
+    homeButton: false,
+    sceneModePicker: false,
+    navigationHelpButton: false,
+    fullscreenButton: false,
+    infoBox: false,
+    selectionIndicator: false,
+    globe: false,
+    skyBox: false,
+    skyAtmosphere: false,
+    requestRenderMode: true,
+    maximumRenderTimeChange: Infinity,
+    useDefaultRenderLoop: true
+  });
+  if (viewer.cesiumWidget?.creditContainer) {
+    viewer.cesiumWidget.creditContainer.style.display = 'none';
+  }
+  // Credits still required by ToS — show a compact line in status instead
+  const tileset = await Cesium.createGooglePhotorealistic3DTileset();
+  viewer.scene.primitives.add(tileset);
+  viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#051d40');
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(RIO.originLon, RIO.originLat, 900),
+    orientation: {
+      heading: Cesium.Math.toRadians(25),
+      pitch: Cesium.Math.toRadians(-28),
+      roll: 0
+    }
+  });
+  tilesReady = true;
+  setStatus('GE Photorealistic 3D Tiles ativos · Ion OK', 'ok');
+  viewer.scene.requestRender();
+}
+
+function syncCesiumFromThree(camera, target) {
+  if (!viewer || !tilesReady || syncCamSel.value !== 'on' || underlaySel.value !== 'on') return;
+  const eyeLL = simToLL(camera.position.x, camera.position.z);
+  const tgtLL = simToLL(target.x, target.z);
+  const eyeH = Math.max(8, camera.position.y);
+  const tgtH = Math.max(0, target.y);
+  const eye = Cesium.Cartesian3.fromDegrees(eyeLL.lon, eyeLL.lat, eyeH);
+  const tgt = Cesium.Cartesian3.fromDegrees(tgtLL.lon, tgtLL.lat, tgtH);
+  const dir = Cesium.Cartesian3.normalize(
+    Cesium.Cartesian3.subtract(tgt, eye, new Cesium.Cartesian3()),
+    new Cesium.Cartesian3()
+  );
+  const up = Cesium.Cartesian3.normalize(
+    Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(eye, new Cesium.Cartesian3()),
+    new Cesium.Cartesian3()
+  );
+  viewer.camera.setView({
+    destination: eye,
+    orientation: { direction: dir, up }
+  });
+  // Match FOV roughly (Three uses vertical FOV)
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const aspect = camera.aspect || 1;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+  viewer.camera.frustum.fov = hFov;
+  viewer.scene.requestRender();
+}
+
+/* ——— Three overlay ——— */
+const host = document.getElementById('three-overlay');
+const scene = new THREE.Scene();
+scene.background = null;
+const camera = new THREE.PerspectiveCamera(60, 1, 0.5, 20000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+host.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 2, -40);
+
+const hemi = new THREE.HemisphereLight(0xb8d4ff, 0x1a2a3a, 0.85);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff2dd, 1.05);
+sun.position.set(120, 220, 80);
+scene.add(sun);
+
+const waterMat = new THREE.MeshPhongMaterial({
+  color: 0x0a4a6e,
+  transparent: true,
+  opacity: 0.35,
+  depthWrite: false,
+  side: THREE.DoubleSide
+});
+const water = new THREE.Mesh(new THREE.CircleGeometry(2200, 64), waterMat);
+water.rotation.x = -Math.PI / 2;
+water.position.y = -1;
+scene.add(water);
+
+function makeHull(w, h, l, color) {
+  const g = new THREE.BoxGeometry(w, h, l);
+  const m = new THREE.MeshStandardMaterial({ color, metalness: 0.25, roughness: 0.55 });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.y = h * 0.35;
+  return mesh;
+}
+
+const ship = makeHull(28, 14, 110, 0x64748b);
+ship.position.set(0, 0, -80);
+scene.add(ship);
+const bridge = new THREE.Mesh(
+  new THREE.BoxGeometry(18, 10, 22),
+  new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.2, roughness: 0.5 })
+);
+bridge.position.set(0, 14, -40);
+ship.add(bridge);
+
+const tug = makeHull(10, 6, 28, 0xb91c1c);
+tug.position.set(8, 0, 55);
+scene.add(tug);
+
+const cableGeo = new THREE.BufferGeometry();
+const cablePos = new Float32Array(6);
+cableGeo.setAttribute('position', new THREE.BufferAttribute(cablePos, 3));
+const cable = new THREE.Line(cableGeo, new THREE.LineBasicMaterial({ color: 0xfacc15 }));
+cable.renderOrder = 10;
+scene.add(cable);
+
+function updateCable() {
+  const a = tug.position;
+  const b = ship.position;
+  cablePos[0] = a.x; cablePos[1] = a.y + 4; cablePos[2] = a.z + 12;
+  cablePos[3] = b.x; cablePos[4] = b.y + 6; cablePos[5] = b.z + 52;
+  cableGeo.attributes.position.needsUpdate = true;
+}
+updateCable();
+
+function resetCamera() {
+  camera.position.set(90, 55, 140);
+  controls.target.set(0, 4, -20);
+  controls.update();
+}
+resetCamera();
+
+function resize() {
+  const w = host.clientWidth || window.innerWidth;
+  const h = host.clientHeight || window.innerHeight;
+  camera.aspect = w / Math.max(1, h);
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+  if (viewer) {
+    try { viewer.resize(); } catch (_) { /* */ }
+    viewer.scene.requestRender();
+  }
+}
+window.addEventListener('resize', resize);
+resize();
+
+waterOp.addEventListener('input', () => {
+  waterMat.opacity = Number(waterOp.value) / 100;
+});
+waterSize.addEventListener('input', () => {
+  const r = Number(waterSize.value);
+  water.geometry.dispose();
+  water.geometry = new THREE.CircleGeometry(r, 64);
+});
+underlaySel.addEventListener('change', () => {
+  const on = underlaySel.value === 'on';
+  document.getElementById('cesium-underlay').style.visibility = on ? 'visible' : 'hidden';
+  if (!on) renderer.setClearColor(0x051d40, 1);
+  else renderer.setClearColor(0x000000, 0);
+});
+btnReset.addEventListener('click', resetCamera);
+
+let t0 = performance.now();
+function animate(now) {
+  requestAnimationFrame(animate);
+  const t = (now - t0) * 0.001;
+  // leve movimento didático
+  tug.position.x = 8 + Math.sin(t * 0.35) * 6;
+  tug.position.z = 55 + Math.cos(t * 0.28) * 4;
+  tug.rotation.y = Math.sin(t * 0.2) * 0.15;
+  updateCable();
+  controls.update();
+  syncCesiumFromThree(camera, controls.target);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+initCesium().catch((err) => {
+  setStatus('Cesium indisponível: ' + (err.message || err) + ' — abra via Netlify (token).', 'err');
+  underlaySel.value = 'off';
+  underlaySel.dispatchEvent(new Event('change'));
+});
+  </script>
+</body>
+</html>
