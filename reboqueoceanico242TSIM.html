@@ -147,7 +147,7 @@
                         </select>
                     </div>
                     <div class="control-row"><label for="sailArea">Área Vélica (m²):</label><input type="range" id="sailArea" min="1000" max="10000" value="5000" step="100" title="Área Vélica"><span id="sailAreaValue">5000</span></div>
-                    <div class="control-row"><label for="shipDraft">Calado (m):</label><input type="range" id="shipDraft" min="8" max="20" value="10.5" step="0.5" title="Preset Cargueiro: 10,5 m (75% do intervalo 6–12 m)."><span id="shipDraftValue">10.5</span></div>
+                    <div class="control-row"><label for="shipDraft">Calado (m):</label><input type="range" id="shipDraft" min="7" max="12" value="10.75" step="0.25" title="Calado do navio: afunda as obras vivas. Faixa conforme o tipo selecionado."><span id="shipDraftValue">10.75</span></div>
                     <hr>
                     <div class="control-row"><label title="Massa vs calado (aprox.)">Massa (ton):</label><span id="shipMassValue">0</span></div>
                     <div class="control-row"><label>Comprimento (m):</label><span id="shipLengthValue">0</span></div>
@@ -285,7 +285,7 @@
         <div id="asdPanel" class="panel asd-panel hidden">
             <h4>Governo ASD (rebocador)</h4>
             <div class="asd-section">
-                <div class="control-row"><label for="tugDraft">Calado (m)</label><input type="range" id="tugDraft" min="3" max="8" value="5" step="0.25" title="Calado 3–8 m (default 5 m). f_calado = calado/5 m (1,0 em 5 m). Ref. 100%: 5 m + 1800 rpm + SOG ref. 11+ n + tração total."><span id="tugDraftValue">5</span></div>
+                <div class="control-row"><label for="tugDraft">Calado (m)</label><input type="range" id="tugDraft" min="4.5" max="6.5" value="5.5" step="0.25" title="Rastar 3200: calado 4,5–6,5 m (default 5,5 m). f_calado = calado/5 m (1,0 em 5 m). Afunda as obras vivas sob a linha d'água."><span id="tugDraftValue">5.5</span></div>
             </div>
             <div class="asd-btn-row">
                 <button type="button" id="engineStartStop" class="asd-btn asd-btn-engine">Partida dos Motores</button>
@@ -1021,12 +1021,13 @@ function seabedFriction(H_try, wNpm, Lb, mu_s = 0.6, mu_k = 0.5) {
 
 // --- 5. BASES DE DADOS E OBJETOS DE SIMULAÇÃO ---
 const shipPresets = {
-    'generic': { name: 'Cargueiro Genérico', length: 160, beam: 25, height: 18, minDraft: 6, maxDraft: 12, minMass: 15000, maxMass: 30000, sailArea: 1500, propArea: 20 },
-    'feeder': { name: 'Porta-contêineres (Feeder)', length: 90, beam: 18, height: 10, minDraft: 4, maxDraft: 7, minMass: 4000, maxMass: 8000, sailArea: 800, propArea: 10 },
-    'handy': { name: 'Porta-contêineres (Handy)', length: 110, beam: 20, height: 12, minDraft: 5, maxDraft: 9, minMass: 8000, maxMass: 15000, sailArea: 1000, propArea: 15 },
-    'panamax': { name: 'Porta-contêineres (Panamax)', length: 150, beam: 24, height: 16, minDraft: 7, maxDraft: 12, minMass: 12000, maxMass: 25000, sailArea: 1400, propArea: 20 },
-    'postpanamax': { name: 'Porta-contêineres (UCLV)', length: 180, beam: 30, height: 20, minDraft: 8, maxDraft: 14, minMass: 20000, maxMass: 45000, sailArea: 2000, propArea: 25 },
-    'aframax': { name: 'Petroleiro (Aframax)', length: 140, beam: 28, height: 15, minDraft: 7, maxDraft: 11, minMass: 15000, maxMass: 35000, sailArea: 1300, propArea: 18 },
+    // Calados alinhados a faixas típicas de serviço (obras vivas sob a linha d'água no modelo GLB)
+    'generic': { name: 'Cargueiro Genérico', length: 160, beam: 25, height: 18, minDraft: 7, maxDraft: 12, minMass: 15000, maxMass: 30000, sailArea: 1500, propArea: 20 },
+    'feeder': { name: 'Porta-contêineres (Feeder)', length: 90, beam: 18, height: 12, minDraft: 5, maxDraft: 8, minMass: 4000, maxMass: 8000, sailArea: 800, propArea: 10 },
+    'handy': { name: 'Porta-contêineres (Handy)', length: 110, beam: 20, height: 14, minDraft: 6, maxDraft: 10, minMass: 8000, maxMass: 15000, sailArea: 1000, propArea: 15 },
+    'panamax': { name: 'Porta-contêineres (Panamax)', length: 150, beam: 24, height: 18, minDraft: 8, maxDraft: 13, minMass: 12000, maxMass: 25000, sailArea: 1400, propArea: 20 },
+    'postpanamax': { name: 'Porta-contêineres (UCLV)', length: 180, beam: 30, height: 22, minDraft: 9, maxDraft: 15, minMass: 20000, maxMass: 45000, sailArea: 2000, propArea: 25 },
+    'aframax': { name: 'Petroleiro (Aframax)', length: 140, beam: 28, height: 16, minDraft: 8, maxDraft: 12, minMass: 15000, maxMass: 35000, sailArea: 1300, propArea: 18 },
 };
 
 // Objetos que mantêm o estado da simulação para o navio, rebocador e cabo
@@ -1044,7 +1045,7 @@ scene.add(ship.mesh);
 const tug = {
     mesh: new THREE.Mesh(new THREE.BoxGeometry(12, 8, 30), makeHullInvisibleMaterial()),
     position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(0, 0, 0),
-    angularVelocity: 0, angle: Math.PI, beam: 12, length: 30, draft: 5, minDraft: 3, maxDraft: 8,
+    angularVelocity: 0, angle: Math.PI, beam: 12, length: 30, draft: 5.5, minDraft: 4.5, maxDraft: 6.5,
     minMass: 800 * 1000, maxMass: 1200 * 1000, mass: 0,
     jet1: null, jet2: null, engineLoad: 0, tractionLoad: 0, enginesOn: false, // traction inclui f(calado), ref 5 m; UI ×f(RPM)×f(SOG)
     maxPowerKW: 6000,
@@ -1697,13 +1698,14 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     model.updateMatrixWorld(true);
     box = meshVisibleBounds(model);
     const center = box.getCenter(new THREE.Vector3());
+    // Trava X (assimetrías do modelo não deslocam a quilha lateralmente)
     center.x = 0;
-    model.position.sub(center);
-    if (opts.yBiasFrac) {
-        model.updateMatrixWorld(true);
-        const sizeY = meshVisibleBounds(model).getSize(new THREE.Vector3()).y;
-        model.position.y += sizeY * opts.yBiasFrac;
-    }
+    model.position.x -= center.x;
+    model.position.z -= center.z;
+    // Quilha na base do colisor (−height/2): o calado afunda as obras vivas de forma correta
+    model.updateMatrixWorld(true);
+    box = meshVisibleBounds(model);
+    model.position.y += (-th / 2) - box.min.y;
 
     model.traverse((c) => {
         if (!c.isMesh) return;
@@ -1716,11 +1718,14 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     model.updateMatrixWorld(true);
     const fitted = meshVisibleBounds(model).getSize(new THREE.Vector3());
     hullMesh.userData.glbFittedSize = { x: fitted.x, y: fitted.y, z: fitted.z };
+    hullMesh.userData.glbKeelLocalY = -th / 2;
 }
 
 function refreshVesselGlbVisuals() {
-    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, yBiasFrac: 0 });
-    if (_tugGlbRoot) fitGlbIntoHull(tug.mesh, _tugGlbRoot, { fitInside: false, yBiasFrac: 0.08 });
+    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false });
+    if (_tugGlbRoot) fitGlbIntoHull(tug.mesh, _tugGlbRoot, { fitInside: false });
+    if (ship.mesh.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+    if (tug.mesh.geometry?.parameters) updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
 }
 
 async function loadVesselGlbs() {
@@ -1773,11 +1778,13 @@ function applyShipPreset(presetName) {
 
     ship.mesh.geometry = new THREE.BoxGeometry(preset.beam, preset.height, preset.length);
     ship.mesh.material = makeHullInvisibleMaterial();
-    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, yBiasFrac: 0 });
+    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false });
 
     const draftSlider = uiControls.shipDraft.el;
     draftSlider.min = preset.minDraft; draftSlider.max = preset.maxDraft;
+    draftSlider.step = preset.draftStep || 0.25;
     draftSlider.value = preset.minDraft + (preset.maxDraft - preset.minDraft) * 0.75;
+    draftSlider.title = `Calado ${preset.minDraft}–${preset.maxDraft} m (${preset.name}). Afunda as obras vivas sob a linha d'água.`;
     const sailSlider = uiControls.sailArea.el;
     sailSlider.min = preset.sailArea * 0.5; sailSlider.max = preset.sailArea * 1.5;
     sailSlider.value = preset.sailArea;
@@ -3315,6 +3322,15 @@ function animate() {
 }
 
 // Inicia a simulação e o loop de animação
+{
+    const td = uiControls.tugDraft.el;
+    if (td) {
+        td.min = tug.minDraft;
+        td.max = tug.maxDraft;
+        td.value = tug.draft;
+        td.step = 0.25;
+    }
+}
 uiControls.tugDraft.el.dispatchEvent(new Event('input'));
 initRioContextMap();
 loadVesselGlbs();
