@@ -3660,6 +3660,7 @@ function animate() {
         if (!draggedObject) controls_cam.update();
         // Sync câmera Cesium ← Three (mesma pose; não altera OrbitControls)
         if (_scenarioGeActive && window.__simCesiumScenario && window.__simCesiumScenario.ready) {
+            camera.updateMatrixWorld(true);
             window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
         }
     } catch (err) {
