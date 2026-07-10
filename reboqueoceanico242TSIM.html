@@ -315,7 +315,7 @@
             <h4>Câmera 3D</h4>
             <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;">Vista: órbita livre (mouse) ou pivô a acompanhar o <strong>rebocador</strong>, o <strong>navio</strong> ou o <strong>comboio</strong>. Controle também pelo ícone de câmera no trilho à esquerda.</p>
             <div class="flex flex-col gap-1.5">
-                <button type="button" class="cam-mode-btn" data-cam-mode="free" data-cam-from="panel" title="Rotação, zoom e pan livres" aria-pressed="true">Órbita livre</button>
+                <button type="button" class="cam-mode-btn" data-cam-mode="free" data-cam-from="panel" title="Posicionamento: arraste para enquadrar; o cenário GE atualiza ao soltar" aria-pressed="true">Órbita livre</button>
                 <button type="button" class="cam-mode-btn" data-cam-mode="tug" data-cam-from="panel" title="Pivô no rebocador" aria-pressed="false">Rebocador</button>
                 <button type="button" class="cam-mode-btn" data-cam-mode="ship" data-cam-from="panel" title="Pivô no navio rebocado" aria-pressed="false">Navio</button>
                 <button type="button" class="cam-mode-btn" data-cam-mode="convoy" data-cam-from="panel" title="Pivô no centro do comboio" aria-pressed="false">Comboio</button>
@@ -1155,6 +1155,10 @@ function setCameraMode(mode) {
         const on = btn.getAttribute('data-cam-mode') === mode;
         btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+    // Ao sair do posicionamento livre, reaplica o underlay GE na pose atual
+    if (mode !== 'free' && _scenarioGeActive) {
+        endGeOrbitPositioning(true);
+    }
 }
 function stepCameraFollow() {
     if (_simCameraMode === 'free') return;
@@ -1180,6 +1184,45 @@ if (typeof window !== 'undefined') {
     window.__simGetCameraMode = () => _simCameraMode;
     window.__simSetCameraMode = (m) => setCameraMode(m);
 }
+
+/** Órbita livre + GE: só posicionamento — sem sync ao vivo (evita comboio a girar vs costa). */
+let _geOrbitPositioning = false;
+
+function beginGeOrbitPositioning() {
+    if (!_scenarioGeActive || _simCameraMode !== 'free') return;
+    if (_geOrbitPositioning) return;
+    _geOrbitPositioning = true;
+    const el = document.getElementById('cesium-scenario');
+    if (el) el.style.visibility = 'hidden';
+    scene.background = new THREE.Color(0x051d40);
+    renderer.setClearColor(0x051d40, 1);
+    if (window.__simCesiumScenario && window.__simCesiumScenario.setActive) {
+        window.__simCesiumScenario.setActive(false);
+    }
+}
+
+function endGeOrbitPositioning(forceSync) {
+    const was = _geOrbitPositioning;
+    _geOrbitPositioning = false;
+    if (!_scenarioGeActive || !window.__simCesiumScenario || !window.__simCesiumScenario.ready) return;
+    if (!was && !forceSync) return;
+    camera.updateMatrixWorld(true);
+    window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
+    const el = document.getElementById('cesium-scenario');
+    if (el) el.style.visibility = 'visible';
+    scene.background = null;
+    renderer.setClearColor(0x000000, 0);
+    if (window.__simCesiumScenario.setActive) window.__simCesiumScenario.setActive(true);
+    if (window.__simCesiumScenario.resize) window.__simCesiumScenario.resize();
+}
+
+controls_cam.addEventListener('start', () => {
+    // Zoom/pan/órbita com mouse: em modo livre = posicionamento apenas
+    beginGeOrbitPositioning();
+});
+controls_cam.addEventListener('end', () => {
+    endGeOrbitPositioning(true);
+});
 
 // Estado do cabo e sua representação visual
 const cable = { length: 320, targetLength: 320, springConstant: 0, damping: 0, weightPerMeter: 0, numSegments: 50 };
@@ -3588,11 +3631,13 @@ async function initScenarioGeUnderlay() {
         if (ok) {
             applyScenarioGeVisuals(true);
             if (sc.resize) sc.resize();
+            camera.updateMatrixWorld(true);
+            if (sc.syncFromThree) sc.syncFromThree(camera, controls_cam.target);
             // Inset: se estiver em Cesium, mudar para OpenSeaMap para poupar GPU
             if (_coastMode === 'cesium') {
                 await setCoastProvider('leaflet');
             }
-            console.info('[T-Sim] underlay GE no cenário — física/câmera/comboio inalterados');
+            console.info('[T-Sim] underlay GE no cenário — física/câmera/comboio inalterados; órbita livre = posicionamento');
         } else {
             applyScenarioGeVisuals(false);
         }
@@ -3658,8 +3703,15 @@ function animate() {
         updateVesselMotions();
         if (!draggedObject) stepCameraFollow();
         if (!draggedObject) controls_cam.update();
-        // Sync câmera Cesium ← Three (mesma pose; não altera OrbitControls)
-        if (_scenarioGeActive && window.__simCesiumScenario && window.__simCesiumScenario.ready) {
+        // GE underlay: sync contínuo só em rebocador/navio/comboio.
+        // Órbita livre = posicionamento (sync no 'end' do OrbitControls).
+        if (
+            _scenarioGeActive &&
+            !_geOrbitPositioning &&
+            _simCameraMode !== 'free' &&
+            window.__simCesiumScenario &&
+            window.__simCesiumScenario.ready
+        ) {
             camera.updateMatrixWorld(true);
             window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
         }
