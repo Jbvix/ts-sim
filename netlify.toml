@@ -1,5 +1,9 @@
 # Site estático: dashboard catenária (index) + simulador 3D
 # https://docs.netlify.com/configure-builds/overview/
+#
+# Env (Site settings → Environment variables):
+#   CESIUM_API_KEY       — token Cesium Ion (obrigatório para costa 3D)
+#   GOOGLE_MAPS_API_KEY  — opcional (Map Tiles API / Photorealistic)
 
 [build]
   publish = "."
@@ -8,6 +12,10 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 # Página de entrada: raiz
 [[headers]]

@@ -102,7 +102,7 @@
           <button type="button" class="sim-rail" data-panel-group="buoy" data-label="Bóias" title="Bóias" aria-label="Bóias" aria-pressed="false">
             <svg class="sim-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4"/><circle cx="12" cy="11" r="4"/><path d="M8.5 14.5 6 21"/><path d="M15.5 14.5 18 21"/><path d="M4 18c2 .8 4 1.2 8 1.2s6-.4 8-1.2"/></svg>
           </button>
-          <button type="button" class="sim-rail sim-rail-active" id="btn-sidebar-geo-mapa" data-map-toggle="true" data-label="Mapa" title="Ocultar mapa (Rio / OSM)" aria-label="Mapa Rio / OSM" aria-pressed="true" aria-controls="geo-mapa-wrap">
+          <button type="button" class="sim-rail sim-rail-active" id="btn-sidebar-geo-mapa" data-map-toggle="true" data-label="Mapa" title="Ocultar mapa (costa 3D Cesium / OSM)" aria-label="Mapa costa 3D / OSM" aria-pressed="true" aria-controls="geo-mapa-wrap">
             <svg class="sim-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3 3 5.5v15L9 18l6 2.5L21 18V3l-6 2.5L9 3z"/><path d="M9 3v15"/><path d="M15 5.5v15"/></svg>
           </button>
         </nav>
@@ -414,17 +414,23 @@
     </main>
   </div>
   <div id="sim-float-root" aria-live="polite"></div>
-  <div id="geo-mapa-wrap" role="complementary" aria-label="Mapa de contexto — costa do Rio (OpenStreetMap e marcações OpenSeaMap)">
+  <div id="geo-mapa-wrap" role="complementary" aria-label="Mapa de contexto — costa 3D do Rio (Cesium Ion / Google Photorealistic; fallback OSM)">
     <div id="geo-mapa-header">
-      <span class="text-[10px] sm:text-xs font-semibold text-slate-200 leading-tight" title="Origem: Baía de Guanabara. Eixos 3D: +X Leste, +Z Norte. Unidade ≈ 1 m. Não constitui carta náutica para navegação.">Rio · mar (OSM+OpenSeaMap)</span>
+      <span class="text-[10px] sm:text-xs font-semibold text-slate-200 leading-tight" title="Origem: Baía de Guanabara. Eixos 3D: +X Leste, +Z Norte. Unidade ≈ 1 m. Não constitui carta náutica para navegação.">Rio · costa 3D (Cesium / Google)</span>
       <button type="button" id="geo-mapa-min" aria-controls="geo-mapa-body" aria-expanded="true" title="Recolher ou expandir o mapa">−</button>
     </div>
     <div id="geo-mapa-body">
       <div id="geo-mapa" aria-hidden="true"></div>
     </div>
   </div>
-  <!-- Ordem: Leaflet → janelas flutuantes (define window.__simFloat) → importmap (Three) → módulo 3D -->
+  <!-- Ordem: Leaflet (fallback) → Cesium → float → importmap Three → módulo 3D -->
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css" />
+  <script>
+    window.CESIUM_BASE_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/';
+  </script>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script src="assets/reboqueoceanico-cesium.js"></script>
   <script src="assets/reboqueoceanico-float.js"></script>
 <script type="importmap">
         {
@@ -1637,8 +1643,17 @@ document.querySelectorAll('.sim-rail').forEach((btn) => {
                 const visible = !wrap.classList.contains('hidden');
                 btn.classList.toggle('sim-rail-active', visible);
                 btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
-                btn.title = visible ? 'Ocultar mapa (Rio / OSM)' : 'Mostrar mapa (Rio / OSM)';
-                setTimeout(() => { try { if (_rioMap) _rioMap.invalidateSize(); } catch (e) { /* */ } }, 200);
+                btn.title = visible ? 'Ocultar mapa (costa 3D Cesium / OSM)' : 'Mostrar mapa (costa 3D Cesium / OSM)';
+                setTimeout(() => {
+                    try {
+                        if (_coastMode === 'cesium' && window.__simCesiumCoast) {
+                            if (window.__simCesiumCoast.setActive) window.__simCesiumCoast.setActive(visible);
+                            if (window.__simCesiumCoast.resize) window.__simCesiumCoast.resize();
+                        } else if (_rioMap) {
+                            _rioMap.invalidateSize();
+                        }
+                    } catch (e) { /* */ }
+                }, 200);
             }
             return;
         }
@@ -3324,7 +3339,7 @@ function updateVesselMotions() {
     tug.mesh.rotation.z = Math.sin(tug.position.x / (tug.beam * 4) + time * rollFrequency * 1.5) * (waveHeight / (tug.beam * 2.0)) * 0.8;
 }
 
-// — Contexto geográfico (Rio) + OpenSeaMap: plano local tangente, ~1 m = 1 u no modelo 3D
+// — Contexto geográfico (Rio): Cesium Photorealistic (preferido) ou Leaflet OSM+OpenSeaMap (fallback)
 const RIO_GEO = {
     /** Referência: baía de Guanabara, trecho típico de reboque / escoteiro (didático) */
     originLat: -22.95,
@@ -3339,10 +3354,32 @@ function simXZtoLatLng(x, z) {
     };
 }
 let _rioMap = null, _rioMarkerShip = null, _rioMarkerTug = null, _rioTowPoly = null, _rioMapT = 0;
-function initRioContextMap() {
+let _coastMode = null; // 'cesium' | 'leaflet' | null
+
+function wireGeoMapMinimize(onToggle) {
+    const minBtn = document.getElementById('geo-mapa-min');
+    const body = document.getElementById('geo-mapa-body');
+    if (!minBtn || !body || minBtn.dataset.leafletWired) return;
+    minBtn.dataset.leafletWired = '1';
+    minBtn.addEventListener('click', () => {
+        body.classList.toggle('hidden');
+        const on = !body.classList.contains('hidden');
+        minBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+        minBtn.textContent = on ? '−' : '+';
+        setTimeout(() => {
+            if (typeof onToggle === 'function') onToggle(on);
+            else if (_rioMap) _rioMap.invalidateSize();
+        }, 200);
+    });
+}
+
+function initLeafletFallback() {
     const Lf = globalThis.L;
-    if (!Lf || !Lf.map) return;
-    if (!document.getElementById('geo-mapa') || _rioMap) return;
+    if (!Lf || !Lf.map) return false;
+    const el = document.getElementById('geo-mapa');
+    if (!el || _rioMap) return !!_rioMap;
+    // Limpa canvas Cesium residual se houver
+    el.innerHTML = '';
     _rioMap = Lf.map('geo-mapa', { zoomControl: true, attributionControl: true });
     Lf.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         subdomains: 'abc', maxZoom: 19,
@@ -3361,25 +3398,59 @@ function initRioContextMap() {
     _rioTowPoly = Lf.polyline([[pt.lat, pt.lon], [ps.lat, ps.lon]], { color: '#7dd3fc', weight: 2, opacity: 0.88 }).addTo(_rioMap);
     _rioMap.setView([RIO_GEO.originLat, RIO_GEO.originLon], 12);
     setTimeout(() => { if (_rioMap) _rioMap.invalidateSize(); }, 0);
-    const minBtn = document.getElementById('geo-mapa-min');
-    const body = document.getElementById('geo-mapa-body');
-    if (minBtn && body) {
-        minBtn.addEventListener('click', () => {
-            body.classList.toggle('hidden');
-            const on = !body.classList.contains('hidden');
-            minBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
-            minBtn.textContent = on ? '−' : '+';
-            setTimeout(() => { if (_rioMap) _rioMap.invalidateSize(); }, 200);
-        });
+    const span = document.querySelector('#geo-mapa-header span');
+    if (span) {
+        span.textContent = 'Rio · mar (OSM+OpenSeaMap)';
+        span.title = 'Fallback sem Cesium Ion. Origem: Baía de Guanabara. Não constitui carta náutica.';
     }
+    wireGeoMapMinimize(() => { if (_rioMap) _rioMap.invalidateSize(); });
+    _coastMode = 'leaflet';
+    console.info('[T-Sim] mapa de contexto: Leaflet (fallback)');
+    return true;
 }
-function updateRioContextMap() {
-    if (!_rioMap || !_rioMarkerShip || !_rioMarkerTug || !_rioTowPoly) return;
+
+async function initCoastContextMap() {
+    const el = document.getElementById('geo-mapa');
+    if (!el) return;
+    const coast = window.__simCesiumCoast;
+    if (coast && typeof coast.tryInit === 'function') {
+        try {
+            const ok = await coast.tryInit(RIO_GEO);
+            if (ok) {
+                _coastMode = 'cesium';
+                wireGeoMapMinimize((on) => {
+                    if (coast.setActive) coast.setActive(on);
+                    if (coast.resize) coast.resize();
+                });
+                // Sync inicial
+                updateRioContextMap(true);
+                return;
+            }
+        } catch (err) {
+            console.warn('[T-Sim] Cesium init error — Leaflet:', err);
+        }
+    }
+    initLeafletFallback();
+}
+
+/** @deprecated nome legado — usa initCoastContextMap */
+function initRioContextMap() {
+    initCoastContextMap();
+}
+
+function updateRioContextMap(force) {
     const t = performance.now() * 0.001;
-    if (t - _rioMapT < 0.11) return;
+    if (!force && t - _rioMapT < 0.11) return;
     _rioMapT = t;
     const s = simXZtoLatLng(ship.position.x, ship.position.z);
     const u = simXZtoLatLng(tug.position.x, tug.position.z);
+
+    const coast = window.__simCesiumCoast;
+    if (_coastMode === 'cesium' && coast && coast.ready) {
+        coast.update(s, u);
+        return;
+    }
+    if (!_rioMap || !_rioMarkerShip || !_rioMarkerTug || !_rioTowPoly) return;
     _rioMarkerShip.setLatLng([s.lat, s.lon]);
     _rioMarkerTug.setLatLng([u.lat, u.lon]);
     _rioTowPoly.setLatLngs([[u.lat, u.lon], [s.lat, s.lon]]);
@@ -3393,7 +3464,11 @@ function onWindowResize(){
         camera.updateProjectionMatrix();
         renderer.setSize(container.clientWidth, container.clientHeight);
     }
-    if (_rioMap) _rioMap.invalidateSize();
+    if (_coastMode === 'cesium' && window.__simCesiumCoast && window.__simCesiumCoast.resize) {
+        window.__simCesiumCoast.resize();
+    } else if (_rioMap) {
+        _rioMap.invalidateSize();
+    }
 }
 window.addEventListener('resize', onWindowResize, false);
 
@@ -3431,7 +3506,7 @@ function animate() {
     }
 }
 uiControls.tugDraft.el.dispatchEvent(new Event('input'));
-initRioContextMap();
+initCoastContextMap();
 loadVesselGlbs();
 animate();
   </script>
