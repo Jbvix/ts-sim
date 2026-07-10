@@ -488,6 +488,50 @@ const DEG2RAD = Math.PI / 180;
 const hullResistanceCurve = [ {ratio: 0.0, val: 0.0}, {ratio: 0.2, val: 1.5}, {ratio: 0.3, val: 2.0}, {ratio: 0.4, val: 3.0}, {ratio: 0.5, val: 5.0}, {ratio: 0.6, val: 8.0}, {ratio: 0.7, val: 13.0} ];
 const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}, {beaufort: 3, val: 0.6}, {beaufort: 4, val: 1.2}, {beaufort: 5, val: 2.5}, {beaufort: 6, val: 5.0}, {beaufort: 7, val: 9.0} ];
 
+// Presets do modelo de catenária (escopo do módulo — usados no IIFE e no updateUI)
+const CAT_MODEL_PRESETS = {
+  conservador: {
+    name: 'Conservador',
+    engageFracOfTLo: 0.30,
+    wPowBase: 1.55,
+    wPowLongAdd: 0.15,
+    wEnergySlackPenalty: 0.68,
+    sagRetShort: 0.48,
+    sagRetLong: 0.36,
+    lbAttenuation: 0.60,
+    catStateMaxW: 0.10,
+    tautStateMinW: 0.985
+  },
+  medio: {
+    name: 'Médio',
+    engageFracOfTLo: 0.20,
+    wPowBase: 1.35,
+    wPowLongAdd: 0.10,
+    wEnergySlackPenalty: 0.75,
+    sagRetShort: 0.58,
+    sagRetLong: 0.45,
+    lbAttenuation: 0.70,
+    catStateMaxW: 0.08,
+    tautStateMinW: 0.97
+  },
+  agressivo: {
+    name: 'Agressivo',
+    engageFracOfTLo: 0.12,
+    wPowBase: 1.15,
+    wPowLongAdd: 0.05,
+    wEnergySlackPenalty: 0.88,
+    sagRetShort: 0.70,
+    sagRetLong: 0.56,
+    lbAttenuation: 0.82,
+    catStateMaxW: 0.06,
+    tautStateMinW: 0.94
+  }
+};
+function getCatModelPreset() {
+  const key = (typeof simParams !== 'undefined' && simParams && simParams.catModelPreset) || 'medio';
+  return CAT_MODEL_PRESETS[key] || CAT_MODEL_PRESETS.medio;
+}
+
 // --- 4. MÓDULO DE FÍSICA E SEGURANÇA DO CABO (TOWLINE) ---
 (function(){
   if (window.__TowV232Installed) return; window.__TowV232Installed = true;
@@ -650,48 +694,6 @@ const seaStateResistanceCurve = [ {beaufort: 0, val: 0}, {beaufort: 2, val: 0.3}
     dTmaxScaleLong: 0.65
   };
   window.CABLE_INERTIA = CABLE_INERTIA;
-  const CAT_MODEL_PRESETS = {
-    conservador: {
-      name: 'Conservador',
-      engageFracOfTLo: 0.30,
-      wPowBase: 1.55,
-      wPowLongAdd: 0.15,
-      wEnergySlackPenalty: 0.68,
-      sagRetShort: 0.48,
-      sagRetLong: 0.36,
-      lbAttenuation: 0.60,
-      catStateMaxW: 0.10,
-      tautStateMinW: 0.985
-    },
-    medio: {
-      name: 'Médio',
-      engageFracOfTLo: 0.20,
-      wPowBase: 1.35,
-      wPowLongAdd: 0.10,
-      wEnergySlackPenalty: 0.75,
-      sagRetShort: 0.58,
-      sagRetLong: 0.45,
-      lbAttenuation: 0.70,
-      catStateMaxW: 0.08,
-      tautStateMinW: 0.97
-    },
-    agressivo: {
-      name: 'Agressivo',
-      engageFracOfTLo: 0.12,
-      wPowBase: 1.15,
-      wPowLongAdd: 0.05,
-      wEnergySlackPenalty: 0.88,
-      sagRetShort: 0.70,
-      sagRetLong: 0.56,
-      lbAttenuation: 0.82,
-      catStateMaxW: 0.06,
-      tautStateMinW: 0.94
-    }
-  };
-  function getCatModelPreset() {
-    const key = simParams.catModelPreset || 'medio';
-    return CAT_MODEL_PRESETS[key] || CAT_MODEL_PRESETS.medio;
-  }
 
   // Função de interpolação suave para a transição de regimes
   const smoothstep = (a, b, x) => {
@@ -3158,16 +3160,25 @@ function onWindowResize(){
 window.addEventListener('resize', onWindowResize, false);
 
 // --- 10. LOOP DE ANIMAÇÃO E INICIALIZAÇÃO ---
-function animate() { requestAnimationFrame(animate); updatePhysics();
-    updateCatenary();
-    updateUI();
-    updateRioContextMap();
-    updateEnvironmentVisuals();
-    updatePropulsorJets();
-    updateBuoys();
-    updateVesselMotions();
-    if (!draggedObject) stepCameraFollow();
-    if(!draggedObject) controls_cam.update();
+function animate() {
+    requestAnimationFrame(animate);
+    try {
+        updatePhysics();
+        updateCatenary();
+        updateUI();
+        updateRioContextMap();
+        updateEnvironmentVisuals();
+        updatePropulsorJets();
+        updateBuoys();
+        updateVesselMotions();
+        if (!draggedObject) stepCameraFollow();
+        if (!draggedObject) controls_cam.update();
+    } catch (err) {
+        if (!window.__simAnimErrLogged) {
+            window.__simAnimErrLogged = true;
+            console.error('[T-Sim] erro no loop (cena continua a renderizar):', err);
+        }
+    }
     renderer.render(scene, camera);
 }
 
