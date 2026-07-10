@@ -440,29 +440,36 @@
   <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // --- 1. SETUP BÁSICO DA CENA 3D ---
 const container = document.getElementById('sim-container');
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
-camera.position.set(0, 300, 350);
+camera.position.set(60, 90, 200);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.domElement.classList.add('sim-webgl-canvas');
 container.appendChild(renderer.domElement);
 
 // Controles de órbita para a câmera, permitindo ao usuário navegar na cena
 const controls_cam = new OrbitControls(camera, renderer.domElement);
+controls_cam.target.set(0, 0, -40);
+controls_cam.update();
 
 let seabedMesh; // Declarado aqui para ser acessível globalmente no script
 
 // --- 2. AMBIENTE E ILUMINAÇÃO ---
 scene.background = new THREE.Color(0x051d40);
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.35);
 directionalLight.position.set(100, 100, 50);
 scene.add(directionalLight);
+const fillLight = new THREE.DirectionalLight(0xa8c8ff, 0.35);
+fillLight.position.set(-80, 40, -60);
+scene.add(fillLight);
 
 // Plano para representar a superfície da água
 const water_level = -1;
@@ -1023,13 +1030,19 @@ const shipPresets = {
 };
 
 // Objetos que mantêm o estado da simulação para o navio, rebocador e cabo
+// Casco = BoxGeometry invisível (física / bitas / colisão); visual = GLB filho "glbVisual".
+function makeHullInvisibleMaterial() {
+    return new THREE.MeshBasicMaterial({ visible: false });
+}
 const ship = {
-    mesh: new THREE.Mesh(), position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(0, 0, 0),
+    mesh: new THREE.Mesh(new THREE.BoxGeometry(20, 12, 100), makeHullInvisibleMaterial()),
+    position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(0, 0, 0),
     angularVelocity: 0, angle: 0, sailArea: 0, beam: 0, draft: 0, minDraft: 0, maxDraft: 0, minMass: 0, maxMass: 0, mass: 0, propArea: 0, lwl: 0, totalResistance: 0, length: 0
 };
+ship.mesh.name = 'shipHull';
 scene.add(ship.mesh);
 const tug = {
-    mesh: new THREE.Mesh(new THREE.BoxGeometry(12, 8, 30), new THREE.MeshPhongMaterial({ color: 0xff4444 })),
+    mesh: new THREE.Mesh(new THREE.BoxGeometry(12, 8, 30), makeHullInvisibleMaterial()),
     position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(0, 0, 0),
     angularVelocity: 0, angle: Math.PI, beam: 12, length: 30, draft: 5, minDraft: 3, maxDraft: 8,
     minMass: 800 * 1000, maxMass: 1200 * 1000, mass: 0,
@@ -1040,28 +1053,7 @@ const tug = {
     /** true = transmissão acoplada (tração na água); início desacoplado, sem força de propulsor */
     driveEngaged: false
 };
-
-// --- Cria a Superestrutura do Rebocador ---
-const tugSuperMaterial = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
-const tugHullGeoParams = tug.mesh.geometry.parameters;
-
-// Bloco principal da superestrutura
-const tugSuperBlock = new THREE.Mesh(
-    new THREE.BoxGeometry(tugHullGeoParams.width * 0.85, 6, 10),
-    tugSuperMaterial
-);
-// Posiciona na parte de cima do casco, perto da proa
-tugSuperBlock.position.set(0, tugHullGeoParams.height / 2 + 3, tugHullGeoParams.depth / 2 - 8);
-
-// Passadiço (ponte de comando) em cima da superestrutura
-const tugBridgeBlock = new THREE.Mesh(
-    new THREE.BoxGeometry(tugHullGeoParams.width * 0.7, 4, 6),
-    tugSuperMaterial
-);
-tugBridgeBlock.position.copy(tugSuperBlock.position);
-tugBridgeBlock.position.y += 6 / 2 + 4 / 2; // Empilha em cima do bloco anterior
-tug.mesh.add(tugSuperBlock, tugBridgeBlock);
-
+tug.mesh.name = 'tugHull';
 scene.add(tug.mesh);
 
 // Helpers visuais para os jatos de água dos propulsores ASD
@@ -1615,6 +1607,149 @@ document.querySelectorAll('.sim-rail').forEach((btn) => {
 });
 
 // --- 7. LÓGICA DE PRESETS E INICIALIZAÇÃO ---
+const VESSEL_GLB_PATHS = {
+    ship: 'assets/container_ship.glb',
+    tug: 'assets/rastar_3200_tugboat.glb'
+};
+let _shipGlbRoot = null;
+let _tugGlbRoot = null;
+
+function meshVisibleBounds(object3d) {
+    const realBox = new THREE.Box3();
+    let ok = false;
+    object3d.updateMatrixWorld(true);
+    object3d.traverse((child) => {
+        if (!child.isMesh || !child.visible) return;
+        if (child.name === 'shipHull' || child.name === 'tugHull') return;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        if (mats.length && mats.every((m) => m && (m.visible === false || m.opacity === 0))) return;
+        const childBox = new THREE.Box3().setFromObject(child);
+        if (!ok) { realBox.copy(childBox); ok = true; }
+        else realBox.union(childBox);
+    });
+    if (!ok) realBox.setFromObject(object3d);
+    return realBox;
+}
+
+function disposeObject3d(obj) {
+    obj.traverse((c) => {
+        if (c.geometry) c.geometry.dispose();
+        if (!c.material) return;
+        const mats = Array.isArray(c.material) ? c.material : [c.material];
+        mats.forEach((m) => {
+            if (!m) return;
+            for (const k of Object.keys(m)) {
+                if (m[k] && m[k].isTexture) m[k].dispose();
+            }
+            m.dispose();
+        });
+    });
+}
+
+function removeGlbVisual(hullMesh) {
+    const old = hullMesh.getObjectByName('glbVisual');
+    if (!old) return;
+    hullMesh.remove(old);
+    disposeObject3d(old);
+}
+
+/** Encaixa o GLB no BoxGeometry do casco (X=beam, Y=altura, Z=comprimento). */
+function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
+    if (!glbRoot || !hullMesh?.geometry?.parameters) return;
+    removeGlbVisual(hullMesh);
+    const model = glbRoot.clone(true);
+    model.name = 'glbVisual';
+    model.rotation.set(0, 0, 0);
+    model.scale.set(1, 1, 1);
+    model.position.set(0, 0, 0);
+
+    // 1) Se o modelo veio “em pé” (comprimento no Y), deita-o para o plano XZ
+    model.updateMatrixWorld(true);
+    let box = meshVisibleBounds(model);
+    let size = box.getSize(new THREE.Vector3());
+    if (size.y >= size.x && size.y >= size.z) {
+        model.rotation.x = -Math.PI / 2;
+        model.updateMatrixWorld(true);
+        box = meshVisibleBounds(model);
+        size = box.getSize(new THREE.Vector3());
+    }
+    // 2) Alinha o eixo longitudinal com Z (profundidade do BoxGeometry)
+    if (size.x > size.z * 1.05) {
+        model.rotation.y += Math.PI / 2;
+        model.updateMatrixWorld(true);
+        box = meshVisibleBounds(model);
+        size = box.getSize(new THREE.Vector3());
+    }
+    if (opts.yaw) model.rotation.y += opts.yaw;
+    if (opts.flipZ) model.rotation.y += Math.PI;
+
+    const { width: tw, height: th, depth: td } = hullMesh.geometry.parameters;
+    model.updateMatrixWorld(true);
+    box = meshVisibleBounds(model);
+    size = box.getSize(new THREE.Vector3());
+    const sLen = td / Math.max(size.z, 1e-6);
+    const sFit = Math.min(
+        tw / Math.max(size.x, 1e-6),
+        th / Math.max(size.y, 1e-6),
+        td / Math.max(size.z, 1e-6)
+    );
+    model.scale.setScalar(opts.fitInside ? sFit : sLen);
+    model.updateMatrixWorld(true);
+    box = meshVisibleBounds(model);
+    const center = box.getCenter(new THREE.Vector3());
+    center.x = 0;
+    model.position.sub(center);
+    if (opts.yBiasFrac) {
+        model.updateMatrixWorld(true);
+        const sizeY = meshVisibleBounds(model).getSize(new THREE.Vector3()).y;
+        model.position.y += sizeY * opts.yBiasFrac;
+    }
+
+    model.traverse((c) => {
+        if (!c.isMesh) return;
+        c.castShadow = false;
+        c.receiveShadow = false;
+    });
+    hullMesh.add(model);
+
+    // Diagnóstico: tamanho local após encaixe
+    model.updateMatrixWorld(true);
+    const fitted = meshVisibleBounds(model).getSize(new THREE.Vector3());
+    hullMesh.userData.glbFittedSize = { x: fitted.x, y: fitted.y, z: fitted.z };
+}
+
+function refreshVesselGlbVisuals() {
+    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, yBiasFrac: 0 });
+    if (_tugGlbRoot) fitGlbIntoHull(tug.mesh, _tugGlbRoot, { fitInside: false, yBiasFrac: 0.08 });
+}
+
+async function loadVesselGlbs() {
+    const loader = new GLTFLoader();
+    try {
+        const [shipGltf, tugGltf] = await Promise.all([
+            loader.loadAsync(VESSEL_GLB_PATHS.ship),
+            loader.loadAsync(VESSEL_GLB_PATHS.tug)
+        ]);
+        _shipGlbRoot = shipGltf.scene;
+        _tugGlbRoot = tugGltf.scene;
+        refreshVesselGlbVisuals();
+        window.__simGlbReady = {
+            ship: !!ship.mesh.getObjectByName('glbVisual'),
+            tug: !!tug.mesh.getObjectByName('glbVisual'),
+            shipChildren: ship.mesh.children.length,
+            tugChildren: tug.mesh.children.length,
+            shipFit: ship.mesh.userData.glbFittedSize || null,
+            tugFit: tug.mesh.userData.glbFittedSize || null,
+            shipHull: ship.mesh.geometry.parameters,
+            tugHull: tug.mesh.geometry.parameters
+        };
+        console.info('[T-Sim] modelos GLB carregados: container_ship + rastar_3200');
+    } catch (err) {
+        window.__simGlbReady = { error: String(err) };
+        console.error('[T-Sim] falha ao carregar GLB de navio/rebocador:', err);
+    }
+}
+
 // Aplica as propriedades de um preset de navio selecionado
 function applyShipPreset(presetName) {
     const preset = shipPresets[presetName];
@@ -1627,40 +1762,18 @@ function applyShipPreset(presetName) {
     ship.propArea = preset.propArea;
     ship.lwl = preset.length * 0.97;
     if (ship.mesh.geometry) ship.mesh.geometry.dispose();
-    
-    // Limpa filhos antigos (superestrutura) antes de criar um novo modelo
-    while(ship.mesh.children.length > 0){ 
+
+    // Remove visual GLB / restos; o casco invisível define a física
+    removeGlbVisual(ship.mesh);
+    while (ship.mesh.children.length > 0) {
         const child = ship.mesh.children[0];
         ship.mesh.remove(child);
-        if(child.geometry) child.geometry.dispose();
-        if(child.material) child.material.dispose();
+        disposeObject3d(child);
     }
 
-    // Cria o casco principal (a física se baseia neste objeto)
     ship.mesh.geometry = new THREE.BoxGeometry(preset.beam, preset.height, preset.length);
-    ship.mesh.material = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
-
-    // --- Cria a Superestrutura ---
-    const superMaterial = new THREE.MeshPhongMaterial({ color: 0xdddddd });
-
-    // Bloco principal da superestrutura
-    const superHeight = preset.height * 0.8;
-    const superLength = preset.length * 0.25;
-    const superBlock = new THREE.Mesh(
-        new THREE.BoxGeometry(preset.beam * 0.9, superHeight, superLength),
-        superMaterial
-    );
-    superBlock.position.set(0, preset.height / 2 + superHeight / 2, preset.length * 0.3);
-    
-    // "Asas" do passadiço
-    const wingWidth = preset.beam * 0.15;
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(wingWidth, 4, 8), superMaterial);
-    const wingBB = wing.clone(); wingBB.position.x =  (preset.beam / 2) + (wingWidth/2) - (preset.beam * 0.05);
-    const wingBE = wing.clone(); wingBE.position.x = -(preset.beam / 2) - (wingWidth/2) + (preset.beam * 0.05);
-    wingBB.position.y = wingBE.position.y = preset.height / 2 + superHeight - 4;
-    wingBB.position.z = wingBE.position.z = preset.length * 0.3;
-
-    ship.mesh.add(superBlock, wingBB, wingBE);
+    ship.mesh.material = makeHullInvisibleMaterial();
+    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, yBiasFrac: 0 });
 
     const draftSlider = uiControls.shipDraft.el;
     draftSlider.min = preset.minDraft; draftSlider.max = preset.maxDraft;
@@ -3204,6 +3317,7 @@ function animate() {
 // Inicia a simulação e o loop de animação
 uiControls.tugDraft.el.dispatchEvent(new Event('input'));
 initRioContextMap();
+loadVesselGlbs();
 animate();
   </script>
 </body>
