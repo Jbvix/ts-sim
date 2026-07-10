@@ -326,6 +326,8 @@
 
     <!-- MAIN: vista 3D + fila de sobreposições; scripts ficam fora do overlay -->
     <main id="sim-container" class="flex-1 relative z-0 w-full h-screen min-w-0 overflow-hidden isolate">
+        <!-- Underlay GE Photorealistic (Cesium); pointer-events none — OrbitControls fica no canvas Three -->
+        <div id="cesium-scenario" aria-hidden="true"></div>
         <div id="ui-overlay" class="absolute inset-0 z-10 min-h-0 p-4 flex flex-col gap-4 pointer-events-none" aria-hidden="true"></div>
         <div id="asd-thruster-dock" class="absolute bottom-0 left-0 right-0 z-20 flex justify-between items-end gap-2 px-2 pb-3 pt-1 pointer-events-none">
                 <div class="asd-thruster-card asd-thruster-bb pointer-events-auto max-w-[min(42vw,14rem)] w-full min-w-0">
@@ -440,6 +442,7 @@
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
   <script src="assets/reboqueoceanico-cesium.js"></script>
+  <script src="assets/reboqueoceanico-cesium-scenario.js"></script>
   <script src="assets/reboqueoceanico-float.js"></script>
 <script type="importmap">
         {
@@ -462,7 +465,8 @@ const container = document.getElementById('sim-container');
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
 camera.position.set(60, 90, 200);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -475,8 +479,13 @@ controls_cam.target.set(0, 0, -40);
 controls_cam.update();
 
 let seabedMesh; // Declarado aqui para ser acessível globalmente no script
+/** true quando GE Photorealistic underlay está ativo no viewport */
+let _scenarioGeActive = false;
+const WATER_OPACITY_DEFAULT = 0.8;
+const WATER_OPACITY_GE = 0.42;
 
 // --- 2. AMBIENTE E ILUMINAÇÃO ---
+// Fundo sólido até o underlay Cesium subir; depois null (canvas transparente)
 scene.background = new THREE.Color(0x051d40);
 scene.add(new THREE.AmbientLight(0xffffff, 0.75));
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1.35);
@@ -490,7 +499,7 @@ scene.add(fillLight);
 const water_level = -1;
 const water = new THREE.Mesh(
     new THREE.PlaneGeometry(10000, 10000),
-    new THREE.MeshPhongMaterial({ color: 0x003366, transparent: true, opacity: 0.8, shininess: 80 })
+    new THREE.MeshPhongMaterial({ color: 0x003366, transparent: true, opacity: WATER_OPACITY_DEFAULT, shininess: 80 })
 );
 water.name = 'waterSurface';
 water.rotation.x = -Math.PI / 2;
@@ -504,10 +513,25 @@ scene.add(water);
 // Plano para representar o fundo do mar (seabed)
 seabedMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(10000, 10000, 50, 50), // Segmentos para futura topografia
-    new THREE.MeshPhongMaterial({ color: 0x4a443b, shininess: 10 })
+    new THREE.MeshPhongMaterial({ color: 0x4a443b, shininess: 10, transparent: true, opacity: 1 })
 );
 seabedMesh.rotation.x = -Math.PI / 2;
 scene.add(seabedMesh);
+
+function applyScenarioGeVisuals(on) {
+    _scenarioGeActive = !!on;
+    if (on) {
+        scene.background = null;
+        renderer.setClearColor(0x000000, 0);
+        water.material.opacity = WATER_OPACITY_GE;
+        if (seabedMesh && seabedMesh.material) seabedMesh.material.opacity = 0.12;
+    } else {
+        scene.background = new THREE.Color(0x051d40);
+        renderer.setClearColor(0x051d40, 1);
+        water.material.opacity = WATER_OPACITY_DEFAULT;
+        if (seabedMesh && seabedMesh.material) seabedMesh.material.opacity = 1;
+    }
+}
 
 
 // Setas visuais para indicar a direção e intensidade do vento e da corrente
@@ -3528,9 +3552,35 @@ async function initCoastContextMap() {
         const saved = localStorage.getItem(COAST_PROVIDER_KEY);
         if (saved === 'leaflet' || saved === 'cesium') preferred = saved;
     } catch (_) { /* */ }
+    // Com cenário GE no viewport principal, preferir OpenSeaMap no inset (evita 2× Photorealistic)
+    if (window.__simCesiumScenario && window.__simCesiumScenario.ready && preferred === 'cesium') {
+        preferred = 'leaflet';
+    }
     syncCoastProviderSelect(preferred);
     await setCoastProvider(preferred, { force: true });
     if (!_coastMode) initLeafletMap();
+}
+
+async function initScenarioGeUnderlay() {
+    const sc = window.__simCesiumScenario;
+    if (!sc || typeof sc.tryInit !== 'function') return;
+    try {
+        const ok = await sc.tryInit(RIO_GEO);
+        if (ok) {
+            applyScenarioGeVisuals(true);
+            if (sc.resize) sc.resize();
+            // Inset: se estiver em Cesium, mudar para OpenSeaMap para poupar GPU
+            if (_coastMode === 'cesium') {
+                await setCoastProvider('leaflet');
+            }
+            console.info('[T-Sim] underlay GE no cenário — física/câmera/comboio inalterados');
+        } else {
+            applyScenarioGeVisuals(false);
+        }
+    } catch (err) {
+        console.warn('[T-Sim] cenário GE falhou:', err);
+        applyScenarioGeVisuals(false);
+    }
 }
 
 /** @deprecated nome legado — usa initCoastContextMap */
@@ -3564,6 +3614,9 @@ function onWindowResize(){
         camera.updateProjectionMatrix();
         renderer.setSize(container.clientWidth, container.clientHeight);
     }
+    if (window.__simCesiumScenario && window.__simCesiumScenario.ready && window.__simCesiumScenario.resize) {
+        window.__simCesiumScenario.resize();
+    }
     if (_coastMode === 'cesium' && window.__simCesiumCoast && window.__simCesiumCoast.resize) {
         window.__simCesiumCoast.resize();
     } else if (_rioMap) {
@@ -3586,6 +3639,10 @@ function animate() {
         updateVesselMotions();
         if (!draggedObject) stepCameraFollow();
         if (!draggedObject) controls_cam.update();
+        // Sync câmera Cesium ← Three (mesma pose; não altera OrbitControls)
+        if (_scenarioGeActive && window.__simCesiumScenario && window.__simCesiumScenario.ready) {
+            window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
+        }
     } catch (err) {
         if (!window.__simAnimErrLogged) {
             window.__simAnimErrLogged = true;
@@ -3606,7 +3663,8 @@ function animate() {
     }
 }
 uiControls.tugDraft.el.dispatchEvent(new Event('input'));
-initCoastContextMap();
+// Cenário GE primeiro; depois mapa inset (pode cair para OpenSeaMap se o underlay estiver ativo)
+initScenarioGeUnderlay().then(() => initCoastContextMap());
 loadVesselGlbs();
 animate();
   </script>
