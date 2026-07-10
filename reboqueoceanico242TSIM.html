@@ -1727,11 +1727,57 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
 /** Elevação do GLB do navio: linha d'água abaixo das letras MRC mesmo no calado máximo. */
 const SHIP_GLB_VISUAL_LIFT_M = 4.0;
 
+/**
+ * Localiza no GLB Rastar as hélices Left/Right e ancora os jatos ASD (BB=jet1, BE=jet2).
+ * Nós: TugBoatT2PropellerLeft_7, TugBoatT2PropellerRight_9 (filhos dos lemes).
+ */
+function snapTugJetsToGlbPropellers() {
+    const visual = tug.mesh.getObjectByName('glbVisual');
+    if (!visual || !tug.jet1 || !tug.jet2) return null;
+    let left = null, right = null;
+    visual.traverse((o) => {
+        const n = o.name || '';
+        if (/PropellerLeft/i.test(n)) left = o;
+        else if (/PropellerRight/i.test(n)) right = o;
+    });
+    if (!left || !right) {
+        console.warn('[T-Sim] hélices do Rastar não encontradas no GLB');
+        return null;
+    }
+    tug.mesh.updateMatrixWorld(true);
+    const toHullLocal = (obj) => {
+        const w = new THREE.Vector3();
+        obj.getWorldPosition(w);
+        return tug.mesh.worldToLocal(w);
+    };
+    const pL = toHullLocal(left);
+    const pR = toHullLocal(right);
+    // Bombordo (BB / thruster1 / jet1) = menor X local; Boreste = maior X
+    const bb = pL.x <= pR.x ? pL : pR;
+    const be = pL.x <= pR.x ? pR : pL;
+    const meshBB = pL.x <= pR.x ? left : right;
+    const meshBE = pL.x <= pR.x ? right : left;
+    tug.jet1.position.copy(bb);
+    tug.jet2.position.copy(be);
+    tug.propMeshBB = meshBB;
+    tug.propMeshBE = meshBE;
+    const info = {
+        leftName: left.name,
+        rightName: right.name,
+        bb: { x: +bb.x.toFixed(3), y: +bb.y.toFixed(3), z: +bb.z.toFixed(3) },
+        be: { x: +be.x.toFixed(3), y: +be.y.toFixed(3), z: +be.z.toFixed(3) }
+    };
+    window.__simTugPropellers = info;
+    console.info('[T-Sim] hélices Rastar localizadas:', info);
+    return info;
+}
+
 function refreshVesselGlbVisuals() {
     if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: SHIP_GLB_VISUAL_LIFT_M });
     if (_tugGlbRoot) fitGlbIntoHull(tug.mesh, _tugGlbRoot, { fitInside: false });
     if (ship.mesh.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
     if (tug.mesh.geometry?.parameters) updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
+    snapTugJetsToGlbPropellers();
 }
 
 async function loadVesselGlbs() {
@@ -1752,7 +1798,8 @@ async function loadVesselGlbs() {
             shipFit: ship.mesh.userData.glbFittedSize || null,
             tugFit: tug.mesh.userData.glbFittedSize || null,
             shipHull: ship.mesh.geometry.parameters,
-            tugHull: tug.mesh.geometry.parameters
+            tugHull: tug.mesh.geometry.parameters,
+            propellers: window.__simTugPropellers || null
         };
         console.info('[T-Sim] modelos GLB carregados: container_ship + rastar_3200');
     } catch (err) {
