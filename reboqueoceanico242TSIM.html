@@ -482,7 +482,9 @@ let seabedMesh; // Declarado aqui para ser acessível globalmente no script
 /** true quando GE Photorealistic underlay está ativo no viewport */
 let _scenarioGeActive = false;
 const WATER_OPACITY_DEFAULT = 0.8;
-const WATER_OPACITY_GE = 0.42;
+const WATER_OPACITY_GE = 0.28;
+const WATER_SIZE_DEFAULT = 10000;
+const WATER_RADIUS_GE = 2400;
 
 // --- 2. AMBIENTE E ILUMINAÇÃO ---
 // Fundo sólido até o underlay Cesium subir; depois null (canvas transparente)
@@ -498,7 +500,7 @@ scene.add(fillLight);
 // Plano para representar a superfície da água
 const water_level = -1;
 const water = new THREE.Mesh(
-    new THREE.PlaneGeometry(10000, 10000),
+    new THREE.PlaneGeometry(WATER_SIZE_DEFAULT, WATER_SIZE_DEFAULT),
     new THREE.MeshPhongMaterial({ color: 0x003366, transparent: true, opacity: WATER_OPACITY_DEFAULT, shininess: 80 })
 );
 water.name = 'waterSurface';
@@ -518,18 +520,35 @@ seabedMesh = new THREE.Mesh(
 seabedMesh.rotation.x = -Math.PI / 2;
 scene.add(seabedMesh);
 
+function setWaterGeometryForScenario(geOn) {
+    water.geometry.dispose();
+    if (geOn) {
+        // Disco local: física/calado iguais; costa GE visível além do raio
+        water.geometry = new THREE.CircleGeometry(WATER_RADIUS_GE, 64);
+    } else {
+        water.geometry = new THREE.PlaneGeometry(WATER_SIZE_DEFAULT, WATER_SIZE_DEFAULT);
+    }
+}
+
 function applyScenarioGeVisuals(on) {
     _scenarioGeActive = !!on;
+    setWaterGeometryForScenario(on);
     if (on) {
         scene.background = null;
         renderer.setClearColor(0x000000, 0);
         water.material.opacity = WATER_OPACITY_GE;
-        if (seabedMesh && seabedMesh.material) seabedMesh.material.opacity = 0.12;
+        if (seabedMesh) {
+            seabedMesh.visible = false;
+            if (seabedMesh.material) seabedMesh.material.opacity = 0;
+        }
     } else {
         scene.background = new THREE.Color(0x051d40);
         renderer.setClearColor(0x051d40, 1);
         water.material.opacity = WATER_OPACITY_DEFAULT;
-        if (seabedMesh && seabedMesh.material) seabedMesh.material.opacity = 1;
+        if (seabedMesh) {
+            seabedMesh.visible = true;
+            if (seabedMesh.material) seabedMesh.material.opacity = 1;
+        }
     }
 }
 
