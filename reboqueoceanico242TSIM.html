@@ -1706,6 +1706,8 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     model.updateMatrixWorld(true);
     box = meshVisibleBounds(model);
     model.position.y += (-th / 2) - box.min.y;
+    // Eleva o visual para a linha d'água ficar abaixo das marcas de costado (ex.: MRC)
+    if (opts.visualLiftM) model.position.y += opts.visualLiftM;
 
     model.traverse((c) => {
         if (!c.isMesh) return;
@@ -1719,10 +1721,14 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     const fitted = meshVisibleBounds(model).getSize(new THREE.Vector3());
     hullMesh.userData.glbFittedSize = { x: fitted.x, y: fitted.y, z: fitted.z };
     hullMesh.userData.glbKeelLocalY = -th / 2;
+    hullMesh.userData.glbVisualLiftM = opts.visualLiftM || 0;
 }
 
+/** Elevação do GLB do navio: linha d'água abaixo das letras MRC mesmo no calado máximo. */
+const SHIP_GLB_VISUAL_LIFT_M = 4.0;
+
 function refreshVesselGlbVisuals() {
-    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false });
+    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: SHIP_GLB_VISUAL_LIFT_M });
     if (_tugGlbRoot) fitGlbIntoHull(tug.mesh, _tugGlbRoot, { fitInside: false });
     if (ship.mesh.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
     if (tug.mesh.geometry?.parameters) updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
@@ -1778,7 +1784,7 @@ function applyShipPreset(presetName) {
 
     ship.mesh.geometry = new THREE.BoxGeometry(preset.beam, preset.height, preset.length);
     ship.mesh.material = makeHullInvisibleMaterial();
-    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false });
+    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: SHIP_GLB_VISUAL_LIFT_M });
 
     const draftSlider = uiControls.shipDraft.el;
     draftSlider.min = preset.minDraft; draftSlider.max = preset.maxDraft;
