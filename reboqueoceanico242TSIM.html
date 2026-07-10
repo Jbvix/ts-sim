@@ -1348,6 +1348,48 @@ function getPropellerVisualRpm(motorRpm) {
     if (!tug.enginesOn || m < 0.5) return 0;
     return m * ASD_DISENGAGED_PROP_RPM_FRACTION;
 }
+
+/** Eixo do veio na malha GLB (menor extensão do bbox local ≈ disco da hélice). */
+function detectPropShaftAxisLocal(propRoot) {
+    let mesh = propRoot.isMesh ? propRoot : null;
+    if (!mesh) propRoot.traverse((c) => { if (!mesh && c.isMesh) mesh = c; });
+    if (!mesh || !mesh.geometry) return 'y';
+    mesh.geometry.computeBoundingBox();
+    const bb = mesh.geometry.boundingBox;
+    if (!bb) return 'y';
+    const sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+    if (sy <= sx && sy <= sz) return 'y';
+    if (sx <= sy && sx <= sz) return 'x';
+    return 'z';
+}
+
+/**
+ * Gira hélices 3D do Rastar: BB (jet1) horário, BE (jet2) anti-horário — mesmo sentido dos gauges SVG.
+ * Viável porque o GLB expõe nós independentes PropellerLeft / PropellerRight.
+ */
+function updateGlbPropellerSpin(dt) {
+    if (!tug.propMeshBB || !tug.propMeshBE || !(dt > 0)) return;
+    if (!tug._propShaftAxis) {
+        tug._propShaftAxis = detectPropShaftAxisLocal(tug.propMeshBB);
+    }
+    const r1 = getPropellerVisualRpm(tug.motorRpm1);
+    const r2 = getPropellerVisualRpm(simParams.isTwinMode ? tug.motorRpm1 : tug.motorRpm2);
+    const radStep = ASD_PROP_DEG_S_PER_RPM * (Math.PI / 180) * dt;
+    const a1 = r1 * radStep;   // BB horário (+)
+    const a2 = -r2 * radStep;  // BE anti-horário (−)
+    const axis = tug._propShaftAxis;
+    if (axis === 'x') {
+        tug.propMeshBB.rotation.x += a1;
+        tug.propMeshBE.rotation.x += a2;
+    } else if (axis === 'z') {
+        tug.propMeshBB.rotation.z += a1;
+        tug.propMeshBE.rotation.z += a2;
+    } else {
+        tug.propMeshBB.rotation.y += a1;
+        tug.propMeshBE.rotation.y += a2;
+    }
+}
+
 function updateAsdPropellerGauges(dt) {
     if (!tug) return;
     if (!asdPropBladeG1) {
@@ -1369,6 +1411,7 @@ function updateAsdPropellerGauges(dt) {
         const a2 = ((asdPropVisAngle2 % 360) + 360) % 360;
         asdPropBladeG2.setAttribute('transform', 'rotate(' + a2 + ' 32 32)');
     }
+    updateGlbPropellerSpin(dt);
 }
 /**
  * Sincroniza motorRpm* com o alvo (simParams quando ligado, 0 quando parado). Atualiza barras/jatos.
@@ -1761,9 +1804,12 @@ function snapTugJetsToGlbPropellers() {
     tug.jet2.position.copy(be);
     tug.propMeshBB = meshBB;
     tug.propMeshBE = meshBE;
+    tug._propShaftAxis = detectPropShaftAxisLocal(meshBB);
     const info = {
         leftName: left.name,
         rightName: right.name,
+        shaftAxis: tug._propShaftAxis,
+        spin: { bb: 'horário (+)', be: 'anti-horário (−)' },
         bb: { x: +bb.x.toFixed(3), y: +bb.y.toFixed(3), z: +bb.z.toFixed(3) },
         be: { x: +be.x.toFixed(3), y: +be.y.toFixed(3), z: +be.z.toFixed(3) }
     };
