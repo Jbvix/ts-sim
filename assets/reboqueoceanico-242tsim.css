@@ -63,6 +63,66 @@
       --sim-rail-bottom-h: 0px;
       --sim-header-h: 4rem;
     }
+
+    /* Telemetria na barra superior: SOG/carga rebocador + SOG navio */
+    .sim-header-telemetry {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 0.4rem;
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 28rem;
+    }
+    .sim-ht-chip {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: nowrap;
+      gap: 0.35rem;
+      min-width: 0;
+      padding: 0.35rem 0.65rem;
+      border-radius: 0.55rem;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: rgba(15, 23, 42, 0.55);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    .sim-ht-tug { flex: 1 1 auto; }
+    .sim-ht-ship { flex: 0 1 auto; }
+    .sim-ht-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .sim-ht-metric {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    .sim-ht-tug .sim-ht-metric { color: #fb923c; }
+    .sim-ht-ship .sim-ht-metric { color: #7dd3fc; }
+    .sim-ht-carga { color: #fde68a !important; }
+    .sim-ht-unit {
+      margin-left: 0.12rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      opacity: 0.75;
+    }
+    .sim-ht-sep {
+      color: #64748b;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+    @media (max-width: 640px) {
+      .sim-header-telemetry { max-width: none; gap: 0.3rem; }
+      .sim-ht-chip { padding: 0.28rem 0.45rem; gap: 0.25rem; }
+      .sim-ht-label { font-size: 0.55rem; }
+      .sim-ht-metric { font-size: 0.8rem; }
+      .sim-ht-unit { font-size: 0.6rem; }
+    }
     main#sim-container {
       isolation: isolate;
       margin-left: var(--sim-rail-w);

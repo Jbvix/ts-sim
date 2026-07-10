@@ -22,21 +22,35 @@
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
 <header class="sticky top-0 z-50 glass-card rounded-none border-t-0 border-x-0 border-b border-slate-200 dark:border-slate-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between min-h-16 py-2 sm:py-0 sm:h-16">
+    <div class="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between gap-2 sm:gap-4 min-h-16 py-2 sm:py-0 sm:h-16">
         <!-- Logo/Title -->
-        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
           <div class="bg-gradient-to-tr from-sky-600 to-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-sky-500/30 shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M10 18h4"/><path d="M12 2v2"/><path d="m5 16 2-4"/><path d="m19 16-2-4"/><path d="m8 6 1 2"/><path d="m16 6-1 2"/></svg>
           </div>
           <div class="min-w-0">
             <h1 class="text-base sm:text-xl font-bold tracking-tight leading-tight">T‑Sim <span class="font-normal opacity-60"><span class="sm:hidden">| Towing</span><span class="hidden sm:inline">| Towing Analytics</span></span></h1>
-            <p class="text-[9px] sm:text-xs text-slate-500 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate" title="Autoria">Autoria: Jossian Brito <span class="text-slate-400 dark:text-slate-500" aria-hidden="true">·</span> TugLife Systems</p>
+            <p class="text-[9px] sm:text-xs text-slate-500 dark:text-slate-500 font-medium mt-0.5 leading-tight truncate hidden sm:block" title="Autoria">Autoria: Jossian Brito <span class="text-slate-400 dark:text-slate-500" aria-hidden="true">·</span> TugLife Systems</p>
+          </div>
+        </div>
+
+        <!-- Telemetria ao vivo: rebocador (SOG + carga) e navio (SOG) -->
+        <div id="sim-header-telemetry" class="sim-header-telemetry" aria-live="polite" aria-atomic="true">
+          <div class="sim-ht-chip sim-ht-tug" title="Rebocador: SOG (nós) e carga real (%) — mesmos valores do painel Navio e rebocador">
+            <span class="sim-ht-label">Rebocador</span>
+            <span class="sim-ht-metric"><span id="hdrTugSpeed">0.00</span><span class="sim-ht-unit">n</span></span>
+            <span class="sim-ht-sep" aria-hidden="true">·</span>
+            <span class="sim-ht-metric sim-ht-carga"><span id="hdrTugCarga">0.0</span><span class="sim-ht-unit">%</span></span>
+          </div>
+          <div class="sim-ht-chip sim-ht-ship" title="Navio rebocado: SOG (nós) — módulo |v| em 3D">
+            <span class="sim-ht-label">Navio</span>
+            <span class="sim-ht-metric"><span id="hdrShipSpeed">0.00</span><span class="sim-ht-unit">n</span></span>
           </div>
         </div>
         
         <!-- Navigation -->
-        <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4 text-[11px] sm:text-sm font-medium max-w-[min(100%,28rem)]">
+        <nav class="hidden md:flex flex-wrap items-center justify-end gap-2 lg:gap-4 text-[11px] sm:text-sm font-medium shrink-0">
           <a href="index.html#visao" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Dinâmica</a>
           <a href="index.html#formulas" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Fórmulas</a>
           <a href="index.html#safety" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Safety</a>
@@ -44,13 +58,12 @@
         </nav>
 
         <!-- CTA Button -->
-        <div class="flex items-center gap-4">
-          <a href="#calc" class="text-sm font-medium hover:text-sky-600 transition-colors lg:hidden">Calc</a>
+        <div class="flex items-center gap-1 sm:gap-3 shrink-0">
           <button id="btnExport" class="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-2 px-2 py-2" title="Exportar Snapshot da Simulação">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
             <span class="hidden xl:inline text-xs font-semibold">Snapshot</span>
           </button>
-          <a href="index.html" class="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-md hover:shadow-lg flex items-center gap-2" title="Vista catenária e KPIs">
+          <a href="index.html" class="px-3 sm:px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-md hover:shadow-lg flex items-center gap-2" title="Vista catenária e KPIs">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             <span class="hidden sm:inline">Dashboard</span>
           </a>
@@ -2773,6 +2786,10 @@ function updateUI() {
     uiControls.shipSpeed.valEl.innerText = knS.toFixed(2);
     uiControls.tugSpeed.valEl.innerText = knT.toFixed(2);
     if (uiControls.tugSpeed.valEl) uiControls.tugSpeed.valEl.title = 'SOG (nós); teto ∝ rpm de comando: 650→0,58 n, 1300→11 n (ref. escoteiro), 1800→12,5 n. f(SOG) pleno ≈ a partir de 11 n; calado 5 m na escala 100%.';
+    const hdrShipSp = document.getElementById('hdrShipSpeed');
+    const hdrTugSp = document.getElementById('hdrTugSpeed');
+    if (hdrShipSp) hdrShipSp.textContent = knS.toFixed(2);
+    if (hdrTugSp) hdrTugSp.textContent = knT.toFixed(2);
     const knShipLine = Number.isFinite(shipTowResponse.shipTowLineKn) ? shipTowResponse.shipTowLineKn : 0;
     const knTugLine = Number.isFinite(shipTowResponse.tugTowLineKn) ? shipTowResponse.tugTowLineKn : 0;
     const knRelLine = Number.isFinite(shipTowResponse.relTowLineKn) ? shipTowResponse.relTowLineKn : 0;
@@ -2876,6 +2893,8 @@ function updateUI() {
     tug.engineLoad = pM / 100;
     const pLoad = pM.toFixed(1);
     if (uiControls.tugCargaReal && uiControls.tugCargaReal.valEl) uiControls.tugCargaReal.valEl.innerText = pLoad;
+    const hdrTugCarga = document.getElementById('hdrTugCarga');
+    if (hdrTugCarga) hdrTugCarga.textContent = pLoad;
     const elC1 = document.getElementById('asdCargaReal1');
     const elC2 = document.getElementById('asdCargaReal2');
     if (elC1) elC1.textContent = p1.toFixed(1);
