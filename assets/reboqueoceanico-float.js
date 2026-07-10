@@ -30,9 +30,14 @@
       let dx = 0, dy = 0, startX, startY, origL, origT, dragging = false;
       const lim = () => {
         const r = wrap.getBoundingClientRect();
-        const maxL = Math.max(8, window.innerWidth - r.width - 8);
-        const maxT = Math.max(64, window.innerHeight - 48);
-        return { maxL, maxT };
+        const styles = getComputedStyle(document.documentElement);
+        const railW = parseFloat(styles.getPropertyValue('--sim-rail-w')) || 0;
+        const railBottom = parseFloat(styles.getPropertyValue('--sim-rail-bottom-h')) || 0;
+        const minL = Math.max(8, railW + 4);
+        const maxL = Math.max(minL, window.innerWidth - r.width - 8);
+        const minT = 64;
+        const maxT = Math.max(minT, window.innerHeight - 48 - railBottom);
+        return { minL, maxL, minT, maxT };
       };
       handle.addEventListener('mousedown', (e) => {
         if (e.target && e.target.closest('button')) return;
@@ -51,9 +56,9 @@
         dy = e.clientY - startY;
         let nl = origL + dx;
         let nt = origT + dy;
-        const { maxL, maxT } = lim();
-        nl = Math.min(Math.max(8, nl), maxL);
-        nt = Math.min(Math.max(64, nt), maxT);
+        const { minL, maxL, minT, maxT } = lim();
+        nl = Math.min(Math.max(minL, nl), maxL);
+        nt = Math.min(Math.max(minT, nt), maxT);
         wrap.style.left = nl + 'px';
         wrap.style.top = nt + 'px';
         wrap.style.right = 'auto';
@@ -101,7 +106,8 @@
       const wrap = document.createElement('div');
       wrap.id = pid;
       wrap.className = 'sim-float-window hidden';
-      const left = 20 + (i % 3) * 28;
+      const railW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sim-rail-w')) || 56;
+      const left = Math.max(railW + 8, 20) + (i % 3) * 28;
       const top = 88 + (Math.floor(i / 3) * 32) + i * 6;
       wrap.style.left = left + 'px';
       wrap.style.top = top + 'px';
