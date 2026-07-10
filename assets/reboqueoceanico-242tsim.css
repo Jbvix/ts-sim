@@ -394,6 +394,25 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
   display: none !important;
 }
 #geo-mapa-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-bottom: 1px solid rgba(100, 116, 139, 0.35); background: rgba(15, 23, 42, 0.98); }
+.geo-mapa-header-main { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; flex: 1 1 auto; }
+#geo-mapa-title { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.geo-mapa-provider-label { display: block; width: 100%; max-width: 11.5rem; }
+#geo-mapa-provider {
+  width: 100%;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(30, 41, 59, 0.95);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+#geo-mapa-provider:focus {
+  outline: 2px solid rgba(56, 189, 248, 0.55);
+  outline-offset: 1px;
+}
 #geo-mapa { height: 11.5rem; width: 100%; min-height: 150px; position: relative; overflow: hidden; background: #0b1220; }
 #geo-mapa-min { width: 1.75rem; height: 1.75rem; border-radius: 6px; border: 1px solid rgba(148, 163, 184, 0.5); background: rgba(30, 41, 59, 0.9); color: #e2e8f0; line-height: 1; font-weight: 700; cursor: pointer; flex-shrink: 0; }
 #geo-mapa-min:hover { background: rgba(51, 65, 85, 0.95); }

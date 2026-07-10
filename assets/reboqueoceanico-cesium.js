@@ -202,14 +202,19 @@
     } catch (_) { /* */ }
     viewer = null;
     entityShip = entityTug = entityTow = tileset = null;
+    const el = document.getElementById('geo-mapa');
+    if (el) el.innerHTML = '';
   }
 
   function updateTitle(isCesium) {
-    const span = document.querySelector('#geo-mapa-header span');
+    const span = document.getElementById('geo-mapa-title') || document.querySelector('#geo-mapa-header span');
     if (!span) return;
     if (isCesium) {
-      span.textContent = 'Rio · costa 3D (Cesium / Google)';
-      span.title = 'Google Photorealistic 3D Tiles via Cesium Ion. Origem: Baía de Guanabara. Eixos 3D do sim: +X Leste, +Z Norte. Não constitui carta náutica.';
+      span.textContent = 'Rio · GE Cesium (3D)';
+      span.title = 'Google Photorealistic 3D Tiles via Cesium Ion. Origem: Baía de Guanabara. Não constitui carta náutica.';
+    } else {
+      span.textContent = 'Rio · OpenSeaMap';
+      span.title = 'OpenStreetMap + OpenSeaMap. Origem: Baía de Guanabara. Não constitui carta náutica.';
     }
   }
 
