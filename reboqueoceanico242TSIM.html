@@ -3489,11 +3489,14 @@ function updateVesselMotions() {
 
 // — Contexto geográfico (Rio): GE Cesium (Photorealistic) ou OpenSeaMap (Leaflet)
 const RIO_GEO = {
-    /** Referência: baía de Guanabara, trecho típico de reboque / escoteiro (didático) */
-    originLat: -22.95,
-    originLon: -43.14,
+    /**
+     * Origem ENU ao largo da costa sul do Rio (Atlântico), ~8–10 km a sul de Copacabana.
+     * +X = Leste, +Z = Norte. Comboio em (0,0,*) fica em mar aberto com a costa a norte.
+     */
+    originLat: -23.05,
+    originLon: -43.15,
     mPerDegLat: 110852,
-    mPerDegLon: 111320 * Math.cos(-22.95 * (Math.PI / 180))
+    mPerDegLon: 111320 * Math.cos(-23.05 * (Math.PI / 180))
 };
 const COAST_PROVIDER_KEY = 'tsim-coast-provider';
 function simXZtoLatLng(x, z) {
@@ -3511,10 +3514,10 @@ function setGeoMapTitle(mode) {
     if (!span) return;
     if (mode === 'cesium') {
         span.textContent = 'Rio · GE Cesium (3D)';
-        span.title = 'Google Photorealistic 3D Tiles via Cesium Ion. Origem: Baía de Guanabara. Não constitui carta náutica.';
+        span.title = 'Google Photorealistic 3D Tiles. Origem: Atlântico ao largo da costa do Rio (−23.05, −43.15). Não constitui carta náutica.';
     } else {
         span.textContent = 'Rio · OpenSeaMap';
-        span.title = 'OpenStreetMap + OpenSeaMap. Origem: Baía de Guanabara. Não constitui carta náutica.';
+        span.title = 'OpenStreetMap + OpenSeaMap. Comboio ao largo da costa do Rio (−23.05, −43.15). Não constitui carta náutica.';
     }
 }
 
@@ -3571,15 +3574,24 @@ function initLeafletMap() {
     const icTug  = { radius: 6, color: '#991b1b', fillColor: '#fca5a5', fillOpacity: 0.95, weight: 2 };
     const ps = simXZtoLatLng(ship.position.x, ship.position.z);
     const pt = simXZtoLatLng(tug.position.x, tug.position.z);
-    _rioMarkerShip = Lf.circleMarker([ps.lat, ps.lon], icShip).addTo(_rioMap).bindPopup('Navio (rebocado)');
-    _rioMarkerTug  = Lf.circleMarker([pt.lat, pt.lon], icTug).addTo(_rioMap).bindPopup('Rebocador');
+    _rioMarkerShip = Lf.circleMarker([ps.lat, ps.lon], icShip).addTo(_rioMap).bindPopup('Navio (rebocado) — ao largo RJ');
+    _rioMarkerTug  = Lf.circleMarker([pt.lat, pt.lon], icTug).addTo(_rioMap).bindPopup('Rebocador — ao largo RJ');
     _rioTowPoly = Lf.polyline([[pt.lat, pt.lon], [ps.lat, ps.lon]], { color: '#7dd3fc', weight: 2, opacity: 0.88 }).addTo(_rioMap);
-    _rioMap.setView([RIO_GEO.originLat, RIO_GEO.originLon], 12);
+    // Enquadra comboio (ao largo) + referência da costa (Copacabana) a norte
+    try {
+        _rioMap.fitBounds([
+            [ps.lat, ps.lon],
+            [pt.lat, pt.lon],
+            [-22.971, -43.182]
+        ], { padding: [18, 18], maxZoom: 12 });
+    } catch (_) {
+        _rioMap.setView([(ps.lat + pt.lat) * 0.5, (ps.lon + pt.lon) * 0.5], 11);
+    }
     setTimeout(() => { if (_rioMap) _rioMap.invalidateSize(); }, 0);
     setGeoMapTitle('leaflet');
     syncCoastProviderSelect('leaflet');
     _coastMode = 'leaflet';
-    console.info('[T-Sim] mapa de contexto: OpenSeaMap');
+    console.info('[T-Sim] OpenSeaMap: comboio ao largo RJ', ps.lat.toFixed(4), ps.lon.toFixed(4));
     return true;
 }
 

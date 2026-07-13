@@ -18,10 +18,10 @@
   let tileset = null;
   let ready = false;
   let rio = {
-    originLat: -22.95,
-    originLon: -43.14,
+    originLat: -23.05,
+    originLon: -43.15,
     mPerDegLat: 110852,
-    mPerDegLon: 111320 * Math.cos(-22.95 * (Math.PI / 180))
+    mPerDegLon: 111320 * Math.cos(-23.05 * (Math.PI / 180))
   };
 
   async function fetchTokenConfig() {

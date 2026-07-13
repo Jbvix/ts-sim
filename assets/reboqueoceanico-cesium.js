@@ -74,8 +74,8 @@
       Cesium.GoogleMaps.defaultApiKey = cfg.googleMapsApiKey;
     }
 
-    const originLat = (rioGeo && rioGeo.originLat) || -22.95;
-    const originLon = (rioGeo && rioGeo.originLon) || -43.14;
+    const originLat = (rioGeo && rioGeo.originLat) || -23.05;
+    const originLon = (rioGeo && rioGeo.originLon) || -43.15;
 
     try {
       viewer = new Cesium.Viewer('geo-mapa', {
