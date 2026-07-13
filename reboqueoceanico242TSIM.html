@@ -1847,7 +1847,11 @@ function meshVisibleBounds(object3d) {
     object3d.traverse((child) => {
         if (!child.isMesh || !child.visible) return;
         if (child.name === 'shipHull' || child.name === 'tugHull') return;
-        if (child.name === 'bridgeOccluder') return;
+        let p = child;
+        while (p) {
+            if (p.name === 'bridgeOccluder') return;
+            p = p.parent;
+        }
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         if (mats.length && mats.every((m) => m && (m.visible === false || m.opacity === 0))) return;
         const childBox = new THREE.Box3().setFromObject(child);
@@ -1980,27 +1984,33 @@ function sanitizeGlbMaterials(root) {
 }
 
 /**
- * A malha Bridge é um casario oco (janelas/aberturas). Um bloco opaco no AABB
- * impede ver o mar e os contentores através do interior.
- * Deve correr no visual já encaixado (após fit), não no GLB root — senão distorce o scale.
+ * A malha Bridge do GLB é oca e/ou com normais/atlas problemáticos — mesmo opaca
+ * deixa ver o mar pelas faces laterais. Escondemos os meshes Bridge e colocamos
+ * um bloco sólido no AABB completo (após o fit).
  */
 function sealBridgeInterior(root) {
     if (!root) return;
     const old = root.getObjectByName('bridgeOccluder');
     if (old) {
         root.remove(old);
-        if (old.geometry) old.geometry.dispose();
-        if (old.material) old.material.dispose();
+        old.traverse((c) => {
+            if (c.geometry) c.geometry.dispose();
+            if (!c.material) return;
+            const mats = Array.isArray(c.material) ? c.material : [c.material];
+            mats.forEach((m) => { if (m && m.dispose) m.dispose(); });
+        });
     }
     root.updateMatrixWorld(true);
     const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
     const box = new THREE.Box3();
     let found = false;
+    const bridgeMeshes = [];
     root.traverse((c) => {
         if (!c.isMesh || c.name === 'bridgeOccluder') return;
         const n = (c.name || '') + ' ' + ((Array.isArray(c.material) ? c.material[0] : c.material)?.name || '');
         if (!/bridge/i.test(n) || /occluder/i.test(n)) return;
         if (!c.geometry) return;
+        bridgeMeshes.push(c);
         if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
         const local = c.geometry.boundingBox.clone();
         const toRoot = new THREE.Matrix4().multiplyMatrices(invRoot, c.matrixWorld);
@@ -2009,36 +2019,75 @@ function sealBridgeInterior(root) {
         else box.union(local);
     });
     if (!found || box.isEmpty()) return;
+
+    // Esconde a malha detalhada (fonte do “fantasma”); o bloco cobre o volume
+    bridgeMeshes.forEach((m) => { m.visible = false; });
+
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    // Inset leve para não “estourar” fora das paredes exteriores
-    const sx = Math.max(size.x * 0.88, 0.2);
-    const sy = Math.max(size.y * 0.82, 0.2);
-    const sz = Math.max(size.z * 0.88, 0.2);
-    const occluder = new THREE.Mesh(
-        new THREE.BoxGeometry(sx, sy, sz),
-        new THREE.MeshStandardMaterial({
-            name: 'BridgeOccluder',
-            color: 0xd8d4ce,
-            metalness: 0.08,
-            roughness: 0.85,
-            transparent: false,
-            opacity: 1,
-            depthWrite: true,
-            depthTest: true,
-            blending: THREE.NoBlending,
-            side: THREE.DoubleSide
-        })
+    const sx = Math.max(size.x * 1.02, 0.2);
+    const sy = Math.max(size.y * 1.0, 0.2);
+    const sz = Math.max(size.z * 1.02, 0.2);
+
+    // Casario: corpo bege + faixa vermelha no terço superior (leitura tipo MRC)
+    const bodyMat = new THREE.MeshStandardMaterial({
+        name: 'BridgeOccluder',
+        color: 0xe6e2dc,
+        metalness: 0.1,
+        roughness: 0.72,
+        transparent: false,
+        opacity: 1,
+        depthWrite: true,
+        depthTest: true,
+        blending: THREE.NoBlending,
+        side: THREE.DoubleSide
+    });
+    const bandMat = new THREE.MeshStandardMaterial({
+        name: 'BridgeOccluderBand',
+        color: 0xb91c1c,
+        metalness: 0.15,
+        roughness: 0.55,
+        transparent: false,
+        opacity: 1,
+        depthWrite: true,
+        depthTest: true,
+        blending: THREE.NoBlending,
+        side: THREE.DoubleSide
+    });
+
+    const group = new THREE.Group();
+    group.name = 'bridgeOccluder';
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(sx, sy * 0.72, sz), bodyMat);
+    body.position.y = -sy * 0.14;
+    body.name = 'bridgeOccluderBody';
+
+    const band = new THREE.Mesh(new THREE.BoxGeometry(sx * 1.001, sy * 0.28, sz * 1.001), bandMat);
+    band.position.y = sy * 0.36;
+    band.name = 'bridgeOccluderBand';
+
+    // “Ponte” ligeiramente mais estreita no topo
+    const bridgeTop = new THREE.Mesh(
+        new THREE.BoxGeometry(sx * 0.72, sy * 0.12, sz * 0.45),
+        bodyMat.clone()
     );
-    occluder.name = 'bridgeOccluder';
-    occluder.position.copy(center);
-    occluder.renderOrder = -1;
-    occluder.castShadow = false;
-    occluder.receiveShadow = false;
-    root.add(occluder);
-    console.info('[T-Sim] bridgeOccluder', {
+    bridgeTop.material.color.setHex(0xf3f1ed);
+    bridgeTop.position.set(0, sy * 0.56, sz * 0.12);
+    bridgeTop.name = 'bridgeOccluderTop';
+
+    group.add(body, band, bridgeTop);
+    group.position.copy(center);
+    group.traverse((c) => {
+        if (!c.isMesh) return;
+        c.castShadow = false;
+        c.receiveShadow = false;
+        c.renderOrder = 0;
+    });
+    root.add(group);
+    console.info('[T-Sim] bridgeOccluder (bloco sólido)', {
         size: { x: +sx.toFixed(2), y: +sy.toFixed(2), z: +sz.toFixed(2) },
-        pos: { x: +center.x.toFixed(2), y: +center.y.toFixed(2), z: +center.z.toFixed(2) }
+        pos: { x: +center.x.toFixed(2), y: +center.y.toFixed(2), z: +center.z.toFixed(2) },
+        hiddenBridgeMeshes: bridgeMeshes.length
     });
 }
 
