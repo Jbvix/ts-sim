@@ -98,7 +98,7 @@
         selectionIndicator: false,
         globe: true,
         skyBox: false,
-        skyAtmosphere: true,
+        skyAtmosphere: false,
         requestRenderMode: false,
         useDefaultRenderLoop: true
       });
@@ -107,6 +107,7 @@
         viewer.scene.skyBox = undefined;
         viewer.scene.sun = undefined;
         viewer.scene.moon = undefined;
+        viewer.scene.skyAtmosphere = undefined;
         viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#051d40');
         if (viewer.scene.globe) {
           viewer.scene.globe.show = true;
