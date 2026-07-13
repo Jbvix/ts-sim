@@ -476,15 +476,25 @@ container.appendChild(renderer.domElement);
 // Controles de órbita para a câmera, permitindo ao usuário navegar na cena
 const controls_cam = new OrbitControls(camera, renderer.domElement);
 controls_cam.target.set(0, 0, -40);
+controls_cam.enableDamping = true;
+controls_cam.dampingFactor = 0.08;
 controls_cam.update();
 
 let seabedMesh; // Declarado aqui para ser acessível globalmente no script
 /** true quando GE Photorealistic underlay está ativo no viewport */
 let _scenarioGeActive = false;
 const WATER_OPACITY_DEFAULT = 0.8;
-const WATER_OPACITY_GE = 0.28;
+const WATER_OPACITY_GE = 0.22;
 const WATER_SIZE_DEFAULT = 10000;
-const WATER_RADIUS_GE = 2400;
+/** Disco menor e sem “anel/grade” exagerada sobre o GE */
+const WATER_RADIUS_GE = 1800;
+/**
+ * Lift do GLB do navio:
+ * - sem GE: 4 m (linha d'água abaixo do MRC no mar plano)
+ * - com GE: ~1 m (evita “flutuar” sobre a costa Photorealistic; quilha já alinhada)
+ */
+const SHIP_GLB_VISUAL_LIFT_M = 4.0;
+const SHIP_GLB_VISUAL_LIFT_GE_M = 1.0;
 
 // --- 2. AMBIENTE E ILUMINAÇÃO ---
 // Fundo sólido até o underlay Cesium subir; depois null (canvas transparente)
@@ -523,11 +533,19 @@ scene.add(seabedMesh);
 function setWaterGeometryForScenario(geOn) {
     water.geometry.dispose();
     if (geOn) {
-        // Disco local: física/calado iguais; costa GE visível além do raio
-        water.geometry = new THREE.CircleGeometry(WATER_RADIUS_GE, 64);
+        // Disco suave (mais segmentos) — evita artefacto de “grade” no bordo
+        water.geometry = new THREE.CircleGeometry(WATER_RADIUS_GE, 96);
     } else {
         water.geometry = new THREE.PlaneGeometry(WATER_SIZE_DEFAULT, WATER_SIZE_DEFAULT);
     }
+}
+
+/** Ajusta lift do GLB do navio (quilha já na base do box; lift só afeta estética). */
+function applyShipGlbLiftForScenario(geOn) {
+    if (!_shipGlbRoot || !ship.mesh) return;
+    const lift = geOn ? SHIP_GLB_VISUAL_LIFT_GE_M : SHIP_GLB_VISUAL_LIFT_M;
+    fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: lift });
+    // Reancora jatos se o rebocador já tiver GLB (fit do navio não mexe no tug)
 }
 
 function applyScenarioGeVisuals(on) {
@@ -537,18 +555,28 @@ function applyScenarioGeVisuals(on) {
         scene.background = null;
         renderer.setClearColor(0x000000, 0);
         water.material.opacity = WATER_OPACITY_GE;
+        // Água local à altura da superfície ENU do globo (ellipsoid ≈ 0; water_level física permanece)
+        water.position.y = 0;
         if (seabedMesh) {
             seabedMesh.visible = false;
             if (seabedMesh.material) seabedMesh.material.opacity = 0;
         }
+        applyShipGlbLiftForScenario(true);
+        // Cascos: recalcula Y pelo calado (física); visual já com lift GE
+        if (ship.mesh?.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+        if (tug.mesh?.geometry?.parameters) updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
     } else {
         scene.background = new THREE.Color(0x051d40);
         renderer.setClearColor(0x051d40, 1);
         water.material.opacity = WATER_OPACITY_DEFAULT;
+        water.position.y = water_level;
         if (seabedMesh) {
             seabedMesh.visible = true;
             if (seabedMesh.material) seabedMesh.material.opacity = 1;
         }
+        applyShipGlbLiftForScenario(false);
+        if (ship.mesh?.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+        if (tug.mesh?.geometry?.parameters) updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
     }
 }
 
@@ -1129,6 +1157,20 @@ let _simCameraMode = 'free';
 let _simCamLastAim = null;
 const _simCamTmpShip = new THREE.Vector3();
 const _simCamTmpTug = new THREE.Vector3();
+const _simCamConvoyCenter = new THREE.Vector3();
+/** Altura do pivô de órbita acima da média vertical do comboio (metros ENU). */
+const CONVOY_ORBIT_PIVOT_LIFT_M = 8;
+
+/** Centro dinâmico do comboio (média rebocador–navio) no ENU local = globo. */
+function getConvoyCenter(out) {
+    const o = out || _simCamConvoyCenter;
+    o.x = (ship.position.x + tug.position.x) * 0.5;
+    o.z = (ship.position.z + tug.position.z) * 0.5;
+    // Y: média das alturas atuais dos meshes (calado/ondas) + pequeno offset de órbita
+    o.y = (ship.mesh.position.y + tug.mesh.position.y) * 0.5 + CONVOY_ORBIT_PIVOT_LIFT_M;
+    return o;
+}
+
 function getWorldAimForCameraMode(mode) {
     ship.mesh.updateMatrixWorld(true);
     tug.mesh.updateMatrixWorld(true);
@@ -1142,9 +1184,7 @@ function getWorldAimForCameraMode(mode) {
         o.copy(_simCamTmpShip);
         o.y += 10;
     } else {
-        // Centro do comboio no mesmo ENU do globo (metros locais RIO_GEO)
-        o.lerpVectors(_simCamTmpTug, _simCamTmpShip, 0.5);
-        o.y = Math.max(_simCamTmpShip.y, _simCamTmpTug.y) + 14;
+        getConvoyCenter(o);
     }
     return o;
 }
@@ -1152,6 +1192,9 @@ function setCameraMode(mode) {
     if (!['free', 'tug', 'ship', 'convoy'].includes(mode)) return;
     _simCameraMode = mode;
     _simCamLastAim = null;
+    // Damping suave na órbita comboio/rebocador/navio; livre sem damping (posicionamento preciso)
+    controls_cam.enableDamping = mode !== 'free';
+    controls_cam.dampingFactor = 0.08;
     document.querySelectorAll('.cam-mode-btn[data-cam-mode]').forEach((btn) => {
         const on = btn.getAttribute('data-cam-mode') === mode;
         btn.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -1892,8 +1935,7 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     hullMesh.userData.glbVisualLiftM = opts.visualLiftM || 0;
 }
 
-/** Elevação do GLB do navio: linha d'água abaixo das letras MRC mesmo no calado máximo. */
-const SHIP_GLB_VISUAL_LIFT_M = 4.0;
+/** Elevação do GLB do navio: ver SHIP_GLB_VISUAL_LIFT_M / _GE_M no topo da cena. */
 
 /**
  * Localiza no GLB Rastar as hélices Left/Right e ancora os jatos ASD (BB=jet1, BE=jet2).
@@ -1944,7 +1986,10 @@ function snapTugJetsToGlbPropellers() {
 }
 
 function refreshVesselGlbVisuals() {
-    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: SHIP_GLB_VISUAL_LIFT_M });
+    if (_shipGlbRoot) {
+        const lift = _scenarioGeActive ? SHIP_GLB_VISUAL_LIFT_GE_M : SHIP_GLB_VISUAL_LIFT_M;
+        fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: lift });
+    }
     if (_tugGlbRoot) fitGlbIntoHull(tug.mesh, _tugGlbRoot, { fitInside: false });
     if (ship.mesh.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
     if (tug.mesh.geometry?.parameters) updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
@@ -2002,7 +2047,10 @@ function applyShipPreset(presetName) {
 
     ship.mesh.geometry = new THREE.BoxGeometry(preset.beam, preset.height, preset.length);
     ship.mesh.material = makeHullInvisibleMaterial();
-    if (_shipGlbRoot) fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: SHIP_GLB_VISUAL_LIFT_M });
+    if (_shipGlbRoot) {
+        const lift = _scenarioGeActive ? SHIP_GLB_VISUAL_LIFT_GE_M : SHIP_GLB_VISUAL_LIFT_M;
+        fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: lift });
+    }
 
     const draftSlider = uiControls.shipDraft.el;
     draftSlider.min = preset.minDraft; draftSlider.max = preset.maxDraft;

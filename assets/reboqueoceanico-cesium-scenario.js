@@ -112,6 +112,20 @@
         useDefaultRenderLoop: true
       });
 
+      // Garante: sem skybox, sem atmosfera, sem grelha/globo fantasma
+      try {
+        viewer.scene.skyBox = undefined;
+        viewer.scene.sun = undefined;
+        viewer.scene.moon = undefined;
+        viewer.scene.skyAtmosphere = undefined;
+        if (viewer.scene.globe) viewer.scene.globe.show = false;
+        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#051d40');
+        // Remove imagery layers residuais (só Photorealistic tileset)
+        if (viewer.imageryLayers) {
+          while (viewer.imageryLayers.length > 0) viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
+        }
+      } catch (_) { /* */ }
+
       if (viewer.cesiumWidget && viewer.cesiumWidget.creditContainer) {
         // Mantém créditos mínimos (ToS); compacta no canto
         const cc = viewer.cesiumWidget.creditContainer;
@@ -130,7 +144,6 @@
         return false;
       }
 
-      viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#051d40');
       viewer.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(rio.originLon, rio.originLat, 900),
         orientation: {
@@ -189,10 +202,11 @@
   }
 
   /**
-   * Órbita em torno do pivô (comboio) no mesmo ENU do globo.
-   * lookAt(HeadingPitchRange) + unlock: pose correta sem travar o frame.
+   * Órbita em torno do pivô dinâmico (centro do comboio) no ENU do globo.
+   * lookAt(HPR) a cada frame com o centro atualizado — não usa RELATIVE_TO_GROUND
+   * (navios são Three, não entidades Cesium).
    * @param {object} camera — THREE.PerspectiveCamera
-   * @param {object} target — OrbitControls.target (centro do comboio)
+   * @param {object} target — OrbitControls.target (centro dinâmico do comboio)
    */
   function syncFromThree(camera, target) {
     if (!ready || !viewer || viewer.isDestroyed() || !camera) return;
@@ -202,22 +216,21 @@
     const ty = target && target.y != null ? target.y : 0;
     const tz = target && target.z != null ? target.z : 0;
 
-    // Offset alvo→câmera no Three (E, U, N) ≡ ENU Cesium (E, N, U) via threeToEnu
+    // Offset alvo→câmera no Three (E, U, N) ≡ ENU Cesium (E, N, U)
     const ox = camera.position.x - tx;
     const oy = camera.position.y - ty;
     const oz = camera.position.z - tz;
     const range = Math.sqrt(ox * ox + oy * oy + oz * oz) || 1;
     const horiz = Math.sqrt(ox * ox + oz * oz);
-    // HPR: heading/pitch do offset no frame local East-North-Up do pivô
-    _hpr.heading = Math.atan2(ox, oz);           // atan2(East, North)
-    _hpr.pitch = Math.atan2(oy, horiz || 1e-9); // elevação (acima do pivô > 0)
+    _hpr.heading = Math.atan2(ox, oz);
+    _hpr.pitch = Math.atan2(oy, horiz || 1e-9);
     _hpr.range = range;
 
     threeToEnu(tx, ty, tz, _enuTgt);
     Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuTgt, _tgt);
 
+    // Reaplica lookAt cada frame com centro dinâmico (combio a mover-se)
     viewer.camera.lookAt(_tgt, _hpr);
-    // Mantém a pose mas libera o transform (próximo frame pode orbitar de novo)
     viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
 
     const vFov = (camera.fov != null ? camera.fov : 75) * (Math.PI / 180);
