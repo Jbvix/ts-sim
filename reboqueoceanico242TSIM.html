@@ -463,9 +463,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // --- 1. SETUP BÁSICO DA CENA 3D ---
 const container = document.getElementById('sim-container');
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 5000);
+const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 1, 80000);
 camera.position.set(60, 90, 200);
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
 renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
@@ -478,16 +478,18 @@ const controls_cam = new OrbitControls(camera, renderer.domElement);
 controls_cam.target.set(0, 0, -40);
 controls_cam.enableDamping = true;
 controls_cam.dampingFactor = 0.08;
+controls_cam.minDistance = 25;
+controls_cam.maxDistance = 28000; // zoom out até ver a costa (~10–20 km)
 controls_cam.update();
 
 let seabedMesh; // Declarado aqui para ser acessível globalmente no script
 /** true quando GE Photorealistic underlay está ativo no viewport */
 let _scenarioGeActive = false;
 const WATER_OPACITY_DEFAULT = 0.8;
-const WATER_OPACITY_GE = 0.22;
+const WATER_OPACITY_GE = 0.18;
 const WATER_SIZE_DEFAULT = 10000;
-/** Disco menor e sem “anel/grade” exagerada sobre o GE */
-const WATER_RADIUS_GE = 1800;
+/** Disco curto: deixa o horizonte GE (costa) visível além do raio */
+const WATER_RADIUS_GE = 900;
 /**
  * Lift do GLB do navio (quilha já na base do box):
  * eleva o visual para a linha d'água ficar abaixo das letras MRC.

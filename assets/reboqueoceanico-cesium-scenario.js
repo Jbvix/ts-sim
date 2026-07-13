@@ -136,6 +136,13 @@
 
       try {
         tileset = await Cesium.createGooglePhotorealistic3DTileset();
+        // SSE baixo + dynamic SSE: costa permanece no zoom out / horizonte (~10–20 km)
+        tileset.maximumScreenSpaceError = 4;
+        tileset.dynamicScreenSpaceError = true;
+        if (tileset.dynamicScreenSpaceErrorDensity != null) tileset.dynamicScreenSpaceErrorDensity = 2.0e-4;
+        if (tileset.dynamicScreenSpaceErrorFactor != null) tileset.dynamicScreenSpaceErrorFactor = 24.0;
+        if (tileset.preloadWhenHidden != null) tileset.preloadWhenHidden = true;
+        if (tileset.cullWithChildrenBounds != null) tileset.cullWithChildrenBounds = false;
         viewer.scene.primitives.add(tileset);
       } catch (tileErr) {
         console.warn('[T-Sim] Photorealistic 3D Tiles (cenário) falharam:', tileErr);
@@ -143,8 +150,17 @@
         return false;
       }
 
+      // Plano de corte longo: costa do Rio fica a ~8–15 km do ponto ao largo
+      try {
+        const fr0 = viewer.camera.frustum;
+        if (fr0) {
+          fr0.near = 1.0;
+          fr0.far = 120000.0;
+        }
+      } catch (_) { /* */ }
+
       ready = true;
-      console.info('[T-Sim] cenário GE Photorealistic ativo (underlay, sync ENU contínuo)');
+      console.info('[T-Sim] cenário GE Photorealistic ativo (underlay, horizonte ~120 km)');
       return true;
     } catch (err) {
       console.error('[T-Sim] falha ao iniciar cenário Cesium:', err);
@@ -249,7 +265,7 @@
     Cesium.Cartesian3.cross(viewer.camera.right, viewer.camera.direction, viewer.camera.up);
     Cesium.Cartesian3.normalize(viewer.camera.up, viewer.camera.up);
 
-    // 4) FOV: Three = vertical; Cesium (aspect>=1) = horizontal
+    // 4) FOV + clipping: Three vertical FOV → Cesium horizontal; far largo para horizonte
     const vFov = (camera.fov != null ? camera.fov : 75) * (Math.PI / 180);
     const aspect = camera.aspect > 0 ? camera.aspect : 1;
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
@@ -257,8 +273,9 @@
     if (fr && fr.fov != null) {
       fr.fov = hFov;
       if (fr.aspectRatio != null) fr.aspectRatio = aspect;
-      if (typeof camera.near === 'number' && fr.near != null) fr.near = Math.max(0.1, camera.near);
-      if (typeof camera.far === 'number' && fr.far != null) fr.far = camera.far;
+      // near/far generosos: costa ~10 km; zoom out até ~28 km
+      fr.near = Math.max(1.0, (typeof camera.near === 'number' ? camera.near : 1));
+      fr.far = Math.max(120000, typeof camera.far === 'number' ? camera.far : 80000);
     }
   }
 
