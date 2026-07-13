@@ -480,6 +480,10 @@ controls_cam.enableDamping = true;
 controls_cam.dampingFactor = 0.08;
 controls_cam.minDistance = 25;
 controls_cam.maxDistance = 28000; // zoom out até ver a costa (~10–20 km)
+controls_cam.enablePan = true;
+controls_cam.screenSpacePanning = false; // pan no plano do chão — órbita horizontal estável
+controls_cam.minPolarAngle = 0.15; // evita nadir (órbita “gira o comboio”)
+controls_cam.maxPolarAngle = Math.PI * 0.48; // não atravessar o mar
 controls_cam.update();
 
 let seabedMesh; // Declarado aqui para ser acessível globalmente no script
@@ -1211,10 +1215,18 @@ function setCameraMode(mode) {
     // Damping suave em todos os modos de órbita (comboio / livre / pivôs)
     controls_cam.enableDamping = true;
     controls_cam.dampingFactor = 0.08;
+    // Comboio/rebocador/navio: pan desligado — só órbita em torno do pivô
+    controls_cam.enablePan = (mode === 'free');
+    // Mantém up do OrbitControls (órbita horizontal estável em torno do pivô)
+    camera.up.set(0, 1, 0);
     document.querySelectorAll('.cam-mode-btn[data-cam-mode]').forEach((btn) => {
         const on = btn.getAttribute('data-cam-mode') === mode;
         btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+    // Trava pivô no centro / entidade (sempre — com ou sem GE)
+    stepCameraFollow();
+    controls_cam.update();
+    camera.updateMatrixWorld(true);
     // Órbita comboio/rebocador/navio: GE vivo; encerra modo posicionamento
     if (mode !== 'free' && _scenarioGeActive) {
         _geOrbitPositioning = false;
@@ -1225,10 +1237,6 @@ function setCameraMode(mode) {
         if (window.__simCesiumScenario && window.__simCesiumScenario.setActive) {
             window.__simCesiumScenario.setActive(true);
         }
-        // Trava pivô já no centro / entidade e sincroniza globo
-        stepCameraFollow();
-        controls_cam.update();
-        camera.updateMatrixWorld(true);
         if (window.__simCesiumScenario && window.__simCesiumScenario.ready) {
             window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
         }

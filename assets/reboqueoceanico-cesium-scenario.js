@@ -1,6 +1,7 @@
 /**
  * Cenário principal: Cesium Ion + Google Photorealistic 3D Tiles sob o canvas Three.
- * Sync de câmera: mesma pose ENU frame-a-frame (matrixWorld Three → ECEF).
+ * Sync de câmera: eye + pivô OrbitControls + up geográfico (ENU) → ECEF.
+ * (Não copiar matrixWorld via threeToEnu — a permutação Y↔Z é reflexão e desalinha a órbita.)
  *
  * API: window.__simCesiumScenario
  *   .tryInit(rioGeo) → Promise<boolean>
@@ -187,12 +188,13 @@
   }
 
   const _enuPos = new Cesium.Cartesian3();
-  const _fEnu = new Cesium.Cartesian3();
-  const _uEnu = new Cesium.Cartesian3();
+  const _enuTarget = new Cesium.Cartesian3();
+  const _enuUp = new Cesium.Cartesian3(0, 0, 1);
+  const _enuEast = new Cesium.Cartesian3(1, 0, 0);
   const _eye = new Cesium.Cartesian3();
+  const _targetEcef = new Cesium.Cartesian3();
   const _dir = new Cesium.Cartesian3();
   const _up = new Cesium.Cartesian3();
-  const _right = new Cesium.Cartesian3();
   let _enuToFixed = null;
   let _enuOriginLon = null;
   let _enuOriginLat = null;
@@ -213,54 +215,57 @@
   }
 
   /**
-   * Copia a pose exata da câmera Three (matrixWorld) para o Cesium via ENU único.
-   * Garante que o comboio e o cenário giram juntos na mesma posição.
+   * Sync OrbitControls → Cesium: eye + pivô (target) + up geográfico.
+   *
+   * NÃO copiar eixos da matrixWorld via threeToEnu: a permutação (x,y,z)→(x,z,y)
+   * tem det = −1 (reflexão) e inverte a mão — na órbita horizontal o GE “gira”
+   * em relação ao comboio em vez de orbitar o mesmo pivô.
+   * OrbitControls já olha o target com up ≈ +Y; lookAt por posições equivale.
    */
-  function syncFromThree(camera, _target) {
+  function syncFromThree(camera, target) {
     if (!ready || !viewer || viewer.isDestroyed() || !camera) return;
-    if (!camera.matrixWorld || !camera.matrixWorld.elements) return;
 
     const enuToFixed = ensureEnuMatrix();
 
-    // 1) Pose 100% de matrixWorld (mesma origem que forward/up — evita lag na órbita)
-    // Three: col0=right, col1=up, col2=back; forward = -col2; translation = col3
-    const e = camera.matrixWorld.elements;
-    threeToEnu(e[12], e[13], e[14], _enuPos);
+    // 1) Eye (mundo Three)
+    let ex, ey, ez;
+    if (camera.matrixWorld && camera.matrixWorld.elements) {
+      const e = camera.matrixWorld.elements;
+      ex = e[12]; ey = e[13]; ez = e[14];
+    } else {
+      ex = camera.position.x; ey = camera.position.y; ez = camera.position.z;
+    }
+    threeToEnu(ex, ey, ez, _enuPos);
     Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuPos, _eye);
 
-    let fx = -e[8], fy = -e[9], fz = -e[10];
-    let ux = e[4], uy = e[5], uz = e[6];
-
-    let fl = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1;
-    fx /= fl; fy /= fl; fz /= fl;
-    let ul = Math.sqrt(ux * ux + uy * uy + uz * uz) || 1;
-    ux /= ul; uy /= ul; uz /= ul;
-
-    // Ortonormaliza: right = forward × up, up = right × forward
-    let rx = fy * uz - fz * uy;
-    let ry = fz * ux - fx * uz;
-    let rz = fx * uy - fy * ux;
-    let rl = Math.sqrt(rx * rx + ry * ry + rz * rz);
-    if (rl < 1e-8) {
-      ux = 0; uy = 1; uz = 0;
-      rx = fy * uz - fz * uy;
-      ry = fz * ux - fx * uz;
-      rz = fx * uy - fy * ux;
-      rl = Math.sqrt(rx * rx + ry * ry + rz * rz) || 1;
+    // 2) Pivô OrbitControls (centro do comboio nos modos follow)
+    let tx, ty, tz;
+    if (target && typeof target.x === 'number') {
+      tx = target.x; ty = target.y; tz = target.z;
+    } else {
+      // Fallback: ponto à frente da câmera (~distância típica de órbita)
+      tx = ex; ty = ey; tz = ez - 200;
     }
-    rx /= rl; ry /= rl; rz /= rl;
-    ux = ry * fz - rz * fy;
-    uy = rz * fx - rx * fz;
-    uz = rx * fy - ry * fx;
+    threeToEnu(tx, ty, tz, _enuTarget);
+    Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuTarget, _targetEcef);
 
-    threeToEnu(fx, fy, fz, _fEnu);
-    threeToEnu(ux, uy, uz, _uEnu);
-    Cesium.Matrix4.multiplyByPointAsVector(enuToFixed, _fEnu, _dir);
-    Cesium.Matrix4.multiplyByPointAsVector(enuToFixed, _uEnu, _up);
-    Cesium.Cartesian3.normalize(_dir, _dir);
+    // 3) Up geográfico (ENU +Z) — mesmo “chão” do OrbitControls (+Y Three)
+    Cesium.Matrix4.multiplyByPointAsVector(enuToFixed, _enuUp, _up);
     Cesium.Cartesian3.normalize(_up, _up);
 
-    // 3) Aplica pose em coordenadas mundo (sem lookAt — evita HPR local ≠ ENU origem)
+    // 4) Direção = target − eye (órbita em torno do pivô, não rotação do comboio)
+    Cesium.Cartesian3.subtract(_targetEcef, _eye, _dir);
+    const dirLen = Cesium.Cartesian3.magnitude(_dir);
+    if (dirLen < 1e-3) return;
+    Cesium.Cartesian3.divideByScalar(_dir, dirLen, _dir);
+
+    // Se quase nadir/zenith, estabiliza right com um eixo auxiliar
+    const align = Math.abs(Cesium.Cartesian3.dot(_dir, _up));
+    if (align > 0.995) {
+      Cesium.Matrix4.multiplyByPointAsVector(enuToFixed, _enuEast, _up);
+      Cesium.Cartesian3.normalize(_up, _up);
+    }
+
     viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
     Cesium.Cartesian3.clone(_eye, viewer.camera.position);
     Cesium.Cartesian3.clone(_dir, viewer.camera.direction);
@@ -270,7 +275,7 @@
     Cesium.Cartesian3.cross(viewer.camera.right, viewer.camera.direction, viewer.camera.up);
     Cesium.Cartesian3.normalize(viewer.camera.up, viewer.camera.up);
 
-    // 4) FOV + clipping: Three vertical FOV → Cesium horizontal; far largo para horizonte
+    // 5) FOV + clipping
     const vFov = (camera.fov != null ? camera.fov : 75) * (Math.PI / 180);
     const aspect = camera.aspect > 0 ? camera.aspect : 1;
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
@@ -278,7 +283,6 @@
     if (fr && fr.fov != null) {
       fr.fov = hFov;
       if (fr.aspectRatio != null) fr.aspectRatio = aspect;
-      // near/far generosos: costa ~10 km; zoom out até ~28 km
       fr.near = Math.max(1.0, (typeof camera.near === 'number' ? camera.near : 1));
       fr.far = Math.max(120000, typeof camera.far === 'number' ? camera.far : 80000);
     }
