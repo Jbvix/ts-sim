@@ -1881,11 +1881,45 @@ function removeGlbVisual(hullMesh) {
     // (ex.: ao ativar o underlay GE / refreshVesselGlbVisuals).
 }
 
+/** Garante textura sem canal alpha (evita restos de BLEND no atlas do Bridge). */
+function makeOpaqueColorMap(tex) {
+    if (!tex || !tex.image) return tex;
+    const img = tex.image;
+    const w = img.width || img.videoWidth || 0;
+    const h = img.height || img.videoHeight || 0;
+    if (!w || !h) return tex;
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return tex;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const d = imageData.data;
+        for (let i = 3; i < d.length; i += 4) d[i] = 255;
+        ctx.putImageData(imageData, 0, 0);
+        const out = new THREE.CanvasTexture(canvas);
+        out.colorSpace = tex.colorSpace;
+        out.flipY = tex.flipY;
+        out.wrapS = tex.wrapS;
+        out.wrapT = tex.wrapT;
+        out.magFilter = tex.magFilter;
+        out.minFilter = tex.minFilter;
+        out.anisotropy = tex.anisotropy;
+        out.needsUpdate = true;
+        return out;
+    } catch (err) {
+        console.warn('[T-Sim] makeOpaqueColorMap falhou:', err);
+        return tex;
+    }
+}
+
 /**
- * Corrige materiais GLB da superestrutura “oca”.
- * O material "Bridge" do container_ship.glb vem com alphaMode:BLEND — o mar/contentores
- * aparecem através da ponte. Forçamos MeshStandard opaco; no Bridge removemos o mapa
- * com canal alpha (BLEND) e usamos cor sólida.
+ * Corrige materiais GLB da superestrutura “fantasma”.
+ * O material "Bridge" do container_ship.glb vem com alphaMode:BLEND — Three.js mete-o
+ * na fila transparente (depthWrite fraco) e o mar/contentores aparecem através do casario.
+ * Forçamos MeshStandard opaco + NoBlending; no Bridge neutralizamos o alpha do albedo.
  */
 function sanitizeGlbMaterials(root) {
     if (!root) return;
@@ -1900,40 +1934,109 @@ function sanitizeGlbMaterials(root) {
             const matName = (m.name || '');
             const isBridge = /bridge/i.test(matName) || /bridge|superstructure|deckhouse|casario|ponte/i.test(meshName);
 
+            let colorMap = m.map || null;
+            if (isBridge && colorMap) colorMap = makeOpaqueColorMap(colorMap);
+
             const solid = new THREE.MeshStandardMaterial({
                 name: matName || 'glbSolid',
-                color: m.color ? m.color.clone() : new THREE.Color(isBridge ? 0xf0f0f0 : 0xffffff),
-                // Bridge: sem mapa RGBA (alphaMode BLEND no GLB) — evita paredes fantasma
-                map: isBridge ? null : (m.map || null),
-                metalnessMap: isBridge ? null : (m.metalnessMap || null),
-                roughnessMap: isBridge ? null : (m.roughnessMap || null),
-                normalMap: isBridge ? null : (m.normalMap || null),
-                metalness: typeof m.metalness === 'number' ? m.metalness : (isBridge ? 0.15 : 0.25),
-                roughness: typeof m.roughness === 'number' ? m.roughness : (isBridge ? 0.55 : 0.65),
+                color: m.color ? m.color.clone() : new THREE.Color(isBridge ? 0xe8e8ea : 0xffffff),
+                map: colorMap,
+                metalnessMap: m.metalnessMap || null,
+                roughnessMap: m.roughnessMap || null,
+                normalMap: m.normalMap || null,
+                metalness: typeof m.metalness === 'number' ? m.metalness : (isBridge ? 0.12 : 0.25),
+                roughness: typeof m.roughness === 'number' ? m.roughness : (isBridge ? 0.62 : 0.65),
                 emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0x000000),
-                emissiveMap: isBridge ? null : (m.emissiveMap || null),
+                emissiveMap: m.emissiveMap || null,
                 emissiveIntensity: typeof m.emissiveIntensity === 'number' ? m.emissiveIntensity : 1,
                 transparent: false,
                 opacity: 1,
                 depthWrite: true,
                 depthTest: true,
-                side: THREE.DoubleSide,
+                colorWrite: true,
+                blending: THREE.NoBlending,
+                side: isBridge ? THREE.FrontSide : THREE.DoubleSide,
                 flatShading: false,
                 fog: m.fog !== false,
-                alphaTest: 0
+                alphaTest: 0,
+                alphaHash: false
             });
-            if (solid.map) solid.map.colorSpace = m.map.colorSpace || solid.map.colorSpace;
-            if (isBridge && m.color) {
-                // Mantém tom do material; se veio branco genérico, usa cinza-claro de casario
-                if (m.color.getHex() === 0xffffff) solid.color.setHex(0xe8e8ea);
-            }
+            if (solid.map) solid.map.colorSpace = (m.map && m.map.colorSpace) || solid.map.colorSpace;
+            // Impede qualquer caminho de transparência residual do GLTFLoader
+            solid.transparent = false;
+            solid.opacity = 1;
+            solid.depthWrite = true;
+            solid.blending = THREE.NoBlending;
+            solid.needsUpdate = true;
             mats[i] = solid;
             n++;
         }
         c.material = mats.length === 1 ? mats[0] : mats;
         c.renderOrder = 0;
+        c.frustumCulled = true;
     });
+    // Casario Bridge é oco (janelas); oclusor interno tapa o mar/contentores através do volume
+    sealBridgeInterior(root);
     console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' materiais → opacos');
+}
+
+/**
+ * A malha Bridge é um casario oco (janelas/aberturas). Um bloco opaco no AABB
+ * impede ver o mar e os contentores através do interior.
+ */
+function sealBridgeInterior(root) {
+    if (!root) return;
+    const old = root.getObjectByName('bridgeOccluder');
+    if (old) {
+        root.remove(old);
+        if (old.geometry) old.geometry.dispose();
+        if (old.material) old.material.dispose();
+    }
+    const box = new THREE.Box3();
+    let found = false;
+    root.traverse((c) => {
+        if (!c.isMesh) return;
+        const n = (c.name || '') + ' ' + ((Array.isArray(c.material) ? c.material[0] : c.material)?.name || '');
+        if (!/bridge/i.test(n)) return;
+        const b = new THREE.Box3().setFromObject(c);
+        if (!found) { box.copy(b); found = true; }
+        else box.union(b);
+    });
+    if (!found || box.isEmpty()) return;
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    // Inset leve para não “estourar” fora das paredes exteriores
+    const sx = Math.max(size.x * 0.88, 0.2);
+    const sy = Math.max(size.y * 0.82, 0.2);
+    const sz = Math.max(size.z * 0.88, 0.2);
+    const occluder = new THREE.Mesh(
+        new THREE.BoxGeometry(sx, sy, sz),
+        new THREE.MeshStandardMaterial({
+            name: 'BridgeOccluder',
+            color: 0xd8d4ce,
+            metalness: 0.08,
+            roughness: 0.85,
+            transparent: false,
+            opacity: 1,
+            depthWrite: true,
+            depthTest: true,
+            blending: THREE.NoBlending,
+            side: THREE.FrontSide
+        })
+    );
+    occluder.name = 'bridgeOccluder';
+    // Centro do AABB está em world/root space após setFromObject — converter para local do root
+    root.updateMatrixWorld(true);
+    root.worldToLocal(center);
+    occluder.position.copy(center);
+    occluder.renderOrder = -1;
+    occluder.castShadow = false;
+    occluder.receiveShadow = false;
+    root.add(occluder);
+    console.info('[T-Sim] bridgeOccluder', {
+        size: { x: +sx.toFixed(2), y: +sy.toFixed(2), z: +sz.toFixed(2) },
+        pos: { x: +center.x.toFixed(2), y: +center.y.toFixed(2), z: +center.z.toFixed(2) }
+    });
 }
 
 /** Diagnóstico: materiais do GLB do navio já encaixado. */
@@ -1953,6 +2056,7 @@ function inspectShipGlbMaterials() {
                 transparent: m.transparent,
                 opacity: m.opacity,
                 depthWrite: m.depthWrite,
+                blending: m.blending,
                 hasMap: !!m.map,
                 color: m.color ? '#' + m.color.getHexString() : null
             });
