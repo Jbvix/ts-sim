@@ -136,7 +136,8 @@
       if (viewer.cesiumWidget && viewer.cesiumWidget.creditContainer) {
         const cc = viewer.cesiumWidget.creditContainer;
         cc.style.display = 'block';
-        cc.style.transform = 'scale(0.75)';
+        // scaleX(-1): canvas GE está espelhado (compensa reflexão threeToEnu); desfaz nos créditos
+        cc.style.transform = 'scaleX(-1) scale(0.75)';
         cc.style.transformOrigin = 'bottom left';
         cc.style.opacity = '0.75';
       }
@@ -217,10 +218,9 @@
   /**
    * Sync OrbitControls → Cesium: eye + pivô (target) + up geográfico.
    *
-   * NÃO copiar eixos da matrixWorld via threeToEnu: a permutação (x,y,z)→(x,z,y)
-   * tem det = −1 (reflexão) e inverte a mão — na órbita horizontal o GE “gira”
-   * em relação ao comboio em vez de orbitar o mesmo pivô.
-   * OrbitControls já olha o target com up ≈ +Y; lookAt por posições equivale.
+   * threeToEnu (x,y,z)→(x,z,y) tem det−1: a vista ECEF fica espelhada face ao Three,
+   * e a órbita GE sai no sentido contrário ao comboio. O espelho é compensado em CSS
+   * (#cesium-scenario canvas { transform: scaleX(-1) }) para comboio e costa girarem iguais.
    */
   function syncFromThree(camera, target) {
     if (!ready || !viewer || viewer.isDestroyed() || !camera) return;
