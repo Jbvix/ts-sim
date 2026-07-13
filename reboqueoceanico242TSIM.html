@@ -489,12 +489,12 @@ const WATER_SIZE_DEFAULT = 10000;
 /** Disco menor e sem “anel/grade” exagerada sobre o GE */
 const WATER_RADIUS_GE = 1800;
 /**
- * Lift do GLB do navio:
- * - sem GE: 4 m (linha d'água abaixo do MRC no mar plano)
- * - com GE: ~1 m (evita “flutuar” sobre a costa Photorealistic; quilha já alinhada)
+ * Lift do GLB do navio (quilha já na base do box):
+ * eleva o visual para a linha d'água ficar abaixo das letras MRC.
+ * Mesmo valor com/sem GE — o calado alinha-se a water.position.y.
  */
 const SHIP_GLB_VISUAL_LIFT_M = 4.0;
-const SHIP_GLB_VISUAL_LIFT_GE_M = 1.0;
+const SHIP_GLB_VISUAL_LIFT_GE_M = 4.0;
 
 // --- 2. AMBIENTE E ILUMINAÇÃO ---
 // Fundo sólido até o underlay Cesium subir; depois null (canvas transparente)
@@ -1608,9 +1608,11 @@ function updateVesselMass(vessel) {
     const ratio = (vessel.draft - vessel.minDraft) / (vessel.maxDraft - vessel.minDraft);
     vessel.mass = vessel.minMass + (vessel.maxMass - vessel.minMass) * ratio;
 }
-// Ajusta a posição vertical do mesh do navio/rebocador para corresponder ao calado
+// Ajusta a posição vertical do mesh para o calado relativamente à superfície da água visível
 function updateVesselYPosition(vessel, height) {
-    vessel.mesh.position.y = water_level - vessel.draft + (height / 2);
+    // Com GE a água local está em y≈0; sem GE usa water_level (−1)
+    const wl = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
+    vessel.mesh.position.y = wl - vessel.draft + (height / 2);
 }
 
 // --- Indicadores visuais (bússola + barra de potência) do painel ASD ---
