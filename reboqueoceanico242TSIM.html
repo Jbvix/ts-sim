@@ -1847,6 +1847,7 @@ function meshVisibleBounds(object3d) {
     object3d.traverse((child) => {
         if (!child.isMesh || !child.visible) return;
         if (child.name === 'shipHull' || child.name === 'tugHull') return;
+        if (child.name === 'bridgeOccluder') return;
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         if (mats.length && mats.every((m) => m && (m.visible === false || m.opacity === 0))) return;
         const childBox = new THREE.Box3().setFromObject(child);
@@ -1975,14 +1976,13 @@ function sanitizeGlbMaterials(root) {
         c.renderOrder = 0;
         c.frustumCulled = true;
     });
-    // Casario Bridge é oco (janelas); oclusor interno tapa o mar/contentores através do volume
-    sealBridgeInterior(root);
     console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' materiais → opacos');
 }
 
 /**
  * A malha Bridge é um casario oco (janelas/aberturas). Um bloco opaco no AABB
  * impede ver o mar e os contentores através do interior.
+ * Deve correr no visual já encaixado (após fit), não no GLB root — senão distorce o scale.
  */
 function sealBridgeInterior(root) {
     if (!root) return;
@@ -1992,15 +1992,21 @@ function sealBridgeInterior(root) {
         if (old.geometry) old.geometry.dispose();
         if (old.material) old.material.dispose();
     }
+    root.updateMatrixWorld(true);
+    const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
     const box = new THREE.Box3();
     let found = false;
     root.traverse((c) => {
-        if (!c.isMesh) return;
+        if (!c.isMesh || c.name === 'bridgeOccluder') return;
         const n = (c.name || '') + ' ' + ((Array.isArray(c.material) ? c.material[0] : c.material)?.name || '');
-        if (!/bridge/i.test(n)) return;
-        const b = new THREE.Box3().setFromObject(c);
-        if (!found) { box.copy(b); found = true; }
-        else box.union(b);
+        if (!/bridge/i.test(n) || /occluder/i.test(n)) return;
+        if (!c.geometry) return;
+        if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+        const local = c.geometry.boundingBox.clone();
+        const toRoot = new THREE.Matrix4().multiplyMatrices(invRoot, c.matrixWorld);
+        local.applyMatrix4(toRoot);
+        if (!found) { box.copy(local); found = true; }
+        else box.union(local);
     });
     if (!found || box.isEmpty()) return;
     const size = box.getSize(new THREE.Vector3());
@@ -2025,9 +2031,6 @@ function sealBridgeInterior(root) {
         })
     );
     occluder.name = 'bridgeOccluder';
-    // Centro do AABB está em world/root space após setFromObject — converter para local do root
-    root.updateMatrixWorld(true);
-    root.worldToLocal(center);
     occluder.position.copy(center);
     occluder.renderOrder = -1;
     occluder.castShadow = false;
@@ -2126,6 +2129,9 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
         c.receiveShadow = false;
     });
     hullMesh.add(model);
+
+    // Oclusor só no visual encaixado (não no GLB root) — tapa o casario oco sem alterar o fit
+    sealBridgeInterior(model);
 
     // Diagnóstico: tamanho local após encaixe
     model.updateMatrixWorld(true);
