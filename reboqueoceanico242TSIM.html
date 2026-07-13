@@ -1876,45 +1876,55 @@ function removeGlbVisual(hullMesh) {
     const old = hullMesh.getObjectByName('glbVisual');
     if (!old) return;
     hullMesh.remove(old);
-    disposeObject3d(old);
+    // NÃO dispose: geometrias/materiais são partilhados com _shipGlbRoot / _tugGlbRoot.
+    // disposeObject3d aqui corrompia a superestrutura (Bridge alphaMode BLEND) no 2.º fit
+    // (ex.: ao ativar o underlay GE / refreshVesselGlbVisuals).
 }
 
 /**
- * Corrige materiais GLB da superestrutura “oca”:
- * 1) transparent/transmission/alpha no export → força opaco + depthWrite
- * 2) faces com winding invertido → DoubleSide (senão o casario some e vê-se o porão)
+ * Corrige materiais GLB da superestrutura “oca”.
+ * O material "Bridge" do container_ship.glb vem com alphaMode:BLEND — o mar/contentores
+ * aparecem através da ponte. Forçamos opaco + DoubleSide.
  */
 function sanitizeGlbMaterials(root) {
     if (!root) return;
+    let n = 0;
     root.traverse((c) => {
         if (!c.isMesh || !c.material) return;
-        c.frustumCulled = true;
         const mats = Array.isArray(c.material) ? c.material : [c.material];
         for (let i = 0; i < mats.length; i++) {
-            const m = mats[i];
+            let m = mats[i];
             if (!m) continue;
 
-            if (typeof m.transmission === 'number' && m.transmission > 0.01) {
-                m.transmission = 0;
-                if (m.thickness != null) m.thickness = 0;
-                if (m.attenuationDistance != null) m.attenuationDistance = Infinity;
-            }
-
-            // Sempre opaco no visual do navio/rebocador (sim educativo)
-            m.transparent = false;
-            m.opacity = 1;
-            m.depthWrite = true;
-            m.depthTest = true;
-            if (typeof m.alphaTest === 'number') m.alphaTest = 0;
-            if (m.alphaMap) m.alphaMap = null;
-            if (m.blending != null) m.blending = THREE.NormalBlending;
-            // Evita paredes “fantasma” por normals/winding invertidos no GLB
-            m.side = THREE.DoubleSide;
-            if (m.forceSinglePass != null) m.forceSinglePass = true;
-
-            m.needsUpdate = true;
+            // Substitui por MeshStandard opaco (evita MeshPhysical/BLEND residual)
+            const solid = new THREE.MeshStandardMaterial({
+                name: m.name || 'glbSolid',
+                color: m.color ? m.color.clone() : new THREE.Color(0xffffff),
+                map: m.map || null,
+                metalnessMap: m.metalnessMap || null,
+                roughnessMap: m.roughnessMap || null,
+                normalMap: m.normalMap || null,
+                metalness: typeof m.metalness === 'number' ? m.metalness : 0.25,
+                roughness: typeof m.roughness === 'number' ? m.roughness : 0.65,
+                emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0x000000),
+                emissiveMap: m.emissiveMap || null,
+                emissiveIntensity: typeof m.emissiveIntensity === 'number' ? m.emissiveIntensity : 1,
+                envMapIntensity: typeof m.envMapIntensity === 'number' ? m.envMapIntensity : 1,
+                transparent: false,
+                opacity: 1,
+                depthWrite: true,
+                depthTest: true,
+                side: THREE.DoubleSide,
+                flatShading: false,
+                fog: m.fog !== false
+            });
+            if (solid.map) solid.map.colorSpace = m.map.colorSpace || solid.map.colorSpace;
+            mats[i] = solid;
+            n++;
         }
+        c.material = mats.length === 1 ? mats[0] : mats;
     });
+    console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' materiais → opacos');
 }
 
 /** Encaixa o GLB no BoxGeometry do casco (X=beam, Y=altura, Z=comprimento). */
@@ -1977,7 +1987,6 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
         c.castShadow = false;
         c.receiveShadow = false;
     });
-    sanitizeGlbMaterials(model);
     hullMesh.add(model);
 
     // Diagnóstico: tamanho local após encaixe
