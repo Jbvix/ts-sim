@@ -465,7 +465,7 @@ const container = document.getElementById('sim-container');
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 1, 80000);
 camera.position.set(60, 90, 200);
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: false });
 renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
@@ -2029,29 +2029,32 @@ function sealBridgeInterior(root) {
     const sy = Math.max(size.y * 1.0, 0.2);
     const sz = Math.max(size.z * 1.02, 0.2);
 
-    // Casario: corpo bege + faixa vermelha no terço superior (leitura tipo MRC)
-    const bodyMat = new THREE.MeshStandardMaterial({
+    // Casario: MeshBasic garante opacidade total (sem artefactos de depth/PBR)
+    const bodyMat = new THREE.MeshBasicMaterial({
         name: 'BridgeOccluder',
-        color: 0xe6e2dc,
-        metalness: 0.1,
-        roughness: 0.72,
+        color: 0xe8e4de,
         transparent: false,
         opacity: 1,
         depthWrite: true,
         depthTest: true,
-        blending: THREE.NoBlending,
         side: THREE.DoubleSide
     });
-    const bandMat = new THREE.MeshStandardMaterial({
+    const bandMat = new THREE.MeshBasicMaterial({
         name: 'BridgeOccluderBand',
         color: 0xb91c1c,
-        metalness: 0.15,
-        roughness: 0.55,
         transparent: false,
         opacity: 1,
         depthWrite: true,
         depthTest: true,
-        blending: THREE.NoBlending,
+        side: THREE.DoubleSide
+    });
+    const topMat = new THREE.MeshBasicMaterial({
+        name: 'BridgeOccluderTop',
+        color: 0xf5f2ee,
+        transparent: false,
+        opacity: 1,
+        depthWrite: true,
+        depthTest: true,
         side: THREE.DoubleSide
     });
 
@@ -2069,9 +2072,8 @@ function sealBridgeInterior(root) {
     // “Ponte” ligeiramente mais estreita no topo
     const bridgeTop = new THREE.Mesh(
         new THREE.BoxGeometry(sx * 0.72, sy * 0.12, sz * 0.45),
-        bodyMat.clone()
+        topMat
     );
-    bridgeTop.material.color.setHex(0xf3f1ed);
     bridgeTop.position.set(0, sy * 0.56, sz * 0.12);
     bridgeTop.name = 'bridgeOccluderTop';
 
