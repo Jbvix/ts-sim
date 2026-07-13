@@ -1879,6 +1879,61 @@ function removeGlbVisual(hullMesh) {
     disposeObject3d(old);
 }
 
+/**
+ * Corrige materiais GLB que vêm com transparent/transmission e fazem a
+ * superestrutura (ponte/casario) ficar “oco” — o mar aparece através do sólido.
+ * Opacos quase-total → depthWrite; vidros com transmission → painéis opacos.
+ */
+function sanitizeGlbMaterials(root) {
+    if (!root) return;
+    root.traverse((c) => {
+        if (!c.isMesh || !c.material) return;
+        const mats = Array.isArray(c.material) ? c.material : [c.material];
+        const meshName = (c.name || '').toLowerCase();
+        for (let i = 0; i < mats.length; i++) {
+            const m = mats[i];
+            if (!m) continue;
+            const matName = (m.name || '').toLowerCase();
+            const looksGlass = /glass|window|vidro|vitre|acrylic|acrylics/.test(matName)
+                || /glass|window|vidro/.test(meshName);
+
+            // MeshPhysical glass/transmission → painel sólido (evita “buraco” na ponte)
+            if (typeof m.transmission === 'number' && m.transmission > 0.01) {
+                m.transmission = 0;
+                if (m.thickness != null) m.thickness = 0;
+                if (m.attenuationDistance != null) m.attenuationDistance = Infinity;
+            }
+
+            // Qualquer material não-vidro com blend alpha: forçar opaco
+            // (export GLB muitas vezes marca a superestrutura como transparent)
+            if (!looksGlass && (m.transparent || (typeof m.opacity === 'number' && m.opacity < 1))) {
+                m.transparent = false;
+                m.opacity = 1;
+                m.depthWrite = true;
+                m.depthTest = true;
+                if (m.alphaMap) m.alphaMap = null;
+                if (typeof m.alphaTest === 'number') m.alphaTest = 0;
+            } else if (looksGlass) {
+                // Vidro: sem transmission; ligeiramente escuro e opaco para ler volume
+                m.transparent = false;
+                m.opacity = 1;
+                m.depthWrite = true;
+                m.depthTest = true;
+                if (m.color && m.color.isColor) {
+                    m.color.multiplyScalar(0.55);
+                }
+                if (m.metalness != null) m.metalness = Math.min(m.metalness, 0.2);
+                if (m.roughness != null) m.roughness = Math.max(m.roughness, 0.35);
+            } else if (!m.transparent) {
+                m.depthWrite = true;
+                m.depthTest = true;
+            }
+
+            m.needsUpdate = true;
+        }
+    });
+}
+
 /** Encaixa o GLB no BoxGeometry do casco (X=beam, Y=altura, Z=comprimento). */
 function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     if (!glbRoot || !hullMesh?.geometry?.parameters) return;
@@ -1938,6 +1993,15 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
         if (!c.isMesh) return;
         c.castShadow = false;
         c.receiveShadow = false;
+        // Garante sanitização também no clone (materiais partilhados ou re-clonados)
+        if (c.material) {
+            const mats = Array.isArray(c.material) ? c.material : [c.material];
+            mats.forEach((m) => {
+                if (!m || m.transparent) return;
+                m.depthWrite = true;
+                m.depthTest = true;
+            });
+        }
     });
     hullMesh.add(model);
 
@@ -2019,6 +2083,8 @@ async function loadVesselGlbs() {
         ]);
         _shipGlbRoot = shipGltf.scene;
         _tugGlbRoot = tugGltf.scene;
+        sanitizeGlbMaterials(_shipGlbRoot);
+        sanitizeGlbMaterials(_tugGlbRoot);
         refreshVesselGlbVisuals();
         window.__simGlbReady = {
             ship: !!ship.mesh.getObjectByName('glbVisual'),
