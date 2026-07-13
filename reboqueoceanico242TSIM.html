@@ -1884,7 +1884,8 @@ function removeGlbVisual(hullMesh) {
 /**
  * Corrige materiais GLB da superestrutura “oca”.
  * O material "Bridge" do container_ship.glb vem com alphaMode:BLEND — o mar/contentores
- * aparecem através da ponte. Forçamos opaco + DoubleSide.
+ * aparecem através da ponte. Forçamos MeshStandard opaco; no Bridge removemos o mapa
+ * com canal alpha (BLEND) e usamos cor sólida.
  */
 function sanitizeGlbMaterials(root) {
     if (!root) return;
@@ -1892,39 +1893,72 @@ function sanitizeGlbMaterials(root) {
     root.traverse((c) => {
         if (!c.isMesh || !c.material) return;
         const mats = Array.isArray(c.material) ? c.material : [c.material];
+        const meshName = (c.name || '');
         for (let i = 0; i < mats.length; i++) {
-            let m = mats[i];
+            const m = mats[i];
             if (!m) continue;
+            const matName = (m.name || '');
+            const isBridge = /bridge/i.test(matName) || /bridge|superstructure|deckhouse|casario|ponte/i.test(meshName);
 
-            // Substitui por MeshStandard opaco (evita MeshPhysical/BLEND residual)
             const solid = new THREE.MeshStandardMaterial({
-                name: m.name || 'glbSolid',
-                color: m.color ? m.color.clone() : new THREE.Color(0xffffff),
-                map: m.map || null,
-                metalnessMap: m.metalnessMap || null,
-                roughnessMap: m.roughnessMap || null,
-                normalMap: m.normalMap || null,
-                metalness: typeof m.metalness === 'number' ? m.metalness : 0.25,
-                roughness: typeof m.roughness === 'number' ? m.roughness : 0.65,
+                name: matName || 'glbSolid',
+                color: m.color ? m.color.clone() : new THREE.Color(isBridge ? 0xf0f0f0 : 0xffffff),
+                // Bridge: sem mapa RGBA (alphaMode BLEND no GLB) — evita paredes fantasma
+                map: isBridge ? null : (m.map || null),
+                metalnessMap: isBridge ? null : (m.metalnessMap || null),
+                roughnessMap: isBridge ? null : (m.roughnessMap || null),
+                normalMap: isBridge ? null : (m.normalMap || null),
+                metalness: typeof m.metalness === 'number' ? m.metalness : (isBridge ? 0.15 : 0.25),
+                roughness: typeof m.roughness === 'number' ? m.roughness : (isBridge ? 0.55 : 0.65),
                 emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0x000000),
-                emissiveMap: m.emissiveMap || null,
+                emissiveMap: isBridge ? null : (m.emissiveMap || null),
                 emissiveIntensity: typeof m.emissiveIntensity === 'number' ? m.emissiveIntensity : 1,
-                envMapIntensity: typeof m.envMapIntensity === 'number' ? m.envMapIntensity : 1,
                 transparent: false,
                 opacity: 1,
                 depthWrite: true,
                 depthTest: true,
                 side: THREE.DoubleSide,
                 flatShading: false,
-                fog: m.fog !== false
+                fog: m.fog !== false,
+                alphaTest: 0
             });
             if (solid.map) solid.map.colorSpace = m.map.colorSpace || solid.map.colorSpace;
+            if (isBridge && m.color) {
+                // Mantém tom do material; se veio branco genérico, usa cinza-claro de casario
+                if (m.color.getHex() === 0xffffff) solid.color.setHex(0xe8e8ea);
+            }
             mats[i] = solid;
             n++;
         }
         c.material = mats.length === 1 ? mats[0] : mats;
+        c.renderOrder = 0;
     });
     console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' materiais → opacos');
+}
+
+/** Diagnóstico: materiais do GLB do navio já encaixado. */
+function inspectShipGlbMaterials() {
+    const visual = ship.mesh && ship.mesh.getObjectByName('glbVisual');
+    if (!visual) return [];
+    const out = [];
+    visual.traverse((c) => {
+        if (!c.isMesh || !c.material) return;
+        const mats = Array.isArray(c.material) ? c.material : [c.material];
+        mats.forEach((m) => {
+            if (!m) return;
+            out.push({
+                mesh: c.name,
+                mat: m.name,
+                type: m.type,
+                transparent: m.transparent,
+                opacity: m.opacity,
+                depthWrite: m.depthWrite,
+                hasMap: !!m.map,
+                color: m.color ? '#' + m.color.getHexString() : null
+            });
+        });
+    });
+    return out;
 }
 
 /** Encaixa o GLB no BoxGeometry do casco (X=beam, Y=altura, Z=comprimento). */
@@ -2070,6 +2104,7 @@ async function loadVesselGlbs() {
         sanitizeGlbMaterials(_shipGlbRoot);
         sanitizeGlbMaterials(_tugGlbRoot);
         refreshVesselGlbVisuals();
+        window.__simInspectShipMats = inspectShipGlbMaterials;
         window.__simGlbReady = {
             ship: !!ship.mesh.getObjectByName('glbVisual'),
             tug: !!tug.mesh.getObjectByName('glbVisual'),
