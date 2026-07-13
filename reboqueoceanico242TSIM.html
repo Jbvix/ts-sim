@@ -1956,7 +1956,7 @@ function sanitizeGlbMaterials(root) {
                 depthTest: true,
                 colorWrite: true,
                 blending: THREE.NoBlending,
-                side: isBridge ? THREE.FrontSide : THREE.DoubleSide,
+                side: THREE.DoubleSide,
                 flatShading: false,
                 fog: m.fog !== false,
                 alphaTest: 0,
@@ -2027,7 +2027,7 @@ function sealBridgeInterior(root) {
             depthWrite: true,
             depthTest: true,
             blending: THREE.NoBlending,
-            side: THREE.FrontSide
+            side: THREE.DoubleSide
         })
     );
     occluder.name = 'bridgeOccluder';
