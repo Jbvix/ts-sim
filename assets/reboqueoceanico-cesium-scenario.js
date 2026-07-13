@@ -84,7 +84,7 @@
 
     try {
       // requestRenderMode:false → render contínuo, alinhado ao animate() do Three
-      // globe:true → oceano elipsoide sob os tiles (evita “buraco” preto além do disco Three)
+      // globe:false — Photorealistic tiles; oceano além do disco Three = backgroundColor
       viewer = new Cesium.Viewer(CONTAINER_ID, {
         animation: false,
         timeline: false,
@@ -96,7 +96,7 @@
         fullscreenButton: false,
         infoBox: false,
         selectionIndicator: false,
-        globe: true,
+        globe: false,
         skyBox: false,
         skyAtmosphere: false,
         requestRenderMode: false,
@@ -108,21 +108,14 @@
         viewer.scene.sun = undefined;
         viewer.scene.moon = undefined;
         viewer.scene.skyAtmosphere = undefined;
-        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#051d40');
-        if (viewer.scene.globe) {
-          viewer.scene.globe.show = true;
-          viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0a3d5c');
-          viewer.scene.globe.depthTestAgainstTerrain = false;
-          if (viewer.scene.globe.undergroundColor) {
-            viewer.scene.globe.undergroundColor = Cesium.Color.fromCssColorString('#051d40');
-          }
-        }
+        if (viewer.scene.globe) viewer.scene.globe.show = false;
+        // Azul oceano (não quase-preto): além do disco Three parece mar contínuo na órbita
+        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0a3d5c');
         if (viewer.imageryLayers) {
           while (viewer.imageryLayers.length > 0) {
             viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
           }
         }
-        // DPR alinhado ao canvas Three (evita underlay “mais estreito” em monitores HiDPI)
         try {
           const dpr = Math.min(2, window.devicePixelRatio || 1);
           viewer.resolutionScale = dpr;
