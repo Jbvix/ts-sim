@@ -313,12 +313,12 @@
 
         <div id="cameraPanel" class="panel hidden">
             <h4>Câmera 3D</h4>
-            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;"><strong>Órbita comboio</strong> — gire ao redor do comboio; modelo e cenário GE usam o mesmo ENU do globo (+X E, +Y up, +Z N). <strong>Órbita livre</strong> só posiciona (GE atualiza ao soltar).</p>
+            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;"><strong>Órbita comboio</strong> — gire ao redor do comboio; modelo e cenário GE usam o mesmo ENU do globo e sincronizam ao vivo. <strong>Órbita livre</strong> — enquadramento livre com o mesmo sync.</p>
             <div class="flex flex-col gap-1.5">
                 <button type="button" class="cam-mode-btn" data-cam-mode="convoy" data-cam-from="panel" title="Ativar modo Câmera em Órbita — Gire ao redor do comboio (mesmo sistema de coordenadas do globo)" aria-pressed="false">Órbita comboio</button>
                 <button type="button" class="cam-mode-btn" data-cam-mode="tug" data-cam-from="panel" title="Pivô no rebocador (ENU do globo)" aria-pressed="false">Rebocador</button>
                 <button type="button" class="cam-mode-btn" data-cam-mode="ship" data-cam-from="panel" title="Pivô no navio rebocado (ENU do globo)" aria-pressed="false">Navio</button>
-                <button type="button" class="cam-mode-btn" data-cam-mode="free" data-cam-from="panel" title="Posicionamento: arraste para enquadrar; o cenário GE atualiza ao soltar" aria-pressed="true">Órbita livre</button>
+                <button type="button" class="cam-mode-btn" data-cam-mode="free" data-cam-from="panel" title="Órbita livre com sync GE contínuo (mesmo ENU do globo)" aria-pressed="true">Órbita livre</button>
             </div>
             <div class="resize-handle"></div>
         </div>
@@ -1192,8 +1192,8 @@ function setCameraMode(mode) {
     if (!['free', 'tug', 'ship', 'convoy'].includes(mode)) return;
     _simCameraMode = mode;
     _simCamLastAim = null;
-    // Damping suave na órbita comboio/rebocador/navio; livre sem damping (posicionamento preciso)
-    controls_cam.enableDamping = mode !== 'free';
+    // Damping suave em todos os modos de órbita (comboio / livre / pivôs)
+    controls_cam.enableDamping = true;
     controls_cam.dampingFactor = 0.08;
     document.querySelectorAll('.cam-mode-btn[data-cam-mode]').forEach((btn) => {
         const on = btn.getAttribute('data-cam-mode') === mode;
@@ -1243,27 +1243,17 @@ if (typeof window !== 'undefined') {
     window.__simSetCameraMode = (m) => setCameraMode(m);
 }
 
-/** Órbita livre + GE: só posicionamento — sem sync ao vivo (evita comboio a girar vs costa). */
+/** Com sync ENU por matrixWorld, o GE acompanha a órbita ao vivo (incl. comboio). */
 let _geOrbitPositioning = false;
 
 function beginGeOrbitPositioning() {
-    if (!_scenarioGeActive || _simCameraMode !== 'free') return;
-    if (_geOrbitPositioning) return;
-    _geOrbitPositioning = true;
-    const el = document.getElementById('cesium-scenario');
-    if (el) el.style.visibility = 'hidden';
-    scene.background = new THREE.Color(0x051d40);
-    renderer.setClearColor(0x051d40, 1);
-    if (window.__simCesiumScenario && window.__simCesiumScenario.setActive) {
-        window.__simCesiumScenario.setActive(false);
-    }
+    // No-op: sync contínuo — não esconde mais o GE ao arrastar
 }
 
 function endGeOrbitPositioning(forceSync) {
-    const was = _geOrbitPositioning;
     _geOrbitPositioning = false;
     if (!_scenarioGeActive || !window.__simCesiumScenario || !window.__simCesiumScenario.ready) return;
-    if (!was && !forceSync) return;
+    if (!forceSync) return;
     camera.updateMatrixWorld(true);
     window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
     const el = document.getElementById('cesium-scenario');
@@ -1271,12 +1261,10 @@ function endGeOrbitPositioning(forceSync) {
     scene.background = null;
     renderer.setClearColor(0x000000, 0);
     if (window.__simCesiumScenario.setActive) window.__simCesiumScenario.setActive(true);
-    if (window.__simCesiumScenario.resize) window.__simCesiumScenario.resize();
 }
 
 controls_cam.addEventListener('start', () => {
-    // Zoom/pan/órbita com mouse: em modo livre = posicionamento apenas
-    beginGeOrbitPositioning();
+    // Damping ativo durante o drag — sync contínuo trata do GE
 });
 controls_cam.addEventListener('end', () => {
     endGeOrbitPositioning(true);
@@ -3768,12 +3756,10 @@ function animate() {
         updateVesselMotions();
         if (!draggedObject) stepCameraFollow();
         if (!draggedObject) controls_cam.update();
-        // GE underlay: sync contínuo em órbita comboio / rebocador / navio
-        // (mesmo ENU do globo). Órbita livre = posicionamento (sync no 'end').
+        // GE underlay: sync contínuo da pose Three → Cesium (matrixWorld / ENU)
+        // em todos os modos — comboio e cenário giram juntos
         if (
             _scenarioGeActive &&
-            !_geOrbitPositioning &&
-            _simCameraMode !== 'free' &&
             window.__simCesiumScenario &&
             window.__simCesiumScenario.ready
         ) {
