@@ -486,10 +486,13 @@ let seabedMesh; // Declarado aqui para ser acessível globalmente no script
 /** true quando GE Photorealistic underlay está ativo no viewport */
 let _scenarioGeActive = false;
 const WATER_OPACITY_DEFAULT = 0.8;
-const WATER_OPACITY_GE = 0.18;
+const WATER_OPACITY_GE = 0.22;
 const WATER_SIZE_DEFAULT = 10000;
-/** Disco curto: deixa o horizonte GE (costa) visível além do raio */
-const WATER_RADIUS_GE = 900;
+/**
+ * Disco GE: cobre o FOV em órbita (~até a costa ~8–10 km) sem tapar o terreno
+ * Photorealistic; o elipsoide Cesium preenche o oceano além do raio.
+ */
+const WATER_RADIUS_GE = 7500;
 /**
  * Lift do GLB do navio (quilha já na base do box):
  * eleva o visual para a linha d'água ficar abaixo das letras MRC.
@@ -1157,38 +1160,49 @@ tug.mesh.add(tug.jet1, tug.jet2);
 // --- Câmera: órbita comboio (ENU globo) vs pivôs / órbita livre (posicionamento) ---
 let _simCameraMode = 'free';
 let _simCamLastAim = null;
-const _simCamTmpShip = new THREE.Vector3();
-const _simCamTmpTug = new THREE.Vector3();
 const _simCamConvoyCenter = new THREE.Vector3();
 /** Altura do pivô de órbita acima da média vertical do comboio (metros ENU). */
 const CONVOY_ORBIT_PIVOT_LIFT_M = 8;
+
+/** Y do mesh sem heave de onda (calado + flutuação calma) — pivô de órbita estável. */
+function getCalmVesselMeshY(vessel) {
+    const wl = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
+    const h = (vessel.mesh && vessel.mesh.geometry && vessel.mesh.geometry.parameters &&
+        typeof vessel.mesh.geometry.parameters.height === 'number')
+        ? vessel.mesh.geometry.parameters.height
+        : 10;
+    return wl - vessel.draft + (h / 2);
+}
 
 /** Centro dinâmico do comboio (média rebocador–navio) no ENU local = globo. */
 function getConvoyCenter(out) {
     const o = out || _simCamConvoyCenter;
     o.x = (ship.position.x + tug.position.x) * 0.5;
     o.z = (ship.position.z + tug.position.z) * 0.5;
-    // Y: média das alturas atuais dos meshes (calado/ondas) + pequeno offset de órbita
-    o.y = (ship.mesh.position.y + tug.mesh.position.y) * 0.5 + CONVOY_ORBIT_PIVOT_LIFT_M;
+    // Y calmo (sem heave) — evita órbita/GE a tremer com as ondas
+    o.y = (getCalmVesselMeshY(ship) + getCalmVesselMeshY(tug)) * 0.5 + CONVOY_ORBIT_PIVOT_LIFT_M;
     return o;
 }
 
 function getWorldAimForCameraMode(mode) {
-    ship.mesh.updateMatrixWorld(true);
-    tug.mesh.updateMatrixWorld(true);
-    ship.mesh.getWorldPosition(_simCamTmpShip);
-    tug.mesh.getWorldPosition(_simCamTmpTug);
     const o = new THREE.Vector3();
     if (mode === 'tug') {
-        o.copy(_simCamTmpTug);
-        o.y += 6;
+        o.set(tug.position.x, getCalmVesselMeshY(tug) + 6, tug.position.z);
     } else if (mode === 'ship') {
-        o.copy(_simCamTmpShip);
-        o.y += 10;
+        o.set(ship.position.x, getCalmVesselMeshY(ship) + 10, ship.position.z);
     } else {
         getConvoyCenter(o);
     }
     return o;
+}
+
+/** Com GE: disco de água acompanha o comboio (borda longe do FOV na órbita). */
+function syncGeWaterToConvoy() {
+    if (!_scenarioGeActive || !water) return;
+    const c = getConvoyCenter(_simCamConvoyCenter);
+    water.position.x = c.x;
+    water.position.z = c.z;
+    water.position.y = 0;
 }
 function setCameraMode(mode) {
     if (!['free', 'tug', 'ship', 'convoy'].includes(mode)) return;
@@ -3770,6 +3784,7 @@ function animate() {
         updatePropulsorJets();
         updateBuoys();
         updateVesselMotions();
+        syncGeWaterToConvoy();
         if (!draggedObject) stepCameraFollow();
         if (!draggedObject) controls_cam.update();
         // GE underlay: sync contínuo da pose Three → Cesium (matrixWorld / ENU)

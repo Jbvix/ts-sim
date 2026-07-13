@@ -84,6 +84,7 @@
 
     try {
       // requestRenderMode:false → render contínuo, alinhado ao animate() do Three
+      // globe:true → oceano elipsoide sob os tiles (evita “buraco” preto além do disco Three)
       viewer = new Cesium.Viewer(CONTAINER_ID, {
         animation: false,
         timeline: false,
@@ -95,9 +96,9 @@
         fullscreenButton: false,
         infoBox: false,
         selectionIndicator: false,
-        globe: false,
+        globe: true,
         skyBox: false,
-        skyAtmosphere: false,
+        skyAtmosphere: true,
         requestRenderMode: false,
         useDefaultRenderLoop: true
       });
@@ -106,14 +107,25 @@
         viewer.scene.skyBox = undefined;
         viewer.scene.sun = undefined;
         viewer.scene.moon = undefined;
-        viewer.scene.skyAtmosphere = undefined;
-        if (viewer.scene.globe) viewer.scene.globe.show = false;
         viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#051d40');
+        if (viewer.scene.globe) {
+          viewer.scene.globe.show = true;
+          viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0a3d5c');
+          viewer.scene.globe.depthTestAgainstTerrain = false;
+          if (viewer.scene.globe.undergroundColor) {
+            viewer.scene.globe.undergroundColor = Cesium.Color.fromCssColorString('#051d40');
+          }
+        }
         if (viewer.imageryLayers) {
           while (viewer.imageryLayers.length > 0) {
             viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
           }
         }
+        // DPR alinhado ao canvas Three (evita underlay “mais estreito” em monitores HiDPI)
+        try {
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          viewer.resolutionScale = dpr;
+        } catch (_) { /* */ }
         // Desativa controller Cesium (só o OrbitControls do Three mexe na vista)
         if (viewer.scene.screenSpaceCameraController) {
           const c = viewer.scene.screenSpaceCameraController;
@@ -216,13 +228,12 @@
 
     const enuToFixed = ensureEnuMatrix();
 
-    // 1) Posição eye
-    threeToEnu(camera.position.x, camera.position.y, camera.position.z, _enuPos);
+    // 1) Pose 100% de matrixWorld (mesma origem que forward/up — evita lag na órbita)
+    // Three: col0=right, col1=up, col2=back; forward = -col2; translation = col3
+    const e = camera.matrixWorld.elements;
+    threeToEnu(e[12], e[13], e[14], _enuPos);
     Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuPos, _eye);
 
-    // 2) Eixos a partir da matrixWorld (após OrbitControls.update)
-    // Three: col0=right, col1=up, col2=back; forward = -col2
-    const e = camera.matrixWorld.elements;
     let fx = -e[8], fy = -e[9], fz = -e[10];
     let ux = e[4], uy = e[5], uz = e[6];
 
