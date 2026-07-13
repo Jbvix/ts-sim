@@ -165,7 +165,10 @@
   }
 
   const _enuPos = new Cesium.Cartesian3();
+  const _enuTgt = new Cesium.Cartesian3();
   const _eye = new Cesium.Cartesian3();
+  const _tgt = new Cesium.Cartesian3();
+  const _hpr = new Cesium.HeadingPitchRange(0, 0, 100);
   let _enuToFixed = null;
   let _enuOriginLon = null;
   let _enuOriginLat = null;
@@ -186,10 +189,10 @@
   }
 
   /**
-   * Sincroniza a câmera Cesium com OrbitControls (pivô + offset ENU).
-   * setView(heading/pitch) — sem lookAt (que trava o transform Cesium).
+   * Órbita em torno do pivô (comboio) no mesmo ENU do globo.
+   * lookAt(HeadingPitchRange) + unlock: pose correta sem travar o frame.
    * @param {object} camera — THREE.PerspectiveCamera
-   * @param {object} target — OrbitControls.target (pivô)
+   * @param {object} target — OrbitControls.target (centro do comboio)
    */
   function syncFromThree(camera, target) {
     if (!ready || !viewer || viewer.isDestroyed() || !camera) return;
@@ -199,33 +202,23 @@
     const ty = target && target.y != null ? target.y : 0;
     const tz = target && target.z != null ? target.z : 0;
 
-    // Posição da câmera no ECEF via ENU da origem
-    threeToEnu(camera.position.x, Math.max(0.5, camera.position.y), camera.position.z, _enuPos);
-    Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuPos, _eye);
+    // Offset alvo→câmera no Three (E, U, N) ≡ ENU Cesium (E, N, U) via threeToEnu
+    const ox = camera.position.x - tx;
+    const oy = camera.position.y - ty;
+    const oz = camera.position.z - tz;
+    const range = Math.sqrt(ox * ox + oy * oy + oz * oz) || 1;
+    const horiz = Math.sqrt(ox * ox + oz * oz);
+    // HPR: heading/pitch do offset no frame local East-North-Up do pivô
+    _hpr.heading = Math.atan2(ox, oz);           // atan2(East, North)
+    _hpr.pitch = Math.atan2(oy, horiz || 1e-9); // elevação (acima do pivô > 0)
+    _hpr.range = range;
 
-    // Direção de olhar = pivô − câmera (Three E/U/N → ENU E/N/U)
-    const lx = tx - camera.position.x; // East
-    const ly = ty - camera.position.y; // Up
-    const lz = tz - camera.position.z; // North
-    const east = lx;
-    const north = lz;
-    const up = ly;
-    const horiz = Math.sqrt(east * east + north * north);
-    const heading = Math.atan2(east, north);
-    // Cesium: pitch 0 = horizonte; negativo = a olhar para baixo
-    const pitch = Math.atan2(up, horiz || 1e-9);
+    threeToEnu(tx, ty, tz, _enuTgt);
+    Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuTgt, _tgt);
 
-    // Liberta transform residual de lookAt anteriores
+    viewer.camera.lookAt(_tgt, _hpr);
+    // Mantém a pose mas libera o transform (próximo frame pode orbitar de novo)
     viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-
-    viewer.camera.setView({
-      destination: _eye,
-      orientation: {
-        heading: heading,
-        pitch: pitch,
-        roll: 0
-      }
-    });
 
     const vFov = (camera.fov != null ? camera.fov : 75) * (Math.PI / 180);
     const aspect = camera.aspect > 0 ? camera.aspect : 1;

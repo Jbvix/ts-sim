@@ -313,12 +313,12 @@
 
         <div id="cameraPanel" class="panel hidden">
             <h4>Câmera 3D</h4>
-            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;">Vista: órbita livre (mouse) ou pivô a acompanhar o <strong>rebocador</strong>, o <strong>navio</strong> ou o <strong>comboio</strong>. Controle também pelo ícone de câmera no trilho à esquerda.</p>
+            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;"><strong>Órbita comboio</strong> — gire ao redor do comboio; modelo e cenário GE usam o mesmo ENU do globo (+X E, +Y up, +Z N). <strong>Órbita livre</strong> só posiciona (GE atualiza ao soltar).</p>
             <div class="flex flex-col gap-1.5">
+                <button type="button" class="cam-mode-btn" data-cam-mode="convoy" data-cam-from="panel" title="Ativar modo Câmera em Órbita — Gire ao redor do comboio (mesmo sistema de coordenadas do globo)" aria-pressed="false">Órbita comboio</button>
+                <button type="button" class="cam-mode-btn" data-cam-mode="tug" data-cam-from="panel" title="Pivô no rebocador (ENU do globo)" aria-pressed="false">Rebocador</button>
+                <button type="button" class="cam-mode-btn" data-cam-mode="ship" data-cam-from="panel" title="Pivô no navio rebocado (ENU do globo)" aria-pressed="false">Navio</button>
                 <button type="button" class="cam-mode-btn" data-cam-mode="free" data-cam-from="panel" title="Posicionamento: arraste para enquadrar; o cenário GE atualiza ao soltar" aria-pressed="true">Órbita livre</button>
-                <button type="button" class="cam-mode-btn" data-cam-mode="tug" data-cam-from="panel" title="Pivô no rebocador" aria-pressed="false">Rebocador</button>
-                <button type="button" class="cam-mode-btn" data-cam-mode="ship" data-cam-from="panel" title="Pivô no navio rebocado" aria-pressed="false">Navio</button>
-                <button type="button" class="cam-mode-btn" data-cam-mode="convoy" data-cam-from="panel" title="Pivô no centro do comboio" aria-pressed="false">Comboio</button>
             </div>
             <div class="resize-handle"></div>
         </div>
@@ -1124,7 +1124,7 @@ tug.jet2.cone.material.transparent = true;
 tug.jet2.line.material.transparent = true;
 tug.mesh.add(tug.jet1, tug.jet2);
 
-// --- Câmera: órbita livre vs pivô no rebocador / navio / comboio ---
+// --- Câmera: órbita comboio (ENU globo) vs pivôs / órbita livre (posicionamento) ---
 let _simCameraMode = 'free';
 let _simCamLastAim = null;
 const _simCamTmpShip = new THREE.Vector3();
@@ -1142,6 +1142,7 @@ function getWorldAimForCameraMode(mode) {
         o.copy(_simCamTmpShip);
         o.y += 10;
     } else {
+        // Centro do comboio no mesmo ENU do globo (metros locais RIO_GEO)
         o.lerpVectors(_simCamTmpTug, _simCamTmpShip, 0.5);
         o.y = Math.max(_simCamTmpShip.y, _simCamTmpTug.y) + 14;
     }
@@ -1155,9 +1156,23 @@ function setCameraMode(mode) {
         const on = btn.getAttribute('data-cam-mode') === mode;
         btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-    // Ao sair do posicionamento livre, reaplica o underlay GE na pose atual
+    // Órbita comboio/rebocador/navio: GE vivo; encerra modo posicionamento
     if (mode !== 'free' && _scenarioGeActive) {
-        endGeOrbitPositioning(true);
+        _geOrbitPositioning = false;
+        const el = document.getElementById('cesium-scenario');
+        if (el) el.style.visibility = 'visible';
+        scene.background = null;
+        renderer.setClearColor(0x000000, 0);
+        if (window.__simCesiumScenario && window.__simCesiumScenario.setActive) {
+            window.__simCesiumScenario.setActive(true);
+        }
+        // Trava pivô já no centro / entidade e sincroniza globo
+        stepCameraFollow();
+        controls_cam.update();
+        camera.updateMatrixWorld(true);
+        if (window.__simCesiumScenario && window.__simCesiumScenario.ready) {
+            window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
+        }
     }
 }
 function stepCameraFollow() {
@@ -3631,13 +3646,15 @@ async function initScenarioGeUnderlay() {
         if (ok) {
             applyScenarioGeVisuals(true);
             if (sc.resize) sc.resize();
+            // Modo padrão com GE: órbita ao redor do comboio (mesmo ENU do globo)
+            setCameraMode('convoy');
             camera.updateMatrixWorld(true);
             if (sc.syncFromThree) sc.syncFromThree(camera, controls_cam.target);
             // Inset: se estiver em Cesium, mudar para OpenSeaMap para poupar GPU
             if (_coastMode === 'cesium') {
                 await setCoastProvider('leaflet');
             }
-            console.info('[T-Sim] underlay GE no cenário — física/câmera/comboio inalterados; órbita livre = posicionamento');
+            console.info('[T-Sim] underlay GE + órbita comboio (ENU globo); órbita livre = posicionamento');
         } else {
             applyScenarioGeVisuals(false);
         }
@@ -3703,8 +3720,8 @@ function animate() {
         updateVesselMotions();
         if (!draggedObject) stepCameraFollow();
         if (!draggedObject) controls_cam.update();
-        // GE underlay: sync contínuo só em rebocador/navio/comboio.
-        // Órbita livre = posicionamento (sync no 'end' do OrbitControls).
+        // GE underlay: sync contínuo em órbita comboio / rebocador / navio
+        // (mesmo ENU do globo). Órbita livre = posicionamento (sync no 'end').
         if (
             _scenarioGeActive &&
             !_geOrbitPositioning &&
