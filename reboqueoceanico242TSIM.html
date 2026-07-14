@@ -2132,63 +2132,26 @@ function sanitizeGlbMaterials(root) {
     console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' opacos (textura ok), ' + light + ' leves');
 }
 
-/**
- * Oclusor INTERNO (inset) — impede ver o mar pelas janelas ocas.
- * Não esconde nem substitui a malha Bridge texturizada.
- */
-function sealBridgeInterior(root) {
+/** Remove qualquer placeholder/oclusor Bridge antigo e mantém a malha GLB visível. */
+function removeBridgePlaceholder(root) {
     if (!root) return;
-    const old = root.getObjectByName('bridgeOccluder');
-    if (old) {
-        root.remove(old);
+    const toRemove = [];
+    root.traverse((c) => {
+        if (/bridgeOccluder/i.test(c.name || '')) toRemove.push(c);
+    });
+    toRemove.forEach((old) => {
+        if (old.parent) old.parent.remove(old);
         old.traverse((c) => {
             if (c.geometry) c.geometry.dispose();
             if (!c.material) return;
             const mats = Array.isArray(c.material) ? c.material : [c.material];
             mats.forEach((m) => { if (m && m.dispose) m.dispose(); });
         });
-    }
-    root.updateMatrixWorld(true);
-    const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
-    const box = new THREE.Box3();
-    let found = false;
-    root.traverse((c) => {
-        if (!c.isMesh || /bridgeOccluder/i.test(c.name || '')) return;
-        const n = (c.name || '') + ' ' + ((Array.isArray(c.material) ? c.material[0] : c.material)?.name || '');
-        if (!/bridge/i.test(n) || /occluder/i.test(n)) return;
-        if (!c.geometry) return;
-        c.visible = true;
-        if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
-        const local = c.geometry.boundingBox.clone();
-        const toRoot = new THREE.Matrix4().multiplyMatrices(invRoot, c.matrixWorld);
-        local.applyMatrix4(toRoot);
-        if (!found) { box.copy(local); found = true; }
-        else box.union(local);
     });
-    if (!found || box.isEmpty()) return;
-
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const sx = Math.max(size.x * 0.88, 0.2);
-    const sy = Math.max(size.y * 0.82, 0.2);
-    const sz = Math.max(size.z * 0.88, 0.2);
-
-    const occluder = new THREE.Mesh(
-        new THREE.BoxGeometry(sx, sy, sz),
-        new THREE.MeshLambertMaterial({
-            name: 'BridgeOccluder',
-            color: 0x3d3832,
-            side: THREE.FrontSide
-        })
-    );
-    occluder.name = 'bridgeOccluder';
-    occluder.position.copy(center);
-    occluder.renderOrder = -1;
-    occluder.castShadow = false;
-    occluder.receiveShadow = false;
-    root.add(occluder);
-    console.info('[T-Sim] bridgeOccluder (inset)', {
-        size: { x: +sx.toFixed(2), y: +sy.toFixed(2), z: +sz.toFixed(2) }
+    root.traverse((c) => {
+        if (!c.isMesh) return;
+        const n = (c.name || '') + ' ' + ((Array.isArray(c.material) ? c.material[0] : c.material)?.name || '');
+        if (/bridge/i.test(n) && !/occluder/i.test(n)) c.visible = true;
     });
 }
 
@@ -2312,8 +2275,8 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     hullMesh.userData.glbKeelLocalY = -th / 2;
     hullMesh.userData.glbVisualLiftM = opts.visualLiftM || 0;
 
-    // Navio: oclusor interno (malha Bridge texturizada permanece visível)
-    if (hullMesh.name === 'shipHull') sealBridgeInterior(model);
+    // Navio: sem placeholder — só a malha Bridge do GLB
+    if (hullMesh.name === 'shipHull') removeBridgePlaceholder(model);
 }
 
 /** Elevação do GLB do navio: ver SHIP_GLB_VISUAL_LIFT_M / _GE_M no topo da cena. */
