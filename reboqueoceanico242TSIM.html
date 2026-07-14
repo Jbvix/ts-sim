@@ -2277,69 +2277,6 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
 
     // Navio: sem placeholder — só a malha Bridge do GLB
     if (hullMesh.name === 'shipHull') removeBridgePlaceholder(model);
-    // Rebocador: livrea azul / amarelo / preto (sem marca textual)
-    if (hullMesh.name === 'tugHull') applyTugFleetLivery(model);
-}
-
-/**
- * Livrea do rebocador (ref. frota amarelo/azul): casco azul, casario/mastro/grua amarelo,
- * defensas pretas, guardas cinza. Só cores — sem letreiro.
- * Cores sólidas (sem atlas) para o tint não “sujar” com o albedo original.
- */
-function applyTugFleetLivery(root) {
-    if (!root) return;
-    const COL = {
-        hull: 0x0057b8,    // azul do costado
-        yellow: 0xffd100,  // amarelo casario / mastro / grua
-        bumper: 0x111111,  // defensas
-        rail: 0xc8c8c8,    // guardas
-        metal: 0x6b7280    // hélices / lemes
-    };
-    const paintSolid = (mat, hex) => {
-        mat.color.setHex(hex);
-        mat.map = null;
-        mat.metalnessMap = null;
-        mat.roughnessMap = null;
-        mat.normalMap = null;
-        mat.emissiveMap = null;
-        if (mat.emissive) mat.emissive.setHex(0x000000);
-        if (typeof mat.emissiveIntensity === 'number') mat.emissiveIntensity = 0;
-        if (typeof mat.metalness === 'number') mat.metalness = 0.08;
-        if (typeof mat.roughness === 'number') mat.roughness = 0.7;
-        mat.transparent = false;
-        mat.opacity = 1;
-        mat.needsUpdate = true;
-    };
-    let n = 0;
-    root.traverse((c) => {
-        if (!c.isMesh || !c.material) return;
-        const chain = [];
-        for (let p = c; p; p = p.parent) chain.push(p.name || '');
-        const id = chain.join('|');
-        const mats = Array.isArray(c.material) ? c.material : [c.material];
-        const out = mats.map((m) => {
-            if (!m) return m;
-            const mat = m.clone();
-            if (/Bumper/i.test(id)) {
-                paintSolid(mat, COL.bumper);
-            } else if (/Hull/i.test(id)) {
-                paintSolid(mat, COL.hull);
-            } else if (/Propeller|Rudder/i.test(id)) {
-                paintSolid(mat, COL.metal);
-            } else if (/Fence/i.test(id)) {
-                paintSolid(mat, COL.rail);
-            } else if (/Door|LifeGuard|Crane|FireTube|Tubes|Wrench/i.test(id)) {
-                paintSolid(mat, COL.yellow);
-            } else {
-                // restante do casario (LOD / deckhouse)
-                paintSolid(mat, COL.yellow);
-            }
-            n++;
-            return mat;
-        });
-        c.material = out.length === 1 ? out[0] : out;
-    });
-    console.info('[T-Sim] livrea rebocador (azul/amarelo):', n, 'materiais');
 }
 
 /** Elevação do GLB do navio: ver SHIP_GLB_VISUAL_LIFT_M / _GE_M no topo da cena. */
