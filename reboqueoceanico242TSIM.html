@@ -1331,6 +1331,7 @@ controls_cam.addEventListener('end', () => {
 const cable = { length: 320, targetLength: 320, springConstant: 0, damping: 0, weightPerMeter: 0, numSegments: 50 };
 let cableTension = 0, maxSag = 0, catenaryPullForce = 0, extremeTension = 0, _extremeTensionEma = 0, towF = {};
 let _towF_onShipEma = null, _towF_onTugEma = null;
+let _shipDesiredYawEma = null;
 let lastSag = 0, sagVariation = 0;
 /** Projeção em planta: resposta do rebocado à tração (validação vs. T, RPM) */
 let shipTowResponse = {
@@ -3069,7 +3070,6 @@ window.SHIP_TOW_SPEED = SHIP_TOW_SPEED;
 
 let _shipTowAssistDrag = 1.0;
 let _shipTowDirF = null;
-let _shipDesiredYawEma = null;
 
 function shapeTowForceForShip(forceTowVec, towDirUnit) {
     const f = forceTowVec.clone();
