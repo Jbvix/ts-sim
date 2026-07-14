@@ -635,8 +635,22 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 #asd-thruster-dock .asd-az-block { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 #asd-thruster-dock .asd-az-dial { flex: 0 0 auto; width: 4.25rem; height: 4.25rem; max-width: 100%; position: relative; align-self: center; }
 /* Leme azimutal: marca no centro (0° = à frente) */
-#asd-thruster-dock .asd-az-row { position: relative; }
-#asd-thruster-dock .asd-az-row > input.asd-az-range { position: relative; z-index: 1; }
+#asd-thruster-dock .asd-az-row { position: relative; touch-action: manipulation; }
+#asd-thruster-dock .asd-az-row > input.asd-az-range { position: relative; z-index: 1; touch-action: none; }
+/* Rótulo do leme clicável mesmo com input disabled (dois toques = a meio) */
+#asd-thruster-dock .asd-az-row > span {
+  position: relative;
+  z-index: 2;
+  min-width: 3.6rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: 4px;
+  user-select: none;
+}
+#asd-thruster-dock .asd-az-row > span:hover {
+  background: rgba(148, 163, 184, 0.15);
+  color: #f8fafc;
+}
+#asd-thruster-dock .asd-az-dial { touch-action: manipulation; }
 #asd-thruster-dock .asd-az-row::after {
   content: '';
   position: absolute;

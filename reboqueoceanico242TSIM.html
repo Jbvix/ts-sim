@@ -1692,22 +1692,26 @@ function formatAzimuthLabel(deg) {
     return 'BE ' + d + '°';
 }
 
-/** 1 = ambos os azimutes ~ a meio (0°); 0 = |az| ≥ ~25°. Usado na estabilidade de rumo. */
+/** 1 = ambos os azimutes ~ a meio (0°); 0 = |az| ≥ ~20°. Usado na estabilidade de rumo. */
 function tugAzimuthMidshipsFactor() {
     const a1 = Math.abs(clampAzimuthDeg(simParams.thruster1Azimuth));
     const a2 = Math.abs(clampAzimuthDeg(simParams.isTwinMode ? simParams.thruster1Azimuth : simParams.thruster2Azimuth));
-    const f = (a) => Math.max(0, 1 - a / 25);
+    const f = (a) => Math.max(0, 1 - a / 20);
     return 0.5 * (f(a1) + f(a2));
 }
 
-/** Centra o leme azimutal (0° = a meio). Em TWIN, espelha BB→BE. */
+/** Centra o leme azimutal (0° = a meio). Em TWIN, zera BB e BE. */
 function setAzimuthMidships(sourceKey) {
     const apply = (key) => {
         simParams[key] = 0;
         const c = uiControls[key];
-        if (c && c.el) c.el.value = '0';
+        if (c && c.el) {
+            c.el.value = '0';
+            try { c.el.setAttribute('aria-valuetext', formatAzimuthLabel(0)); } catch (_) { /* */ }
+        }
         if (c && c.valEl) c.valEl.innerText = formatAzimuthLabel(0);
     };
+    // Sempre zerar o eixo pedido; em TWIN (ou se veio do BB) zera os dois.
     if (sourceKey === 'thruster2Azimuth' && !simParams.isTwinMode) {
         apply('thruster2Azimuth');
     } else {
@@ -1715,6 +1719,69 @@ function setAzimuthMidships(sourceKey) {
         apply('thruster2Azimuth');
     }
     syncAsdViz();
+    window.__simTugAzimuth = {
+        bb: simParams.thruster1Azimuth,
+        be: simParams.thruster2Azimuth,
+        midships: true
+    };
+}
+
+/**
+ * Dois cliques / toques rápidos para zerar o leme.
+ * Nota: <input disabled> não recebe dblclick — o listener fica na linha (.asd-az-row) e no rótulo.
+ */
+function wireAzimuthMidshipsDoubleActivate() {
+    const bind = (key) => {
+        const c = uiControls[key];
+        if (!c || !c.el) return;
+        const row = c.el.closest('.asd-az-row') || c.el.parentElement;
+        let lastTapT = 0;
+        let downX = 0, downY = 0;
+        const activate = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            setAzimuthMidships(key);
+        };
+        const onPointerDown = (e) => {
+            if (e.button != null && e.button !== 0) return;
+            downX = e.clientX;
+            downY = e.clientY;
+        };
+        const onPointerUp = (e) => {
+            if (e.button != null && e.button !== 0) return;
+            // Só conta “toque” se quase não houve arrasto (evita zerar ao soltar o slider)
+            if (Math.hypot(e.clientX - downX, e.clientY - downY) > 10) {
+                lastTapT = 0;
+                return;
+            }
+            const now = performance.now();
+            if (now - lastTapT < 400) {
+                lastTapT = 0;
+                activate(e);
+            } else {
+                lastTapT = now;
+            }
+        };
+        const targets = [row, c.el, c.valEl].filter(Boolean);
+        const card = c.el.closest('.asd-thruster-card');
+        const dial = card && card.querySelector('.asd-az-dial');
+        if (dial) targets.push(dial);
+        targets.forEach((node) => {
+            if (node !== c.el) {
+                node.style.cursor = node.style.cursor || 'pointer';
+                node.title = 'Dois cliques / toques = leme a meio (0°)';
+            } else {
+                node.title = 'Centro = a meio (0°). Esquerda = BB, direita = BE. Dois cliques / toques = zerar leme.';
+            }
+            node.addEventListener('dblclick', activate);
+            node.addEventListener('pointerdown', onPointerDown);
+            node.addEventListener('pointerup', onPointerUp);
+        });
+    };
+    bind('thruster1Azimuth');
+    bind('thruster2Azimuth');
 }
 
 function clampAzimuthDeg(deg) {
@@ -1973,15 +2040,7 @@ if (uiControls.catModelPreset.el) {
         window._towWBlendEma = 0;
     });
 }
-// Duplo clique no slider do leme azimutal → a meio (0°)
-['thruster1Azimuth', 'thruster2Azimuth'].forEach((key) => {
-    const el = uiControls[key] && uiControls[key].el;
-    if (!el) return;
-    el.addEventListener('dblclick', (e) => {
-        e.preventDefault();
-        setAzimuthMidships(key);
-    });
-});
+wireAzimuthMidshipsDoubleActivate();
 for (const key in uiControls) {
     if (uiControls[key].el && uiControls[key].el.type === 'range') {
         uiControls[key].el.addEventListener('input', (e) => {
@@ -3863,32 +3922,54 @@ function updatePhysics() {
     ship.mesh.position.x = ship.position.x; ship.mesh.position.z = ship.position.z;
     tug.mesh.position.x = tug.position.x; tug.mesh.position.z = tug.position.z;
     
-    // Guinada do rebocador: I_zz ≈ (1/12)m(B²+L²); com leme a meio reforça estabilidade de rumo.
+    // Guinada do rebocador: I_zz ≈ (1/12)m(B²+L²); leme a meio → estabilidade de rumo reforçada.
     const tw = tug.mesh.geometry.parameters.width;
     const tl = tug.mesh.geometry.parameters.depth;
     const tugInertiaYaw = Math.max(1e3, (1 / 12) * tug.mass * (tw * tw + tl * tl));
     const midF = tugAzimuthMidshipsFactor(); // 1 = a meio
-    const tugYawDampNms = (0.38 + 0.72 * midF) * Math.sqrt(tugInertiaYaw * Math.max(tug.mass, 1));
+    // Amortecimento base + reforço forte com pods a 0° (rumo estável em reboque)
+    const tugYawDampNms = (0.42 + 1.15 * midF) * Math.sqrt(tugInertiaYaw * Math.max(tug.mass, 1));
     let yawTorqueNet = thrustTorque - tugYawDampNms * tug.angularVelocity;
-    // Estabilidade de rumo com leme a meio: amortece deriva transversal (casco + pods a 0°)
-    if (midF > 0.15 && tug.mass > 0) {
+    // Momento do cabo na bita do rebocador (popa) — físico; a meio é bem amortecido acima
+    {
+        const rTugTow = tugAttachPoint.clone().sub(tug.position);
+        const towTauTug = rTugTow.x * towF.F_onTug.z - rTugTow.z * towF.F_onTug.x;
+        // Com leme a meio, reduz autoridade do cabo a guinar o casco (estabilidade de rumo)
+        yawTorqueNet += towTauTug * (0.55 - 0.35 * midF);
+    }
+    if (midF > 0.12 && tug.mass > 0) {
         const s = Math.sin(tug.angle), c = Math.cos(tug.angle);
-        // Proa local −Z → mundo (−sin, −cos); BE local +X → (cos, −sin)
+        const forward = new THREE.Vector3(-s, 0, -c);
         const starboard = new THREE.Vector3(c, 0, -s);
         const vSway = tug.velocity.dot(starboard);
+        const vSurge = tug.velocity.dot(forward);
         const V = Math.hypot(tug.velocity.x, tug.velocity.z);
-        const Nv = midF * 0.045 * tug.mass * Math.max(8, tl) * Math.min(1.4, 0.35 + V * 0.25);
+        // N_v: deriva → guinada estabilizante (casco + pods a meio)
+        const Nv = midF * 0.085 * tug.mass * Math.max(8, tl) * Math.min(1.6, 0.4 + V * 0.3);
         yawTorqueNet -= Nv * vSway;
-        // Com pods a meio, corta torque residual assimétrico fraco (ruído de rumo)
-        if (midF > 0.85 && Math.abs(thrustTorque) < 2.5e5) {
-            yawTorqueNet -= thrustTorque * 0.35 * midF;
+        // Alinhamento suave proa ↔ velocidade (só a meio e com avanço)
+        if (midF > 0.7 && V > 0.6 && Math.abs(vSurge) > 0.25) {
+            const course = Math.atan2(-tug.velocity.x, -tug.velocity.z); // rumo da vel. (proa = −Z)
+            let errC = course - tug.angle;
+            while (errC > Math.PI) errC -= Math.PI * 2;
+            while (errC < -Math.PI) errC += Math.PI * 2;
+            const Kc = midF * 0.02 * tug.mass * tl * Math.min(V, 4);
+            yawTorqueNet += Kc * Math.sin(errC);
+        }
+        // Corta residual de torque ASD quase simétrico com pods a meio
+        if (midF > 0.8) {
+            const cut = Math.min(0.85, 0.45 + 0.4 * midF);
+            if (Math.abs(thrustTorque) < 4.5e5) yawTorqueNet -= thrustTorque * cut;
         }
     }
     tug.angularVelocity += (yawTorqueNet / tugInertiaYaw) * dt;
-    const tugWMax = midF > 0.7 ? 0.32 : 0.55;
+    const tugWMax = midF > 0.75 ? 0.18 : (midF > 0.4 ? 0.28 : 0.55);
     tug.angularVelocity = Math.max(-tugWMax, Math.min(tugWMax, tug.angularVelocity));
     tug.angle += tug.angularVelocity * dt;
-    window.__simTugYaw = { midF, yawTorqueNet, omega: tug.angularVelocity, damp: tugYawDampNms };
+    window.__simTugYaw = {
+        midF, yawTorqueNet, omega: tug.angularVelocity, damp: tugYawDampNms,
+        az: { bb: simParams.thruster1Azimuth, be: simParams.thruster2Azimuth }
+    };
     // Normaliza ângulo
     if (tug.angle > Math.PI) tug.angle -= Math.PI * 2;
     else if (tug.angle < -Math.PI) tug.angle += Math.PI * 2;
