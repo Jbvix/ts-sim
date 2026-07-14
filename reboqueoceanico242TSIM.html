@@ -108,7 +108,7 @@
           <button type="button" class="sim-rail" data-panel-group="buoy" data-label="Bóias" title="Bóias" aria-label="Bóias" aria-pressed="false">
             <svg class="sim-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4"/><circle cx="12" cy="11" r="4"/><path d="M8.5 14.5 6 21"/><path d="M15.5 14.5 18 21"/><path d="M4 18c2 .8 4 1.2 8 1.2s6-.4 8-1.2"/></svg>
           </button>
-          <button type="button" class="sim-rail sim-rail-active" id="btn-sidebar-geo-mapa" data-map-toggle="true" data-label="Mapa" title="Ocultar mapa (costa 3D Cesium / OSM)" aria-label="Mapa costa 3D / OSM" aria-pressed="true" aria-controls="geo-mapa-wrap">
+          <button type="button" class="sim-rail" id="btn-sidebar-geo-mapa" data-map-toggle="true" data-label="Mapa" title="Mostrar mapa (costa 3D Cesium / OSM)" aria-label="Mapa costa 3D / OSM" aria-pressed="false" aria-controls="geo-mapa-wrap">
             <svg class="sim-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3 3 5.5v15L9 18l6 2.5L21 18V3l-6 2.5L9 3z"/><path d="M9 3v15"/><path d="M15 5.5v15"/></svg>
           </button>
         </nav>
@@ -428,8 +428,8 @@
     </main>
   </div>
   <div id="sim-float-root" aria-live="polite"></div>
-  <div id="geo-mapa-wrap" role="complementary" aria-label="Mapa de contexto — OpenSeaMap ou GE Cesium (Photorealistic)">
-    <div id="geo-mapa-header">
+  <div id="geo-mapa-wrap" class="hidden" role="complementary" aria-label="Mapa de contexto — OpenSeaMap ou GE Cesium (Photorealistic)" aria-hidden="true">
+    <div id="geo-mapa-header" class="geo-mapa-drag" title="Arrastar para mover · puxar para baixo (mobile) = recolher">
       <div class="geo-mapa-header-main">
         <span id="geo-mapa-title" class="text-[10px] sm:text-xs font-semibold text-slate-200 leading-tight" title="Origem: Baía de Guanabara. Eixos 3D: +X Leste, +Z Norte. Unidade ≈ 1 m. Não constitui carta náutica para navegação.">Rio · mapa</span>
         <label class="geo-mapa-provider-label" for="geo-mapa-provider">
@@ -440,7 +440,10 @@
           </select>
         </label>
       </div>
-      <button type="button" id="geo-mapa-min" aria-controls="geo-mapa-body" aria-expanded="true" title="Recolher ou expandir o mapa">−</button>
+      <div class="geo-mapa-tools">
+        <button type="button" id="geo-mapa-min" aria-controls="geo-mapa-body" aria-expanded="true" title="Recolher ou expandir o mapa">−</button>
+        <button type="button" id="geo-mapa-close" title="Ocultar mapa" aria-label="Ocultar mapa">×</button>
+      </div>
     </div>
     <div id="geo-mapa-body">
       <div id="geo-mapa" aria-hidden="true"></div>
@@ -2004,27 +2007,141 @@ syncDriveClutchUI();
 // Preenchido na seção das bóias: ao sair do painel “Bóias” cancela cor pendente (evita cliques no mar fora do contexto)
 let clearPendingBuoyPick = () => {};
 window.__simClearBuoyPick = () => { clearPendingBuoyPick(); };
+let _coastMapInited = false;
+async function ensureCoastMapInited() {
+    if (_coastMapInited) return;
+    _coastMapInited = true;
+    wireCoastProviderSelect();
+    await initCoastContextMap();
+    wireGeoMapPanelChrome();
+}
+
+function setGeoMapVisible(visible) {
+    const wrap = document.getElementById('geo-mapa-wrap');
+    const btn = document.getElementById('btn-sidebar-geo-mapa');
+    if (!wrap) return;
+    wrap.classList.toggle('hidden', !visible);
+    wrap.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    if (btn) {
+        btn.classList.toggle('sim-rail-active', visible);
+        btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+        btn.title = visible ? 'Ocultar mapa (costa 3D Cesium / OSM)' : 'Mostrar mapa (costa 3D Cesium / OSM)';
+    }
+    if (!visible) {
+        wrap.classList.remove('geo-mapa--min');
+        try {
+            if (_coastMode === 'cesium' && window.__simCesiumCoast && window.__simCesiumCoast.setActive) {
+                window.__simCesiumCoast.setActive(false);
+            }
+        } catch (_) { /* */ }
+        return;
+    }
+    setTimeout(() => {
+        try {
+            if (_coastMode === 'cesium' && window.__simCesiumCoast) {
+                if (window.__simCesiumCoast.setActive) window.__simCesiumCoast.setActive(true);
+                if (window.__simCesiumCoast.resize) window.__simCesiumCoast.resize();
+            } else if (_rioMap) {
+                _rioMap.invalidateSize();
+            }
+        } catch (e) { /* */ }
+    }, 200);
+}
+
+/** Arrasto + minimizar/ocultar do mapa (mobile e desktop). */
+function wireGeoMapPanelChrome() {
+    const wrap = document.getElementById('geo-mapa-wrap');
+    const header = document.getElementById('geo-mapa-header');
+    const minBtn = document.getElementById('geo-mapa-min');
+    const closeBtn = document.getElementById('geo-mapa-close');
+    const body = document.getElementById('geo-mapa-body');
+    if (!wrap || !header || wrap.dataset.chromeWired) return;
+    wrap.dataset.chromeWired = '1';
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setGeoMapVisible(false);
+        });
+    }
+    if (minBtn && body) {
+        minBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const minimized = wrap.classList.toggle('geo-mapa--min');
+            body.classList.toggle('hidden', minimized);
+            minBtn.setAttribute('aria-expanded', minimized ? 'false' : 'true');
+            minBtn.textContent = minimized ? '+' : '−';
+            if (!minimized) {
+                setTimeout(() => {
+                    try {
+                        if (_coastMode === 'cesium' && window.__simCesiumCoast && window.__simCesiumCoast.resize) {
+                            window.__simCesiumCoast.resize();
+                        } else if (_rioMap) _rioMap.invalidateSize();
+                    } catch (_) { /* */ }
+                }, 180);
+            }
+        });
+    }
+
+    let dragging = false, sx = 0, sy = 0, ol = 0, ot = 0, pid = null;
+    header.addEventListener('pointerdown', (e) => {
+        if (e.target && e.target.closest('button, select, option, label')) return;
+        if (e.button != null && e.button !== 0) return;
+        dragging = true;
+        pid = e.pointerId;
+        const br = wrap.getBoundingClientRect();
+        sx = e.clientX; sy = e.clientY; ol = br.left; ot = br.top;
+        wrap.classList.add('geo-mapa--dragging');
+        wrap.style.left = ol + 'px';
+        wrap.style.top = ot + 'px';
+        wrap.style.right = 'auto';
+        wrap.style.bottom = 'auto';
+        try { header.setPointerCapture(e.pointerId); } catch (_) { /* */ }
+        e.preventDefault();
+    });
+    header.addEventListener('pointermove', (e) => {
+        if (!dragging || (pid != null && e.pointerId !== pid)) return;
+        const nl = Math.min(Math.max(4, ol + e.clientX - sx), window.innerWidth - 48);
+        const nt = Math.min(Math.max(56, ot + e.clientY - sy), window.innerHeight - 48);
+        wrap.style.left = nl + 'px';
+        wrap.style.top = nt + 'px';
+    });
+    const endDrag = (e) => {
+        if (!dragging) return;
+        if (pid != null && e.pointerId !== pid) return;
+        dragging = false;
+        wrap.classList.remove('geo-mapa--dragging');
+        const dy = e.clientY - sy;
+        try { header.releasePointerCapture(e.pointerId); } catch (_) { /* */ }
+        pid = null;
+        const mobile = window.matchMedia('(max-width: 640px)').matches;
+        if (mobile && dy > 90) {
+            setGeoMapVisible(false);
+            return;
+        }
+        if (mobile && dy > 40 && body) {
+            wrap.classList.add('geo-mapa--min');
+            body.classList.add('hidden');
+            if (minBtn) {
+                minBtn.setAttribute('aria-expanded', 'false');
+                minBtn.textContent = '+';
+            }
+        }
+    };
+    header.addEventListener('pointerup', endDrag);
+    header.addEventListener('pointercancel', endDrag);
+}
+
 document.querySelectorAll('.sim-rail').forEach((btn) => {
     btn.addEventListener('click', () => {
         if (btn.dataset.mapToggle === 'true') {
             const wrap = document.getElementById('geo-mapa-wrap');
-            if (wrap) {
-                const willHide = !wrap.classList.contains('hidden');
-                wrap.classList.toggle('hidden', willHide);
-                const visible = !wrap.classList.contains('hidden');
-                btn.classList.toggle('sim-rail-active', visible);
-                btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
-                btn.title = visible ? 'Ocultar mapa (costa 3D Cesium / OSM)' : 'Mostrar mapa (costa 3D Cesium / OSM)';
-                setTimeout(() => {
-                    try {
-                        if (_coastMode === 'cesium' && window.__simCesiumCoast) {
-                            if (window.__simCesiumCoast.setActive) window.__simCesiumCoast.setActive(visible);
-                            if (window.__simCesiumCoast.resize) window.__simCesiumCoast.resize();
-                        } else if (_rioMap) {
-                            _rioMap.invalidateSize();
-                        }
-                    } catch (e) { /* */ }
-                }, 200);
+            if (!wrap) return;
+            const willShow = wrap.classList.contains('hidden');
+            if (willShow) {
+                ensureCoastMapInited().then(() => setGeoMapVisible(true));
+            } else {
+                setGeoMapVisible(false);
             }
             return;
         }
@@ -4382,20 +4499,8 @@ function syncCoastProviderSelect(mode) {
 }
 
 function wireGeoMapMinimize(onToggle) {
-    const minBtn = document.getElementById('geo-mapa-min');
-    const body = document.getElementById('geo-mapa-body');
-    if (!minBtn || !body || minBtn.dataset.leafletWired) return;
-    minBtn.dataset.leafletWired = '1';
-    minBtn.addEventListener('click', () => {
-        body.classList.toggle('hidden');
-        const on = !body.classList.contains('hidden');
-        minBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
-        minBtn.textContent = on ? '−' : '+';
-        setTimeout(() => {
-            if (typeof onToggle === 'function') onToggle(on);
-            else if (_rioMap) _rioMap.invalidateSize();
-        }, 200);
-    });
+    // Minimizar/fechar/arrasto ficam em wireGeoMapPanelChrome (evita listeners duplicados).
+    void onToggle;
 }
 
 function destroyLeafletMap() {
@@ -4658,8 +4763,12 @@ function animate() {
     }
 }
 uiControls.tugDraft.el.dispatchEvent(new Event('input'));
-// Cenário GE primeiro; depois mapa inset (pode cair para OpenSeaMap se o underlay estiver ativo)
-initScenarioGeUnderlay().then(() => initCoastContextMap());
+// Cenário GE no viewport; mapa inset desligado na tela inicial (ativa pelo ícone Mapa)
+initScenarioGeUnderlay().then(() => {
+    wireCoastProviderSelect();
+    wireGeoMapPanelChrome();
+    setGeoMapVisible(false);
+});
 loadVesselGlbs();
 animate();
   </script>
