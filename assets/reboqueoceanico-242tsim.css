@@ -563,6 +563,23 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
 #asd-thruster-dock .asd-thruster-be .asd-prop-boss { fill: #7c2d12; stroke: #fb923c; stroke-width: 0.5; }
 #asd-thruster-dock .asd-az-block { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 #asd-thruster-dock .asd-az-dial { flex: 0 0 auto; width: 4.25rem; height: 4.25rem; max-width: 100%; position: relative; align-self: center; }
+/* Leme azimutal: marca no centro (0° = à frente) */
+#asd-thruster-dock .asd-az-row { position: relative; }
+#asd-thruster-dock .asd-az-row > input.asd-az-range { position: relative; z-index: 1; }
+#asd-thruster-dock .asd-az-row::after {
+  content: '';
+  position: absolute;
+  left: calc((100% - 2.5rem) * 0.5);
+  top: 50%;
+  width: 2px;
+  height: 0.7rem;
+  margin-top: 0.15rem;
+  background: rgba(248, 250, 252, 0.65);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 1px;
+}
 #asd-thruster-dock .asd-dial-svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); }
 #asd-thruster-dock .asd-dial-ring { fill: rgba(15, 23, 42, 0.65); stroke: rgba(100, 116, 139, 0.5); stroke-width: 1.2; }
 #asd-thruster-dock .asd-dial-tick { stroke: rgba(148, 163, 184, 0.45); stroke-width: 0.6; }

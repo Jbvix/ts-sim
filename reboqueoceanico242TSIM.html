@@ -356,7 +356,7 @@
                                 <line class="asd-dial-tick" x1="50" y1="90" x2="50" y2="96"/>
                                 <line class="asd-dial-tick" x1="4" y1="50" x2="10" y2="50"/>
                                 <line class="asd-dial-tick" x1="90" y1="50" x2="96" y2="50"/>
-                                <text class="asd-dial-n" x="50" y="11">N</text>
+                                <text class="asd-dial-n" x="50" y="11">0</text>
                                 <g id="asdAzNeedle1" class="asd-needle-rot" transform="rotate(0 50 50)">
                                     <line class="asd-dial-needle" x1="50" y1="50" x2="50" y2="16"/>
                                 </g>
@@ -367,7 +367,7 @@
                             <div class="control-row"><label for="thruster1RPM" class="sr-only">RPM propulsor 1</label><input type="range" id="thruster1RPM" min="650" max="1800" value="650" step="10" disabled><span id="thruster1RPMValue">0</span></div>
                             <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill1"></div></div></div>
                             <div class="asd-carga-real asd-carga-real--compact" aria-hidden="true"><span class="asd-cr-v"><span id="asdCargaReal1">0.0</span><span class="opacity-80">%</span></span></div>
-                            <div class="control-row"><label for="thruster1Azimuth" class="sr-only">Azimute propulsor 1 (graus)</label><input type="range" id="thruster1Azimuth" min="0" max="360" value="0" step="1" disabled><span id="thruster1AzimuthValue">0°</span></div>
+                            <div class="control-row asd-az-row"><label for="thruster1Azimuth" class="sr-only">Leme azimutal BB (centro = 0°; esquerda BB, direita BE)</label><input type="range" id="thruster1Azimuth" class="asd-az-range" min="-180" max="180" value="0" step="1" disabled title="Centro = à frente (0°). Esquerda = BB, direita = BE."><span id="thruster1AzimuthValue">0°</span></div>
                         </div>
                     </div>
                 </div>
@@ -397,7 +397,7 @@
                                 <line class="asd-dial-tick" x1="50" y1="90" x2="50" y2="96"/>
                                 <line class="asd-dial-tick" x1="4" y1="50" x2="10" y2="50"/>
                                 <line class="asd-dial-tick" x1="90" y1="50" x2="96" y2="50"/>
-                                <text class="asd-dial-n" x="50" y="11">N</text>
+                                <text class="asd-dial-n" x="50" y="11">0</text>
                                 <g id="asdAzNeedle2" class="asd-needle-rot" transform="rotate(0 50 50)">
                                     <line class="asd-dial-needle" x1="50" y1="50" x2="50" y2="16"/>
                                 </g>
@@ -408,7 +408,7 @@
                             <div class="control-row"><label for="thruster2RPM" class="sr-only">RPM propulsor 2</label><input type="range" id="thruster2RPM" min="650" max="1800" value="650" step="10" disabled><span id="thruster2RPMValue">0</span></div>
                             <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill2"></div></div></div>
                             <div class="asd-carga-real asd-carga-real--compact" aria-hidden="true"><span class="asd-cr-v"><span id="asdCargaReal2">0.0</span><span class="opacity-80">%</span></span></div>
-                            <div class="control-row"><label for="thruster2Azimuth" class="sr-only">Azimute propulsor 2 (graus)</label><input type="range" id="thruster2Azimuth" min="0" max="360" value="0" step="1" disabled><span id="thruster2AzimuthValue">0°</span></div>
+                            <div class="control-row asd-az-row"><label for="thruster2Azimuth" class="sr-only">Leme azimutal BE (centro = 0°; esquerda BB, direita BE)</label><input type="range" id="thruster2Azimuth" class="asd-az-range" min="-180" max="180" value="0" step="1" disabled title="Centro = à frente (0°). Esquerda = BB, direita = BE."><span id="thruster2AzimuthValue">0°</span></div>
                         </div>
                     </div>
                 </div>
@@ -1534,6 +1534,22 @@ function detectPropShaftAxisLocal(propRoot) {
     return 'z';
 }
 
+/** Rótulo do leme azimutal: centro 0°; negativo = BB; positivo = BE. */
+function formatAzimuthLabel(deg) {
+    const d = Math.round(Number(deg) || 0);
+    if (d === 0) return '0°';
+    if (d < 0) return 'BB ' + Math.abs(d) + '°';
+    return 'BE ' + d + '°';
+}
+
+function clampAzimuthDeg(deg) {
+    let d = Number(deg);
+    if (!Number.isFinite(d)) d = 0;
+    while (d > 180) d -= 360;
+    while (d < -180) d += 360;
+    return d;
+}
+
 /**
  * Gira hélices 3D do Rastar: BB (jet1) horário, BE (jet2) anti-horário — mesmo sentido dos gauges SVG.
  * Viável porque o GLB expõe nós independentes PropellerLeft / PropellerRight.
@@ -1559,6 +1575,26 @@ function updateGlbPropellerSpin(dt) {
         tug.propMeshBB.rotation.y += a1;
         tug.propMeshBE.rotation.y += a2;
     }
+}
+
+/**
+ * Aplica o azimute dos sliders aos pods (TugBoatT2RudderLeft/Right).
+ * 0° = posição de repouso do GLB (à frente); ±Yaw em torno do eixo vertical do casco.
+ */
+function updateGlbAzimuthPods() {
+    if (!tug.azPodBB || !tug.azPodBE) return;
+    if (!tug._azPodBBBaseQuat || !tug._azPodBEBaseQuat) return;
+    const a1 = clampAzimuthDeg(simParams.thruster1Azimuth);
+    const a2 = clampAzimuthDeg(simParams.isTwinMode ? a1 : simParams.thruster2Azimuth);
+    const sign = (typeof tug._azYawSign === 'number') ? tug._azYawSign : 1;
+    const up = tug._azYawAxisLocal || new THREE.Vector3(0, 1, 0);
+    const apply = (pod, baseQuat, deg) => {
+        const rad = sign * deg * Math.PI / 180;
+        const qYaw = new THREE.Quaternion().setFromAxisAngle(up, rad);
+        pod.quaternion.copy(baseQuat).multiply(qYaw);
+    };
+    apply(tug.azPodBB, tug._azPodBBBaseQuat, a1);
+    apply(tug.azPodBE, tug._azPodBEBaseQuat, a2);
 }
 
 function updateAsdPropellerGauges(dt) {
@@ -1641,12 +1677,16 @@ function updateVesselYPosition(vessel, height) {
 
 // --- Indicadores visuais (bússola + barra de potência) do painel ASD ---
 function syncAsdViz() {
-    const t1a = parseFloat(uiControls.thruster1Azimuth.el.value) || 0;
-    const t2a = parseFloat(uiControls.thruster2Azimuth.el.value) || 0;
+    const t1a = clampAzimuthDeg(parseFloat(uiControls.thruster1Azimuth.el.value) || 0);
+    const t2a = clampAzimuthDeg(parseFloat(uiControls.thruster2Azimuth.el.value) || 0);
     const n1 = document.getElementById('asdAzNeedle1');
     const n2 = document.getElementById('asdAzNeedle2');
     if (n1) n1.setAttribute('transform', 'rotate(' + t1a + ' 50 50)');
     if (n2) n2.setAttribute('transform', 'rotate(' + t2a + ' 50 50)');
+    if (uiControls.thruster1Azimuth.valEl) uiControls.thruster1Azimuth.valEl.innerText = formatAzimuthLabel(t1a);
+    if (uiControls.thruster2Azimuth.valEl) {
+        uiControls.thruster2Azimuth.valEl.innerText = formatAzimuthLabel(simParams.isTwinMode ? t1a : t2a);
+    }
     const p1 = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : 0;
     const p2 = simParams.isTwinMode ? p1 : ((typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : 0);
     const f1 = document.getElementById('asdRpmFill1');
@@ -1655,6 +1695,7 @@ function syncAsdViz() {
     const rpmPct = (rpm) => (rpm < 0.5) ? 0 : Math.max(0, Math.min(100, (rpm / 1800) * 100));
     if (f1) f1.style.width = rpmPct(p1) + '%';
     if (f2) f2.style.width = rpmPct(p2) + '%';
+    updateGlbAzimuthPods();
 }
 // --- Listeners de Eventos da UI ---
 // Adiciona listeners para todos os sliders (input range)
@@ -1696,7 +1737,7 @@ for (const key in uiControls) {
             const value = parseFloat(e.target.value);
             if (uiControls[key].valEl) {
                 const azK = key === 'thruster1Azimuth' || key === 'thruster2Azimuth';
-                uiControls[key].valEl.innerText = azK ? String(Math.round(value)) + '°' : String(value);
+                uiControls[key].valEl.innerText = azK ? formatAzimuthLabel(value) : String(value);
             }
             if (key === 'shipDraft') { ship.draft = value; updateVesselMass(ship); updateVesselYPosition(ship, ship.mesh.geometry.parameters.height); }
             else if (key === 'tugDraft') { tug.draft = value; updateVesselMass(tug); updateVesselYPosition(tug, tug.mesh.geometry.parameters.height); }
@@ -1706,6 +1747,11 @@ for (const key in uiControls) {
                 if (key === 'thruster1RPM' || key === 'thruster2RPM') {
                     v = Math.max(TUG_RPM_MIN, Math.min(TUG_RPM_MAX, v));
                     if (v !== value && e.target) e.target.value = String(v);
+                }
+                if (key === 'thruster1Azimuth' || key === 'thruster2Azimuth') {
+                    v = clampAzimuthDeg(v);
+                    if (v !== value && e.target) e.target.value = String(v);
+                    if (uiControls[key].valEl) uiControls[key].valEl.innerText = formatAzimuthLabel(v);
                 }
                 simParams[key] = v;
             }
@@ -1718,8 +1764,8 @@ for (const key in uiControls) {
             }
              if (key.includes('Azimuth') && simParams.isTwinMode && key.includes('1')) {
                  uiControls.thruster2Azimuth.el.value = uiControls.thruster1Azimuth.el.value;
-                 const a1 = parseFloat(uiControls.thruster1Azimuth.el.value) || 0;
-                 uiControls.thruster2Azimuth.valEl.innerText = String(Math.round(a1)) + '°';
+                 const a1 = clampAzimuthDeg(parseFloat(uiControls.thruster1Azimuth.el.value) || 0);
+                 uiControls.thruster2Azimuth.valEl.innerText = formatAzimuthLabel(a1);
                  simParams.thruster2Azimuth = simParams.thruster1Azimuth;
             }
             if (key.startsWith('thruster')) syncAsdViz();
@@ -2077,22 +2123,47 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
 /** Elevação do GLB do navio: ver SHIP_GLB_VISUAL_LIFT_M / _GE_M no topo da cena. */
 
 /**
- * Localiza no GLB Rastar as hélices Left/Right e ancora os jatos ASD (BB=jet1, BE=jet2).
- * Nós: TugBoatT2PropellerLeft_7, TugBoatT2PropellerRight_9 (filhos dos lemes).
+ * Localiza no GLB Rastar os pods azimutais (RudderLeft/Right) e hélices,
+ * ancora os jatos ASD (BB=jet1, BE=jet2) e prepara a rotação de leme.
+ * Hierarquia: TugBoatT2RudderLeft_8 → TugBoatT2PropellerLeft_7 (idem Right).
  */
 function snapTugJetsToGlbPropellers() {
     const visual = tug.mesh.getObjectByName('glbVisual');
     if (!visual || !tug.jet1 || !tug.jet2) return null;
+
+    let rudderL = null, rudderR = null;
     let left = null, right = null;
     visual.traverse((o) => {
         const n = o.name || '';
-        if (/PropellerLeft/i.test(n)) left = o;
+        if (/RudderLeft/i.test(n)) rudderL = o;
+        else if (/RudderRight/i.test(n)) rudderR = o;
+        else if (/PropellerLeft/i.test(n)) left = o;
         else if (/PropellerRight/i.test(n)) right = o;
     });
+    // Fallback: hélice sob o leme
+    if (rudderL && !left) {
+        rudderL.traverse((o) => { if (!left && /Propeller/i.test(o.name || '')) left = o; });
+    }
+    if (rudderR && !right) {
+        rudderR.traverse((o) => { if (!right && /Propeller/i.test(o.name || '')) right = o; });
+    }
     if (!left || !right) {
         console.warn('[T-Sim] hélices do Rastar não encontradas no GLB');
+        tug.propMeshBB = tug.propMeshBE = null;
+        tug.azPodBB = tug.azPodBE = null;
         return null;
     }
+
+    const podOf = (prop, rudderHint) => {
+        if (rudderHint) return rudderHint;
+        let p = prop.parent;
+        while (p && p !== visual) {
+            if (/Rudder/i.test(p.name || '')) return p;
+            p = p.parent;
+        }
+        return prop.parent || prop;
+    };
+
     tug.mesh.updateMatrixWorld(true);
     const toHullLocal = (obj) => {
         const w = new THREE.Vector3();
@@ -2102,25 +2173,44 @@ function snapTugJetsToGlbPropellers() {
     const pL = toHullLocal(left);
     const pR = toHullLocal(right);
     // Bombordo (BB / thruster1 / jet1) = menor X local; Boreste = maior X
-    const bb = pL.x <= pR.x ? pL : pR;
-    const be = pL.x <= pR.x ? pR : pL;
-    const meshBB = pL.x <= pR.x ? left : right;
-    const meshBE = pL.x <= pR.x ? right : left;
+    const leftIsBB = pL.x <= pR.x;
+    const bb = leftIsBB ? pL : pR;
+    const be = leftIsBB ? pR : pL;
+    const meshBB = leftIsBB ? left : right;
+    const meshBE = leftIsBB ? right : left;
+    const podBB = leftIsBB ? podOf(left, rudderL) : podOf(right, rudderR);
+    const podBE = leftIsBB ? podOf(right, rudderR) : podOf(left, rudderL);
+
     tug.jet1.position.copy(bb);
     tug.jet2.position.copy(be);
     tug.propMeshBB = meshBB;
     tug.propMeshBE = meshBE;
+    tug.azPodBB = podBB;
+    tug.azPodBE = podBE;
     tug._propShaftAxis = detectPropShaftAxisLocal(meshBB);
+    // Pose de repouso dos pods (antes de qualquer leme)
+    tug._azPodBBBaseQuat = podBB.quaternion.clone();
+    tug._azPodBEBaseQuat = podBE.quaternion.clone();
+    // Yaw em espaço local do pod (eixo Y do nó após o fit ≈ vertical do casco)
+    tug._azYawAxisLocal = new THREE.Vector3(0, 1, 0);
+    tug._azYawSign = 1;
+
     const info = {
         leftName: left.name,
         rightName: right.name,
+        rudderLeft: rudderL ? rudderL.name : null,
+        rudderRight: rudderR ? rudderR.name : null,
+        podBB: podBB.name,
+        podBE: podBE.name,
         shaftAxis: tug._propShaftAxis,
         spin: { bb: 'horário (+)', be: 'anti-horário (−)' },
+        azimuth: { slider: '−180…+180 (centro=0° à frente; −=BB; +=BE)', yawSign: tug._azYawSign },
         bb: { x: +bb.x.toFixed(3), y: +bb.y.toFixed(3), z: +bb.z.toFixed(3) },
         be: { x: +be.x.toFixed(3), y: +be.y.toFixed(3), z: +be.z.toFixed(3) }
     };
     window.__simTugPropellers = info;
-    console.info('[T-Sim] hélices Rastar localizadas:', info);
+    console.info('[T-Sim] propulsores ASD localizados:', info);
+    updateGlbAzimuthPods();
     return info;
 }
 
@@ -2482,9 +2572,9 @@ function calculateThrust(tugAngle) {
         return { force: new THREE.Vector3(0, 0, 0), torque: 0 };
     }
     let t1RPM = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : simParams.thruster1RPM;
-    let t1Azimuth = simParams.thruster1Azimuth;
+    let t1Azimuth = clampAzimuthDeg(simParams.thruster1Azimuth);
     let t2RPM = simParams.isTwinMode ? t1RPM : ((typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : simParams.thruster2RPM);
-    let t2Azimuth = simParams.isTwinMode ? t1Azimuth : simParams.thruster2Azimuth;
+    let t2Azimuth = clampAzimuthDeg(simParams.isTwinMode ? t1Azimuth : simParams.thruster2Azimuth);
     
     const t1PowerKW = getPowerFromRPM(t1RPM);
     const t2PowerKW = getPowerFromRPM(t2RPM);
@@ -2919,7 +3009,7 @@ function updatePhysics() {
     const thrustDir = thLen > 1e-6
         ? thrustForce.clone().normalize()
         : (() => {
-            const a = ((simParams.thruster1Azimuth || 0) - 90) * (Math.PI / 180) + tug.angle;
+            const a = (clampAzimuthDeg(simParams.thruster1Azimuth) - 90) * (Math.PI / 180) + tug.angle;
             return new THREE.Vector3(Math.cos(a), 0, -Math.sin(a)).normalize();
         })();
     const tensionResistance = Math.max(0, -towF.F_onTug.dot(thrustDir));
@@ -3522,8 +3612,8 @@ function updatePropulsorJets() {
     const t2M = (typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : 0;
     const t1RPM = (tug.driveEngaged ? t1M : 0);
     const t2RPM = (tug.driveEngaged ? (simParams.isTwinMode ? t1M : t2M) : 0);
-    const t1Azimuth = simParams.thruster1Azimuth;
-    const t2Azimuth = simParams.isTwinMode ? t1Azimuth : simParams.thruster2Azimuth;
+    const t1Azimuth = clampAzimuthDeg(simParams.thruster1Azimuth);
+    const t2Azimuth = clampAzimuthDeg(simParams.isTwinMode ? t1Azimuth : simParams.thruster2Azimuth);
     // Jato segue RPM real (descida inercial após parar motores)
     const jetPct = (rpm) => (rpm < 8) ? 0 : Math.max(0, Math.min(100, (rpm / 1800) * 100));
     const t1Power = jetPct(t1RPM);
@@ -3552,6 +3642,7 @@ function updatePropulsorJets() {
     } else {
         tug.jet2.visible = false;
     }
+    updateGlbAzimuthPods();
 }
 
 // Adiciona movimento às bóias de acordo com o estado do mar
