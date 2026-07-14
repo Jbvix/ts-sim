@@ -2277,22 +2277,38 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
 
     // Navio: sem placeholder — só a malha Bridge do GLB
     if (hullMesh.name === 'shipHull') removeBridgePlaceholder(model);
-    // Rebocador: livrea laranja / azul / branco / preto (sem marca textual)
+    // Rebocador: livrea azul / amarelo / preto (sem marca textual)
     if (hullMesh.name === 'tugHull') applyTugFleetLivery(model);
 }
 
 /**
- * Livrea do rebocador: casco laranja, casario claro, faixa/tubos azul-marinho, defensas pretas.
- * Só cores — sem letreiro nem identidade nominal.
+ * Livrea do rebocador (ref. frota amarelo/azul): casco azul, casario/mastro/grua amarelo,
+ * defensas pretas, guardas cinza. Só cores — sem letreiro.
+ * Cores sólidas (sem atlas) para o tint não “sujar” com o albedo original.
  */
 function applyTugFleetLivery(root) {
     if (!root) return;
     const COL = {
-        hull: 0xe85d04,
-        navy: 0x0b2545,
-        house: 0xf4f4f5,
-        bumper: 0x171717,
-        metal: 0x5b6470
+        hull: 0x0057b8,    // azul do costado
+        yellow: 0xffd100,  // amarelo casario / mastro / grua
+        bumper: 0x111111,  // defensas
+        rail: 0xc8c8c8,    // guardas
+        metal: 0x6b7280    // hélices / lemes
+    };
+    const paintSolid = (mat, hex) => {
+        mat.color.setHex(hex);
+        mat.map = null;
+        mat.metalnessMap = null;
+        mat.roughnessMap = null;
+        mat.normalMap = null;
+        mat.emissiveMap = null;
+        if (mat.emissive) mat.emissive.setHex(0x000000);
+        if (typeof mat.emissiveIntensity === 'number') mat.emissiveIntensity = 0;
+        if (typeof mat.metalness === 'number') mat.metalness = 0.08;
+        if (typeof mat.roughness === 'number') mat.roughness = 0.7;
+        mat.transparent = false;
+        mat.opacity = 1;
+        mat.needsUpdate = true;
     };
     let n = 0;
     root.traverse((c) => {
@@ -2305,33 +2321,25 @@ function applyTugFleetLivery(root) {
             if (!m) return m;
             const mat = m.clone();
             if (/Bumper/i.test(id)) {
-                mat.color.setHex(COL.bumper);
-                mat.map = null;
-                if (mat.emissive) mat.emissive.setHex(0x000000);
+                paintSolid(mat, COL.bumper);
             } else if (/Hull/i.test(id)) {
-                mat.color.setHex(COL.hull);
-                // Mantém atlas para relevo; tint laranja define a leitura da livrea
-                if (mat.emissive) mat.emissive.setHex(0x000000);
+                paintSolid(mat, COL.hull);
             } else if (/Propeller|Rudder/i.test(id)) {
-                mat.color.setHex(COL.metal);
-            } else if (/FireTube|Tubes|Crane/i.test(id)) {
-                mat.color.setHex(COL.navy);
-                if (mat.map && /FireTube|Tubes/i.test(id)) {
-                    // Tubos/faixa: azul mais limpo sem atlas escuro
-                    mat.map = null;
-                }
-            } else if (/Door|Fence|LifeGuard|Wrench|LOD/i.test(id) || /TugBoatT2(?!Hull)/i.test(mat.name || '')) {
-                mat.color.setHex(COL.house);
+                paintSolid(mat, COL.metal);
+            } else if (/Fence/i.test(id)) {
+                paintSolid(mat, COL.rail);
+            } else if (/Door|LifeGuard|Crane|FireTube|Tubes|Wrench/i.test(id)) {
+                paintSolid(mat, COL.yellow);
+            } else {
+                // restante do casario (LOD / deckhouse)
+                paintSolid(mat, COL.yellow);
             }
-            if (typeof mat.metalness === 'number' && /Hull|Door|Fence|LOD/i.test(id)) mat.metalness = Math.min(mat.metalness, 0.15);
-            if (typeof mat.roughness === 'number') mat.roughness = Math.max(mat.roughness || 0.5, 0.55);
-            mat.needsUpdate = true;
             n++;
             return mat;
         });
         c.material = out.length === 1 ? out[0] : out;
     });
-    console.info('[T-Sim] livrea rebocador (laranja/azul/branco):', n, 'materiais');
+    console.info('[T-Sim] livrea rebocador (azul/amarelo):', n, 'materiais');
 }
 
 /** Elevação do GLB do navio: ver SHIP_GLB_VISUAL_LIFT_M / _GE_M no topo da cena. */
