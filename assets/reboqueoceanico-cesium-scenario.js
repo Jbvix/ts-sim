@@ -54,42 +54,54 @@
     }
   }
 
+  /** Cesium trata `skyAtmosphere: true` / `skyBox: true` como a *instância* (boolean), não como flag. */
+  function isSkyAtmosphereInstance(obj) {
+    return !!(obj && typeof obj === 'object' && typeof obj.update === 'function');
+  }
+  function isSkyBoxInstance(obj) {
+    return !!(obj && typeof obj === 'object' && (typeof obj.update === 'function' || obj.sources));
+  }
+
   function setupSkyDefaults() {
     if (!viewer || viewer.isDestroyed()) return;
     const scene = viewer.scene;
 
-    // Céu, sol, lua e atmosfera (antes estavam desligados de propósito)
+    // Céu, sol, lua e atmosfera — com globe:false o show default do SkyAtmosphere fica false
     try {
-      if (!scene.skyAtmosphere) {
+      if (!isSkyAtmosphereInstance(scene.skyAtmosphere)) {
         scene.skyAtmosphere = new Cesium.SkyAtmosphere();
       }
       scene.skyAtmosphere.show = true;
     } catch (_) { /* */ }
 
     try {
-      if (!scene.sun) scene.sun = new Cesium.Sun();
+      if (!scene.sun || typeof scene.sun !== 'object') scene.sun = new Cesium.Sun();
       scene.sun.show = true;
       if (scene.sunBloom != null) scene.sunBloom = true;
     } catch (_) { /* */ }
 
     try {
-      if (!scene.moon) scene.moon = new Cesium.Moon();
+      if (!scene.moon || typeof scene.moon !== 'object') scene.moon = new Cesium.Moon();
       scene.moon.show = true;
     } catch (_) { /* */ }
 
     try {
-      // Stars / deep space behind atmosphere
-      if (!scene.skyBox) {
-        scene.skyBox = new Cesium.SkyBox({
-          sources: {
-            positiveX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_px.jpg'),
-            negativeX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mx.jpg'),
-            positiveY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_py.jpg'),
-            negativeY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_my.jpg'),
-            positiveZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_pz.jpg'),
-            negativeZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mz.jpg')
-          }
-        });
+      if (!isSkyBoxInstance(scene.skyBox)) {
+        // Preferir sky box terrestre do Cesium; fallback texturas SkyBox
+        if (Cesium.SkyBox && typeof Cesium.SkyBox.createEarthSkyBox === 'function') {
+          scene.skyBox = Cesium.SkyBox.createEarthSkyBox();
+        } else {
+          scene.skyBox = new Cesium.SkyBox({
+            sources: {
+              positiveX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_px.jpg'),
+              negativeX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mx.jpg'),
+              positiveY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_py.jpg'),
+              negativeY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_my.jpg'),
+              positiveZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_pz.jpg'),
+              negativeZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mz.jpg')
+            }
+          });
+        }
       }
       scene.skyBox.show = true;
     } catch (_) {
@@ -111,6 +123,7 @@
     } catch (_) { /* */ }
 
     try {
+      // Com globe:false, updateEnvironment usa scene.atmosphere.dynamicLighting
       if (scene.atmosphere && Cesium.DynamicAtmosphereLightingType) {
         scene.atmosphere.dynamicLighting = Cesium.DynamicAtmosphereLightingType.SUNLIGHT;
       }
@@ -227,10 +240,10 @@
     const showMoon = opts.showMoon !== false;
 
     try {
-      if (scene.skyAtmosphere) scene.skyAtmosphere.show = showSky;
-      if (scene.skyBox) scene.skyBox.show = showSky;
-      if (scene.sun) scene.sun.show = showSun;
-      if (scene.moon) scene.moon.show = showMoon;
+      if (isSkyAtmosphereInstance(scene.skyAtmosphere)) scene.skyAtmosphere.show = showSky;
+      if (isSkyBoxInstance(scene.skyBox)) scene.skyBox.show = showSky;
+      if (scene.sun && typeof scene.sun === 'object') scene.sun.show = showSun;
+      if (scene.moon && typeof scene.moon === 'object') scene.moon.show = showMoon;
     } catch (_) { /* */ }
 
     // --- Visibilidade → névoa ---
@@ -303,6 +316,9 @@
     }
 
     try {
+      // Importante: NÃO passar skyBox/skyAtmosphere como `true` — o CesiumWidget
+      // faz `scene.skyAtmosphere = options.skyAtmosphere` e o boolean quebra o render
+      // (TypeError: setDynamicLighting is not a function). Omitir = criar defaults.
       viewer = new Cesium.Viewer(CONTAINER_ID, {
         animation: false,
         timeline: false,
@@ -315,8 +331,6 @@
         infoBox: false,
         selectionIndicator: false,
         globe: false,
-        skyBox: true,
-        skyAtmosphere: true,
         orderIndependentTranslucency: true,
         requestRenderMode: true,
         maximumRenderTimeChange: Infinity,
