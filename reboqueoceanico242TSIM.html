@@ -297,6 +297,7 @@
                 <button type="button" id="asdDriveEngage" class="asd-btn asd-btn-clutch" title="Transmissão acoplada: tração na água (RPM mín. 650 em operação)">Acoplar</button>
                 <button type="button" id="asdDriveDisengage" class="asd-btn asd-btn-clutch is-active" title="Padrão ao iniciar. Sem tração; hélice segue o eixo a baixa rotação (inércia)">Desacoplar</button>
             </div>
+            <p id="asdThrustValidate" class="text-[10px] leading-snug mt-2 px-0.5" style="color:#94a3b8;" title="Resultante dos vetores ASD (seta amarela = empuxo; magenta = sentido da proa). Consola: window.__simTugThrust">Resultante: —</p>
             <div class="resize-handle"></div>
         </div>
 
@@ -477,6 +478,8 @@ renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
 renderer.domElement.classList.add('sim-webgl-canvas');
 container.appendChild(renderer.domElement);
 
@@ -520,11 +523,11 @@ const SHIP_GLB_VISUAL_LIFT_GE_M = 4.0;
 // --- 2. AMBIENTE E ILUMINAÇÃO ---
 // Fundo sólido até o underlay Cesium subir; depois null (canvas transparente)
 scene.background = new THREE.Color(0x051d40);
-scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.35);
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.05);
 directionalLight.position.set(100, 100, 50);
 scene.add(directionalLight);
-const fillLight = new THREE.DirectionalLight(0xa8c8ff, 0.35);
+const fillLight = new THREE.DirectionalLight(0xa8c8ff, 0.28);
 fillLight.position.set(-80, 40, -60);
 scene.add(fillLight);
 
@@ -1172,7 +1175,16 @@ tug.jet1.cone.material.transparent = true;
 tug.jet1.line.material.transparent = true;
 tug.jet2.cone.material.transparent = true;
 tug.jet2.line.material.transparent = true;
-tug.mesh.add(tug.jet1, tug.jet2);
+// Resultante de empuxo (amarelo) + sentido de guinada (magenta) — validação r×F
+tug.thrustResultArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 6, 0), 1, 0xfbbf24, 4, 2.5);
+tug.yawSenseArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 8, 8), 1, 0xe879f9, 3, 2);
+tug.thrustResultArrow.cone.material.transparent = true;
+tug.thrustResultArrow.line.material.transparent = true;
+tug.yawSenseArrow.cone.material.transparent = true;
+tug.yawSenseArrow.line.material.transparent = true;
+tug.thrustResultArrow.visible = false;
+tug.yawSenseArrow.visible = false;
+tug.mesh.add(tug.jet1, tug.jet2, tug.thrustResultArrow, tug.yawSenseArrow);
 
 // --- Câmera: órbita comboio (ENU globo) vs pivôs / órbita livre (posicionamento) ---
 let _simCameraMode = 'free';
@@ -1775,6 +1787,17 @@ function syncAsdViz() {
     if (f1) f1.style.width = rpmPct(p1) + '%';
     if (f2) f2.style.width = rpmPct(p2) + '%';
     // Azimute 3D: só em updatePropulsorJets (evita 2× matrixWorld/frame)
+    const tv = document.getElementById('asdThrustValidate');
+    const st = window.__simTugThrust;
+    if (tv && st) {
+        if (!st.engaged) {
+            tv.textContent = 'Resultante: desacoplado';
+        } else {
+            const fkn = st.F && st.F.tot != null ? (st.F.tot / 1000).toFixed(0) : '—';
+            tv.textContent = 'Resultante: ' + fkn + ' kN · ' + (st.follow || '—') + ' · ' + (st.turn || '—')
+                + (st.omega != null ? ' · ω ' + st.omega + '°/s' : '');
+        }
+    }
 }
 // --- Listeners de Eventos da UI ---
 // Adiciona listeners para todos os sliders (input range)
@@ -2016,43 +2039,10 @@ function removeGlbVisual(hullMesh) {
     // (ex.: ao ativar o underlay GE / refreshVesselGlbVisuals).
 }
 
-/** Garante textura sem canal alpha (evita restos de BLEND no atlas do Bridge). */
-function makeOpaqueColorMap(tex) {
-    if (!tex || !tex.image) return tex;
-    const img = tex.image;
-    const w = img.width || img.videoWidth || 0;
-    const h = img.height || img.videoHeight || 0;
-    if (!w || !h) return tex;
-    try {
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return tex;
-        ctx.drawImage(img, 0, 0);
-        const imageData = ctx.getImageData(0, 0, w, h);
-        const d = imageData.data;
-        for (let i = 3; i < d.length; i += 4) d[i] = 255;
-        ctx.putImageData(imageData, 0, 0);
-        const out = new THREE.CanvasTexture(canvas);
-        out.colorSpace = tex.colorSpace;
-        out.flipY = tex.flipY;
-        out.wrapS = tex.wrapS;
-        out.wrapT = tex.wrapT;
-        out.magFilter = tex.magFilter;
-        out.minFilter = tex.minFilter;
-        out.anisotropy = tex.anisotropy;
-        out.needsUpdate = true;
-        return out;
-    } catch (err) {
-        console.warn('[T-Sim] makeOpaqueColorMap falhou:', err);
-        return tex;
-    }
-}
-
 /**
  * Corrige materiais GLB problemáticos (Bridge BLEND / transparent).
- * Materiais já opacos: só força flags leves — evita recriar MeshStandard + canvas no albedo.
+ * Bridge no GLB: alphaMode BLEND + emissiveFactor [1,1,1] → casario branco.
+ * Reconstrói Standard só com albedo (+ normal), sem metal/emissive.
  */
 function sanitizeGlbMaterials(root) {
     if (!root) return;
@@ -2067,60 +2057,149 @@ function sanitizeGlbMaterials(root) {
             if (!m) continue;
             const matName = (m.name || '');
             const isBridge = /bridge/i.test(matName) || /bridge|superstructure|deckhouse|casario|ponte/i.test(meshName);
-            const needsFull = isBridge || m.transparent === true || (typeof m.opacity === 'number' && m.opacity < 0.999)
+            const wasBlend = m.transparent === true || (typeof m.opacity === 'number' && m.opacity < 0.999)
                 || (m.alphaMode && String(m.alphaMode).toUpperCase() === 'BLEND');
 
-            if (!needsFull) {
+            if (isBridge) {
+                // Malha Bridge fica oculta (sealBridgeInterior); só neutraliza BLEND/emissive
                 m.transparent = false;
                 m.opacity = 1;
                 m.depthWrite = true;
-                if (m.side === THREE.DoubleSide) m.side = THREE.FrontSide;
+                if (m.emissive) m.emissive.setHex(0x000000);
+                if (typeof m.emissiveIntensity === 'number') m.emissiveIntensity = 0;
+                if (typeof m.transmission === 'number') m.transmission = 0;
                 m.needsUpdate = true;
-                light++;
+                n++;
                 continue;
             }
 
-            let colorMap = m.map || null;
-            if (isBridge && colorMap) colorMap = makeOpaqueColorMap(colorMap);
+            if (wasBlend) {
+                m.transparent = false;
+                m.opacity = 1;
+                m.depthWrite = true;
+                m.depthTest = true;
+                m.blending = THREE.NormalBlending;
+                m.alphaTest = 0;
+                if (typeof m.alphaHash !== 'undefined') m.alphaHash = false;
+                m.side = THREE.DoubleSide;
+                if (typeof m.transmission === 'number') m.transmission = 0;
+                if (typeof m.thickness === 'number') m.thickness = 0;
+                if (m.emissive && m.emissive.isColor) m.emissive.setHex(0x000000);
+                if (typeof m.emissiveIntensity === 'number') m.emissiveIntensity = 0;
+                if (m.map) {
+                    m.map.colorSpace = THREE.SRGBColorSpace;
+                    m.map.needsUpdate = true;
+                }
+                if (m.color) m.color.setHex(0xffffff);
+                m.needsUpdate = true;
+                n++;
+                continue;
+            }
 
-            const solid = new THREE.MeshStandardMaterial({
-                name: matName || 'glbSolid',
-                color: m.color ? m.color.clone() : new THREE.Color(isBridge ? 0xe8e8ea : 0xffffff),
-                map: colorMap,
-                metalnessMap: isBridge ? null : (m.metalnessMap || null),
-                roughnessMap: isBridge ? null : (m.roughnessMap || null),
-                normalMap: isBridge ? null : (m.normalMap || null),
-                metalness: typeof m.metalness === 'number' ? m.metalness : (isBridge ? 0.12 : 0.25),
-                roughness: typeof m.roughness === 'number' ? m.roughness : (isBridge ? 0.62 : 0.65),
-                emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0x000000),
-                emissiveMap: isBridge ? null : (m.emissiveMap || null),
-                emissiveIntensity: typeof m.emissiveIntensity === 'number' ? m.emissiveIntensity : 1,
-                transparent: false,
-                opacity: 1,
-                depthWrite: true,
-                depthTest: true,
-                colorWrite: true,
-                blending: THREE.NoBlending,
-                side: isBridge ? THREE.DoubleSide : THREE.FrontSide,
-                flatShading: false,
-                fog: m.fog !== false,
-                alphaTest: 0,
-                alphaHash: false
-            });
-            if (solid.map) solid.map.colorSpace = (m.map && m.map.colorSpace) || solid.map.colorSpace;
-            solid.transparent = false;
-            solid.opacity = 1;
-            solid.depthWrite = true;
-            solid.blending = THREE.NoBlending;
-            solid.needsUpdate = true;
-            mats[i] = solid;
-            n++;
+            m.transparent = false;
+            m.opacity = 1;
+            m.depthWrite = true;
+            if (m.side === THREE.DoubleSide) m.side = THREE.FrontSide;
+            m.needsUpdate = true;
+            light++;
         }
         c.material = mats.length === 1 ? mats[0] : mats;
         c.renderOrder = 0;
         c.frustumCulled = true;
     });
-    console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' reconstruídos, ' + light + ' leves');
+    console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' opacos (textura ok), ' + light + ' leves');
+}
+
+/**
+ * A malha Bridge do GLB tem atlas bege/branco + BLEND/emissive — fica “fantasma” ou lavada.
+ * Esconde Ship_Bridge_* e coloca casario sólido (corpo bege + faixa vermelha) no AABB.
+ */
+function sealBridgeInterior(root) {
+    if (!root) return;
+    const old = root.getObjectByName('bridgeOccluder');
+    if (old) {
+        root.remove(old);
+        old.traverse((c) => {
+            if (c.geometry) c.geometry.dispose();
+            if (!c.material) return;
+            const mats = Array.isArray(c.material) ? c.material : [c.material];
+            mats.forEach((m) => { if (m && m.dispose) m.dispose(); });
+        });
+    }
+    root.updateMatrixWorld(true);
+    const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const box = new THREE.Box3();
+    let found = false;
+    const bridgeMeshes = [];
+    root.traverse((c) => {
+        if (!c.isMesh || c.name === 'bridgeOccluder') return;
+        const n = (c.name || '') + ' ' + ((Array.isArray(c.material) ? c.material[0] : c.material)?.name || '');
+        if (!/bridge/i.test(n) || /occluder/i.test(n)) return;
+        if (!c.geometry) return;
+        bridgeMeshes.push(c);
+        if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+        const local = c.geometry.boundingBox.clone();
+        const toRoot = new THREE.Matrix4().multiplyMatrices(invRoot, c.matrixWorld);
+        local.applyMatrix4(toRoot);
+        if (!found) { box.copy(local); found = true; }
+        else box.union(local);
+    });
+    if (!found || box.isEmpty()) return;
+
+    bridgeMeshes.forEach((m) => { m.visible = false; });
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const sx = Math.max(size.x * 1.02, 0.2);
+    const sy = Math.max(size.y * 1.0, 0.2);
+    const sz = Math.max(size.z * 1.02, 0.2);
+
+    // Basic: cor estável (Standard + luzes lavava o bege a branco)
+    const bodyMat = new THREE.MeshBasicMaterial({
+        name: 'BridgeOccluder',
+        color: 0x9a7b56,
+        side: THREE.DoubleSide,
+        toneMapped: true
+    });
+    const bandMat = new THREE.MeshBasicMaterial({
+        name: 'BridgeOccluderBand',
+        color: 0xb91c1c,
+        side: THREE.DoubleSide,
+        toneMapped: true
+    });
+
+    const group = new THREE.Group();
+    group.name = 'bridgeOccluder';
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(sx, sy * 0.72, sz), bodyMat);
+    body.position.y = -sy * 0.14;
+    body.name = 'bridgeOccluderBody';
+
+    const band = new THREE.Mesh(new THREE.BoxGeometry(sx * 1.001, sy * 0.28, sz * 1.001), bandMat);
+    band.position.y = sy * 0.36;
+    band.name = 'bridgeOccluderBand';
+
+    const bridgeTop = new THREE.Mesh(
+        new THREE.BoxGeometry(sx * 0.72, sy * 0.12, sz * 0.45),
+        bodyMat.clone()
+    );
+    bridgeTop.material.color.setHex(0xa08968);
+    bridgeTop.position.set(0, sy * 0.56, sz * 0.12);
+    bridgeTop.name = 'bridgeOccluderTop';
+
+    group.add(body, band, bridgeTop);
+    group.position.copy(center);
+    group.traverse((c) => {
+        if (!c.isMesh) return;
+        c.castShadow = false;
+        c.receiveShadow = false;
+        c.renderOrder = 0;
+    });
+    root.add(group);
+    console.info('[T-Sim] bridgeOccluder (casario sólido)', {
+        size: { x: +sx.toFixed(2), y: +sy.toFixed(2), z: +sz.toFixed(2) },
+        hiddenBridgeMeshes: bridgeMeshes.length
+    });
 }
 
 /** Diagnóstico: materiais do GLB do navio já encaixado. */
@@ -2133,6 +2212,20 @@ function inspectShipGlbMaterials() {
         const mats = Array.isArray(c.material) ? c.material : [c.material];
         mats.forEach((m) => {
             if (!m) return;
+            const img = m.map && m.map.image;
+            let mapAvg = null;
+            if (img && img.width) {
+                try {
+                    const cv = document.createElement('canvas');
+                    cv.width = cv.height = 16;
+                    const cx = cv.getContext('2d');
+                    cx.drawImage(img, 0, 0, 16, 16);
+                    const d = cx.getImageData(0, 0, 16, 16).data;
+                    let r = 0, g = 0, b = 0, n = 0;
+                    for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+                    mapAvg = [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+                } catch (_) { mapAvg = 'err'; }
+            }
             out.push({
                 mesh: c.name,
                 mat: m.name,
@@ -2142,12 +2235,21 @@ function inspectShipGlbMaterials() {
                 depthWrite: m.depthWrite,
                 blending: m.blending,
                 hasMap: !!m.map,
-                color: m.color ? '#' + m.color.getHexString() : null
+                mapSize: img ? [img.width || 0, img.height || 0] : null,
+                mapAvg,
+                mapIsCanvas: !!(m.map && m.map.isCanvasTexture),
+                color: m.color ? '#' + m.color.getHexString() : null,
+                metalness: m.metalness,
+                roughness: m.roughness,
+                transmission: m.transmission,
+                emissive: m.emissive ? '#' + m.emissive.getHexString() : null,
+                emissiveIntensity: m.emissiveIntensity
             });
         });
     });
     return out;
 }
+
 
 /** Encaixa o GLB no BoxGeometry do casco (X=beam, Y=altura, Z=comprimento). */
 function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
@@ -2209,6 +2311,8 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
         c.castShadow = false;
         c.receiveShadow = false;
     });
+    // Reaplica no clone encaixado (Bridge BLEND/emissive do GLB)
+    sanitizeGlbMaterials(model);
     hullMesh.add(model);
 
     // Diagnóstico: tamanho local após encaixe
@@ -2217,6 +2321,9 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     hullMesh.userData.glbFittedSize = { x: fitted.x, y: fitted.y, z: fitted.z };
     hullMesh.userData.glbKeelLocalY = -th / 2;
     hullMesh.userData.glbVisualLiftM = opts.visualLiftM || 0;
+
+    // Navio: atlas Bridge do GLB lavado → casario sólido legível
+    if (hullMesh.name === 'shipHull') sealBridgeInterior(model);
 }
 
 /** Elevação do GLB do navio: ver SHIP_GLB_VISUAL_LIFT_M / _GE_M no topo da cena. */
@@ -2719,12 +2826,31 @@ function yawLocalToWorld(local, yawRad) {
     );
 }
 
+/** Mundo → local do casco (inversa de yawLocalToWorld). */
+function yawWorldToLocal(world, yawRad) {
+    const c = Math.cos(yawRad), s = Math.sin(yawRad);
+    return new THREE.Vector3(
+        c * world.x - s * world.z,
+        0,
+        s * world.x + c * world.z
+    );
+}
+
 /**
- * Força total e torque de guinada (eixo Y) dos ASD: τ = Σ (r × F).
+ * Sinal do torque de guinada no eixo Y do Three.js.
+ * Vista de cima (+Y): τ>0 = anti-horário = proa a BB; τ<0 = horário = proa a BE.
+ * Com ASD à popa (z<0) e BB em −X, Σ(r×F) já dá: mais empuxo BB à frente → proa a BE.
+ * (Se no futuro os braços vierem espelhados, ajustar só este fator.)
+ */
+const TUG_YAW_TORQUE_SIGN = 1;
+
+/**
+ * Força total e torque de guinada (eixo Y) dos ASD: τ = Σ (r × F) · TUG_YAW_TORQUE_SIGN.
  * Cada propulsor contribui com o momento do seu vetor de empuxo no CG do rebocador.
  */
 function calculateThrust(tugAngle) {
     if (!tug.driveEngaged) {
+        window.__simTugThrust = { engaged: false, turn: '—', follow: '—' };
         return { force: new THREE.Vector3(0, 0, 0), torque: 0, force1: null, force2: null };
     }
     let t1RPM = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : simParams.thruster1RPM;
@@ -2756,23 +2882,104 @@ function calculateThrust(tugAngle) {
     const force2 = dirWorld(t2Azimuth).multiplyScalar(t2ForceMag);
     const totalForce = new THREE.Vector3().addVectors(force1, force2);
 
-    // Braços no mundo e τ_y = r_x F_z − r_z F_x
+    // Braços no mundo e τ_y bruto = r_x F_z − r_z F_x
     const r1w = yawLocalToWorld(getThrusterLeverLocal('BB'), tugAngle);
     const r2w = yawLocalToWorld(getThrusterLeverLocal('BE'), tugAngle);
-    const torque1 = r1w.x * force1.z - r1w.z * force1.x;
-    const torque2 = r2w.x * force2.z - r2w.z * force2.x;
-    const torque = torque1 + torque2;
+    const torque1Raw = r1w.x * force1.z - r1w.z * force1.x;
+    const torque2Raw = r2w.x * force2.z - r2w.z * force2.x;
+    const torqueRaw = torque1Raw + torque2Raw;
+    const torque = TUG_YAW_TORQUE_SIGN * torqueRaw;
+
+    // Validação: sentido de giro e seguimento (corpo do rebocador)
+    const fLen = totalForce.length();
+    const fLocal = fLen > 1e-6 ? yawWorldToLocal(totalForce.clone().normalize(), tugAngle) : new THREE.Vector3(0, 0, 0);
+    // +Z local = proa; +X local = BE
+    let follow = 'parado';
+    if (fLen > 500) {
+        const ahead = fLocal.z;
+        const lat = fLocal.x;
+        if (Math.abs(ahead) >= Math.abs(lat)) {
+            follow = ahead >= 0 ? 'avanço (proa)' : 'astern (popa)';
+        } else {
+            follow = lat >= 0 ? 'lateral BE' : 'lateral BB';
+        }
+    }
+    let turn = 'sem guinada';
+    if (Math.abs(torque) > 1e4) {
+        turn = torque > 0 ? 'giro BB (proa a bombordo)' : 'giro BE (proa a boreste)';
+    }
+
+    const headingDeg = ((tugAngle * 180 / Math.PI) % 360 + 360) % 360;
+    const forceHdg = fLen > 1e-6
+        ? ((Math.atan2(-totalForce.z, totalForce.x) * 180 / Math.PI) % 360 + 360) % 360
+        : null;
 
     window.__simTugThrust = {
+        engaged: true,
         az: { bb: t1Azimuth, be: t2Azimuth },
-        F: { bb: t1ForceMag, be: t2ForceMag, tot: totalForce.length() },
-        r: {
-            bb: { x: +r1w.x.toFixed(2), z: +r1w.z.toFixed(2) },
-            be: { x: +r2w.x.toFixed(2), z: +r2w.z.toFixed(2) }
+        F: {
+            bb: Math.round(t1ForceMag),
+            be: Math.round(t2ForceMag),
+            tot: Math.round(fLen),
+            local: { x: +fLocal.x.toFixed(3), z: +fLocal.z.toFixed(3) }
         },
-        tau: { bb: torque1, be: torque2, sum: torque }
+        r: {
+            bb: { x: +getThrusterLeverLocal('BB').x.toFixed(2), z: +getThrusterLeverLocal('BB').z.toFixed(2) },
+            be: { x: +getThrusterLeverLocal('BE').x.toFixed(2), z: +getThrusterLeverLocal('BE').z.toFixed(2) }
+        },
+        tau: {
+            bbRaw: Math.round(torque1Raw),
+            beRaw: Math.round(torque2Raw),
+            raw: Math.round(torqueRaw),
+            applied: Math.round(torque),
+            sign: TUG_YAW_TORQUE_SIGN
+        },
+        headingDeg: Math.round(headingDeg),
+        forceHeadingDeg: forceHdg != null ? Math.round(forceHdg) : null,
+        follow,
+        turn,
+        omega: +((tug.angularVelocity || 0) * 180 / Math.PI).toFixed(2)
     };
     return { force: totalForce, torque, force1, force2 };
+}
+
+/** Atualiza setas de validação: resultante (amarelo) e sentido de guinada (magenta). */
+function updateThrustValidationArrows(thrustForce, thrustTorque) {
+    if (!tug.thrustResultArrow || !tug.yawSenseArrow) return;
+    const engaged = !!tug.driveEngaged;
+    const fLen = thrustForce ? thrustForce.length() : 0;
+    if (!engaged || fLen < 800) {
+        tug.thrustResultArrow.visible = false;
+    } else {
+        const local = yawWorldToLocal(thrustForce.clone().normalize(), tug.angle);
+        if (local.lengthSq() < 1e-8) {
+            tug.thrustResultArrow.visible = false;
+        } else {
+            local.normalize();
+            tug.thrustResultArrow.visible = true;
+            tug.thrustResultArrow.setDirection(local);
+            const len = Math.min(28, 6 + fLen / 4e4);
+            tug.thrustResultArrow.setLength(len, len * 0.22, len * 0.14);
+            tug.thrustResultArrow.position.set(0, 6, 0);
+            tug.thrustResultArrow.line.material.opacity = 0.9;
+            tug.thrustResultArrow.cone.material.opacity = 0.9;
+        }
+    }
+    const tauAbs = Math.abs(thrustTorque || 0);
+    if (!engaged || tauAbs < 2e4) {
+        tug.yawSenseArrow.visible = false;
+    } else {
+        // Seta para BB (−X) ou BE (+X) na proa — indica para onde a proa gira
+        const toBB = (thrustTorque || 0) > 0;
+        const dir = new THREE.Vector3(toBB ? -1 : 1, 0, 0);
+        tug.yawSenseArrow.visible = true;
+        tug.yawSenseArrow.setDirection(dir);
+        const len = Math.min(14, 4 + tauAbs / 8e5);
+        tug.yawSenseArrow.setLength(len, len * 0.35, len * 0.22);
+        tug.yawSenseArrow.position.set(0, 8, (tug.length || 30) * 0.28);
+        tug.yawSenseArrow.line.material.opacity = 0.95;
+        tug.yawSenseArrow.cone.material.opacity = 0.95;
+    }
 }
 // Calcula a força do vento atuando na área vélica do navio/rebocador
 function calculateWindForce(area, vesselAngle) {
@@ -3091,6 +3298,7 @@ function updatePhysics() {
     
     // --- Orçamento de Forças ---
     const { force: thrustForce, torque: thrustTorque } = calculateThrust(tug.angle);
+    updateThrustValidationArrows(thrustForce, thrustTorque);
     const dragForceTug = calculateDragForce(tug);
 
     // Corda 3D e vão em planta (XZ) entre bitas — geometria *calma* (sem onda) para regime/reação; o calado entra, o heave não
