@@ -277,11 +277,11 @@
                             <option value="feeder">Porta-contêineres (Feeder)</option>
                             <option value="handy">Porta-contêineres (Handy)</option>
                             <option value="panamax">Porta-contêineres (Panamax)</option>
-                            <option value="postpanamax">Porta-contêineres (UCLV)</option>
+                            <option value="postpanamax">Porta-contêineres (ULCV)</option>
                             <option value="aframax">Petroleiro (Aframax)</option>
                         </select>
                     </div>
-                    <div class="control-row"><label for="sailArea">Área Vélica (m²):</label><input type="range" id="sailArea" min="1000" max="10000" value="5000" step="100" title="Área Vélica"><span id="sailAreaValue">5000</span></div>
+                    <div class="control-row"><label for="sailArea">Área Vélica (m²):</label><input type="range" id="sailArea" min="500" max="15000" value="2200" step="100" title="Área Vélica (lateral ao vento; escala com o tipo de navio)"><span id="sailAreaValue">2200</span></div>
                     <div class="control-row"><label for="shipDraft">Calado (m):</label><input type="range" id="shipDraft" min="7" max="12" value="10.75" step="0.25" title="Calado do navio: afunda as obras vivas. Faixa conforme o tipo selecionado."><span id="shipDraftValue">10.75</span></div>
                     <div class="control-row" title="Leme do rebocado habilitado e fixo a meio (0°). Contribui para estabilidade de rumo; sem governo ativo BB/BE.">
                         <label for="shipRudder">Leme:</label>
@@ -1281,13 +1281,32 @@ function seabedFriction(H_try, wNpm, Lb, mu_s = 0.6, mu_k = 0.5) {
 
 // --- 5. BASES DE DADOS E OBJETOS DE SIMULAÇÃO ---
 const shipPresets = {
-    // Calados alinhados a faixas típicas de serviço (obras vivas sob a linha d'água no modelo GLB)
-    'generic': { name: 'Cargueiro Genérico', length: 160, beam: 25, height: 18, minDraft: 7, maxDraft: 12, minMass: 15000, maxMass: 30000, sailArea: 1500, propArea: 20 },
-    'feeder': { name: 'Porta-contêineres (Feeder)', length: 90, beam: 18, height: 12, minDraft: 5, maxDraft: 8, minMass: 4000, maxMass: 8000, sailArea: 800, propArea: 10 },
-    'handy': { name: 'Porta-contêineres (Handy)', length: 110, beam: 20, height: 14, minDraft: 6, maxDraft: 10, minMass: 8000, maxMass: 15000, sailArea: 1000, propArea: 15 },
-    'panamax': { name: 'Porta-contêineres (Panamax)', length: 150, beam: 24, height: 18, minDraft: 8, maxDraft: 13, minMass: 12000, maxMass: 25000, sailArea: 1400, propArea: 20 },
-    'postpanamax': { name: 'Porta-contêineres (UCLV)', length: 180, beam: 30, height: 22, minDraft: 9, maxDraft: 15, minMass: 20000, maxMass: 45000, sailArea: 2000, propArea: 25 },
-    'aframax': { name: 'Petroleiro (Aframax)', length: 140, beam: 28, height: 16, minDraft: 8, maxDraft: 12, minMass: 15000, maxMass: 35000, sailArea: 1300, propArea: 18 },
+    // LOA / boca / calado por classe (padrões de frota; 1 u Three = 1 m ENU / GE).
+    // massas em t (convertidas ×1000 em applyShipPreset); height = caixa visual (obras + superestrutura).
+    'generic': {
+        name: 'Cargueiro Genérico', length: 185, beam: 30, height: 26,
+        minDraft: 8, maxDraft: 12.5, minMass: 25000, maxMass: 52000, sailArea: 2200, propArea: 22
+    },
+    'feeder': {
+        name: 'Porta-contêineres (Feeder)', length: 150, beam: 23, height: 22,
+        minDraft: 6, maxDraft: 9.5, minMass: 12000, maxMass: 28000, sailArea: 1800, propArea: 14
+    },
+    'handy': {
+        name: 'Porta-contêineres (Handy)', length: 200, beam: 28, height: 28,
+        minDraft: 8, maxDraft: 11.5, minMass: 25000, maxMass: 48000, sailArea: 2800, propArea: 18
+    },
+    'panamax': {
+        name: 'Porta-contêineres (Panamax)', length: 294, beam: 32.3, height: 36,
+        minDraft: 11, maxDraft: 13.5, minMass: 45000, maxMass: 78000, sailArea: 4500, propArea: 24
+    },
+    'postpanamax': {
+        name: 'Porta-contêineres (ULCV)', length: 400, beam: 61, height: 48,
+        minDraft: 14, maxDraft: 16.5, minMass: 120000, maxMass: 220000, sailArea: 9000, propArea: 40
+    },
+    'aframax': {
+        name: 'Petroleiro (Aframax)', length: 245, beam: 42, height: 28,
+        minDraft: 12, maxDraft: 15, minMass: 70000, maxMass: 120000, sailArea: 2800, propArea: 28
+    },
 };
 
 // Objetos que mantêm o estado da simulação para o navio, rebocador e cabo
