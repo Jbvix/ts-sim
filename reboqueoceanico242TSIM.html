@@ -1077,8 +1077,10 @@ function getCatModelPreset() {
     }
     T_end_report = T_body;
 
-    let F_onShip = d3n.clone().multiplyScalar(T_body).add(F_drag_split);
-    let F_onTug  = d3n.clone().multiplyScalar(-T_body).add(F_drag_split);
+    // Tensão atrativa: d3n = bita_navio − bita_rebocador (tug→ship).
+    // F_ship = −T·û (puxa o navio para o rebocador); F_tug = +T·û (reação no rebocador).
+    let F_onShip = d3n.clone().multiplyScalar(-T_body).add(F_drag_split);
+    let F_onTug  = d3n.clone().multiplyScalar(T_body).add(F_drag_split);
 
     const sane = v => (Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z)) ? v : new THREE.Vector3();
     F_onShip = sane(F_onShip);
@@ -1091,8 +1093,8 @@ function getCatModelPreset() {
       const sc = tLineMax / T_body;
       T_body *= sc;
       T_end_report = Math.min(T_end_report * sc, tLineMax);
-      F_onShip = d3n.clone().multiplyScalar(T_body).add(F_drag_split);
-      F_onTug  = d3n.clone().multiplyScalar(-T_body).add(F_drag_split);
+      F_onShip = d3n.clone().multiplyScalar(-T_body).add(F_drag_split);
+      F_onTug  = d3n.clone().multiplyScalar(T_body).add(F_drag_split);
     }
     if (!Number.isFinite(T_body) || T_body < 0) T_body = 0;
     let TensionHUD = Math.max(0, T_body) + Math.max(0, Dmag);
@@ -3015,36 +3017,44 @@ function calculateDragForce(vessel) {
 }
 
 /*
- * T-Sim 2.8.1 / 2.8.2 — resposta do rebocado: reforço longitudinal, EMA anisotrópico, assist resistência, acoplamento comboio
- * SHIP_TOW_SPEED: ponto único para rever / amplificar velocidade de proa (menos F resistiva, mais tração útil, comboio + rápido).
+ * T-Sim 2.8.3 — rebocado segue o rebocador: tensão atrativa (−T·û), hidrodinâmica anisotrópica (surge/sway),
+ * guinada r×F + weathervane sob tensão, EMA lateral útil. SHIP_TOW_SPEED = ponto único de afinação.
  */
 const SHIP_TOW_SPEED = {
     /** Ganho da componente de tração ao longo do cabo 3D (aumenta → rebocado acompanha mais cedo) */
-    shapeLong: 1.30,
-    /** Ganho do resto (lateral+vertical) — manter < shapeLong p/ não guinar em excesso */
-    shapeRes: 0.85,
-    /** EMA: mais alto em long = reage mais cedo no eixo do comboio; mais baixo em lat = não filtra guinada/oscilação lateral de forma tão lenta */
-    emaLong: 0.38,
-    emaLat: 0.07,
+    shapeLong: 1.15,
+    /** Ganho lateral/vertical — ~1 para o r×F na proa gerar guinada e o navio seguir o puxão */
+    shapeRes: 1.05,
+    /** EMA: long rápido; lat suficiente para o momento de guinada não morrer no filtro */
+    emaLong: 0.42,
+    emaLat: 0.28,
     /** Só no navio rebocado: o modelo simples de vento/corrente não deve dominar o cabo (0,55–0,70 e 0,70–0,85) */
-    envWindScaleShip: 0.62,
-    envCurrentScaleShip: 0.78,
+    envWindScaleShip: 0.55,
+    envCurrentScaleShip: 0.70,
     /** Resistência total ao avanço (0,3–0,5 típ. comboio); ↑ amplifica nós (menos mola a vencer) */
-    resistGlobal: 0.45,
+    resistGlobal: 0.42,
+    /** Arrasto transversal / arrasto longitudinal (casco prefere avançar de proa) */
+    swayDragRatio: 3.2,
     /** Redução adicional do arrasto *ao longo de dirF* (menor = navio + rápido em sintonia) */
     assistDragTight: 0.78,
     assistDragMed: 0.85,
-    /** assist = convoyAssisScale * min(T/100,1,4) * rel * convoyNScale; ↑ amplifica “embolo” do comboio */
-    convoyAssisScale: 0.07,
+    /** assist = convoyAssisScale * min(T/100,1,4) * rel * convoyNScale; puxa o navio na direção do rebocador */
+    convoyAssisScale: 0.09,
     convoyNScale: 1.0e5,
     /** T mín. (kN) para activar assist; ↓ = começa a empurrar cedo (mais nós) */
-    convoyMinTensionkN: 35,
+    convoyMinTensionkN: 25,
     /** T (N) acima do qual o termo “convoy assist” reforçado puxa o rebocado (≈ 80 tf) */
     convoyTensionFullN: 8e4,
-    /** N por (m/s) de relAlong extra quando T acima e geometria boa (acoplamento longitudinal do modelo) */
-    convoyAlongGain: 6000,
+    /** N por (m/s) de atraso do navio face ao rebocador (ao longo da linha de tração) */
+    convoyAlongGain: 7500,
     /** Fracção da massa do cabo suspenso em m_eff; ↓ = menos inércia, acelera + rápido */
-    addedCableFrac: 0.32
+    addedCableFrac: 0.28,
+    /** Momento de alinhamento proa→rebocador sob tensão (N·m por rad·por kN de T) */
+    weathervaneNmPerRadPerKN: 2.8e4,
+    /** Amortecimento viscoso de guinada (fracção do crítico ~0,25–0,45) */
+    yawDampFrac: 0.32,
+    /** |ω| máx. do rebocado (rad/s) */
+    yawRateMax: 0.22
 };
 window.SHIP_TOW_SPEED = SHIP_TOW_SPEED;
 
@@ -3091,63 +3101,78 @@ function getTowAssistDragFactor(relTowSpeedMs, towlineTensionN) {
 function computeTowConvoyAssist({ tugVelocity, shipVelocity, towDirUnit, towlineTensionN, lcRatio, waterClearanceM }) {
     const tensionkN = towlineTensionN / 1000;
     if (!towDirUnit || towDirUnit.lengthSq() < 0.1) return new THREE.Vector3(0, 0, 0);
+    // dirF = tug→ship; o rebocador “escapa” com velocidade −dirF; o navio deve ser puxado em −dirF.
     const tux = towDirUnit.x, tuz = towDirUnit.z;
-    const tugAlong = tugVelocity.x * tux + tugVelocity.z * tuz;
-    const shipAlong = shipVelocity.x * tux + shipVelocity.z * tuz;
-    const relAlong = tugAlong - shipAlong;
+    const tugAway = -(tugVelocity.x * tux + tugVelocity.z * tuz);
+    const shipAway = -(shipVelocity.x * tux + shipVelocity.z * tuz);
+    const relPull = tugAway - shipAway; // >0: rebocador afasta-se mais depressa que o navio
     const geometryGood = (lcRatio == null || !Number.isFinite(lcRatio) || lcRatio >= 7.5) &&
         (waterClearanceM == null || !Number.isFinite(waterClearanceM) || waterClearanceM >= 8);
-    if (!geometryGood || tensionkN < SHIP_TOW_SPEED.convoyMinTensionkN || relAlong <= 0) {
+    if (!geometryGood || tensionkN < SHIP_TOW_SPEED.convoyMinTensionkN || relPull <= 0) {
         return new THREE.Vector3(0, 0, 0);
     }
     const assistGain = SHIP_TOW_SPEED.convoyAssisScale * Math.min(tensionkN / 100, 1.4);
-    let assistN = assistGain * relAlong * SHIP_TOW_SPEED.convoyNScale;
+    let assistN = assistGain * relPull * SHIP_TOW_SPEED.convoyNScale;
     const TF = SHIP_TOW_SPEED.convoyTensionFullN;
     if (Number.isFinite(TF) && towlineTensionN >= TF) {
-        assistN += relAlong * (SHIP_TOW_SPEED.convoyAlongGain || 6000);
+        assistN += relPull * (SHIP_TOW_SPEED.convoyAlongGain || 6000);
     }
-    return new THREE.Vector3(tux, 0, tuz).normalize().multiplyScalar(assistN);
+    return new THREE.Vector3(-tux, 0, -tuz).normalize().multiplyScalar(assistN);
 }
 
-// Calcula a resistência total ao avanço do navio (casco, hélice, estado do mar)
+// Direção de proa (local −Z) e boreste (local +X) no plano XZ — convenção Three.js Y-up.
+function shipBodyAxesXZ(angle) {
+    const s = Math.sin(angle), c = Math.cos(angle);
+    return {
+        forward: new THREE.Vector3(-s, 0, -c),   // proa
+        starboard: new THREE.Vector3(c, 0, -s)  // BE
+    };
+}
+
+// Resistência hidrodinâmica anisotrópica: surge (proa) + sway reforçado (casco não “craba” sem guinar).
 function calculateTotalShipResistance() {
     const shipSpeed = ship.velocity.length();
-    // Se a velocidade for desprezível, a resistência hidrodinâmica também é.
-    // Isso corrige o problema do navio ficar "colado" por uma resistência constante.
     if (!ship.mass || shipSpeed < 0.01) {
         return new THREE.Vector3();
     }
     const shipSpeedKnots = shipSpeed * 1.94384;
-    const shipDirection = ship.velocity.length() > 0.1 ? ship.velocity.clone().normalize() : new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), ship.angle);
-    
-    // RH - Hull Resistance
-    const speedLengthRatio = shipSpeedKnots / Math.sqrt(ship.lwl * 3.28084); // LWL to feet
+    const { forward, starboard } = shipBodyAxesXZ(ship.angle);
+    const vSurge = ship.velocity.dot(forward);
+    const vSway = ship.velocity.dot(starboard);
+
+    // RH - Hull Resistance (curva speed–length no módulo da velocidade)
+    const speedLengthRatio = shipSpeedKnots / Math.sqrt(ship.lwl * 3.28084);
     const rhRatio = interpolate(speedLengthRatio, hullResistanceCurve, 'ratio', 'val');
-    const rh = rhRatio * ship.mass * 0.004378; // Convert from lbf/LT to N
+    const rh = rhRatio * ship.mass * 0.004378;
 
     // RP - Propeller Resistance
-    const rp = 178.6 * ship.propArea * shipSpeedKnots**2; // N
-    
+    const rp = 178.6 * ship.propArea * shipSpeedKnots**2;
+
     // RS - Sea State Resistance
     const beaufort = getBeaufortFromWaveHeight(simParams.waveHeight);
     const rsRatio = interpolate(beaufort, seaStateResistanceCurve, 'beaufort', 'val');
-    let rs = rsRatio * ship.mass * 0.00022; // Base resistance
-    
-    let totalResistanceMagnitude = rh + rp + rs;
-    
-    // --- AJUSTE DE EQUILÍBRIO (SHIP_TOW_SPEED.resistGlobal) — comboio, não prova a velocidade de escoteiro
-    totalResistanceMagnitude *= SHIP_TOW_SPEED.resistGlobal;
+    const rs = rsRatio * ship.mass * 0.00022;
 
+    let totalResistanceMagnitude = (rh + rp + rs) * SHIP_TOW_SPEED.resistGlobal;
     ship.totalResistance = totalResistanceMagnitude;
-    
-    let R = shipDirection.clone().multiplyScalar(-totalResistanceMagnitude);
+
+    // Decompõe a resistência isotrópica de referência em eixos do casco; multiplica sway.
+    const swayRatio = Math.max(1.5, SHIP_TOW_SPEED.swayDragRatio || 3.2);
+    const speedSafe = Math.max(shipSpeed, 0.05);
+    const rSurgeMag = totalResistanceMagnitude * (Math.abs(vSurge) / speedSafe);
+    const rSwayMag = totalResistanceMagnitude * (Math.abs(vSway) / speedSafe) * swayRatio;
+    let R = forward.clone().multiplyScalar(-Math.sign(vSurge || 1) * rSurgeMag)
+        .add(starboard.clone().multiplyScalar(-Math.sign(vSway || 1) * rSwayMag));
+
+    // Assist: reduz arrasto ao longo da linha de tração (navio→rebocador = −dirF) quando o cabo está tenso.
     if (typeof _shipTowAssistDrag === 'number' && _shipTowAssistDrag < 0.999 && _shipTowDirF && _shipTowDirF.lengthSq() > 0.1) {
-        const e = _shipTowDirF.clone();
-        e.y = 0;
-        e.normalize();
-        const Rl = e.clone().multiplyScalar(R.dot(e));
-        const Rp = R.clone().sub(Rl);
-        R = Rl.multiplyScalar(_shipTowAssistDrag).add(Rp);
+        const e = new THREE.Vector3(-_shipTowDirF.x, 0, -_shipTowDirF.z);
+        if (e.lengthSq() > 1e-8) {
+            e.normalize();
+            const Rl = e.clone().multiplyScalar(R.dot(e));
+            const Rp = R.clone().sub(Rl);
+            R = Rl.multiplyScalar(_shipTowAssistDrag).add(Rp);
+        }
     }
     return R;
 }
@@ -3317,13 +3342,14 @@ function updatePhysics() {
     {
         const vx = ship.velocity.x, vz = ship.velocity.z;
         const fx = forceTow.x, fz = forceTow.z;
-        const vA = vx * dirF.x + vz * dirF.z;
-        const fA = fx * dirF.x + fz * dirF.z;
+        // Eixo “para o rebocador” = −dirF / −d3u (tração positiva quando o navio é puxado)
+        const vA = -(vx * dirF.x + vz * dirF.z);
+        const fA = -(fx * dirF.x + fz * dirF.z);
         shipTowResponse.vAlong = vA;
         shipTowResponse.vAlongKn = vA * 1.94384;
         shipTowResponse.FAlongN = fA;
-        const shipTL = ship.velocity.dot(d3u);
-        const tugTL = tug.velocity.dot(d3u);
+        const shipTL = -ship.velocity.dot(d3u);
+        const tugTL = -tug.velocity.dot(d3u);
         const relTL = tugTL - shipTL;
         shipTowResponse.shipTowLineMs = shipTL;
         shipTowResponse.shipTowLineKn = shipTL * 1.94384;
@@ -3331,7 +3357,7 @@ function updatePhysics() {
         shipTowResponse.tugTowLineKn = tugTL * 1.94384;
         shipTowResponse.relTowLineMs = relTL;
         shipTowResponse.relTowLineKn = relTL * 1.94384;
-        shipTowResponse.FAlongCable3dN = forceTow.dot(d3u);
+        shipTowResponse.FAlongCable3dN = -forceTow.dot(d3u);
     }
     window.shipTowResponse = shipTowResponse;
     
@@ -3426,14 +3452,43 @@ function updatePhysics() {
     ship.velocity.add(shipForce.clone().divideScalar(mShipEff).multiplyScalar(dt));
     tug.velocity.add(tugForce.clone().divideScalar(tug.mass).multiplyScalar(dt));
 
-    // Momento de guinada: cabo fora do CG (Y+) — r×F, componente eixo Y, convenção 3D
+    // Guinada do rebocado: τ = r×F na bita + alinhamento proa→rebocador sob tensão + amortecimento viscoso.
+    // Proa (local −Z) deve apontar para o rebocador (−dirF): ângulo desejado = atan2(dirF.x, dirF.z).
     const rTow = shipAttachPoint.clone().sub(ship.position);
     const towTauY = rTow.x * forceTow.z - rTow.z * forceTow.x;
-    const shipInertiaYaw = 0.1 * Math.max(1, ship.mass) * (ship.length * ship.length + ship.beam * ship.beam);
-    ship.angularVelocity += (towTauY / Math.max(1e-6, shipInertiaYaw)) * dt;
-    ship.angularVelocity *= 0.94;
-    ship.angularVelocity = Math.max(-0.14, Math.min(0.14, ship.angularVelocity));
+    const L2B2 = ship.length * ship.length + ship.beam * ship.beam;
+    const shipInertiaYaw = Math.max(1e3, (1 / 12) * Math.max(1, ship.mass) * L2B2);
+    let yawTau = towTauY;
+    {
+        const TkN = (towF.TensionN || 0) / 1000;
+        if (TkN > 8 && dirF.lengthSq() > 0.1) {
+            const desiredYaw = Math.atan2(dirF.x, dirF.z);
+            let err = desiredYaw - ship.angle;
+            while (err > Math.PI) err -= Math.PI * 2;
+            while (err < -Math.PI) err += Math.PI * 2;
+            const K = SHIP_TOW_SPEED.weathervaneNmPerRadPerKN || 2.8e4;
+            yawTau += K * TkN * err;
+        }
+    }
+    const yawDampNms = (SHIP_TOW_SPEED.yawDampFrac || 0.32) * Math.sqrt(shipInertiaYaw * Math.max(ship.mass, 1));
+    yawTau -= yawDampNms * ship.angularVelocity;
+    // Momento hidrodinâmico leve de sway (N_v): deriva transversal gera guinada estabilizante
+    {
+        const { starboard } = shipBodyAxesXZ(ship.angle);
+        const vSway = ship.velocity.dot(starboard);
+        const Nv = 0.08 * Math.max(1, ship.mass) * ship.length; // N·m / (m/s)
+        yawTau += -Nv * vSway;
+    }
+    ship.angularVelocity += (yawTau / shipInertiaYaw) * dt;
+    const wMax = SHIP_TOW_SPEED.yawRateMax || 0.22;
+    ship.angularVelocity = Math.max(-wMax, Math.min(wMax, ship.angularVelocity));
     ship.angle += ship.angularVelocity * dt;
+    if (ship.angle > Math.PI) ship.angle -= Math.PI * 2;
+    else if (ship.angle < -Math.PI) ship.angle += Math.PI * 2;
+    window.__simShipYaw = {
+        towTauY, yawTau, omega: ship.angularVelocity, angle: ship.angle,
+        Ftx: forceTow.x, Ftz: forceTow.z, TkN: (towF.TensionN || 0) / 1000
+    };
     if (!tug.enginesOn) {
         const relV = ship.velocity.clone().sub(tug.velocity);
         const along = relV.dot(dirF);
