@@ -37,22 +37,26 @@
           </div>
         </div>
 
-        <!-- Telemetria ao vivo: rebocador (SOG + carga) e navio (SOG) -->
+        <!-- Telemetria ao vivo: rebocador (SOG + carga) e navio (SOG) — chips em coluna para não sobrepor -->
         <div id="sim-header-telemetry" class="sim-header-telemetry" aria-live="polite" aria-atomic="true">
           <div class="sim-ht-chip sim-ht-tug" title="Rebocador: SOG (nós) e carga real (%) — mesmos valores do painel Navio e rebocador">
             <span class="sim-ht-label">Rebocador</span>
-            <span class="sim-ht-metric"><span id="hdrTugSpeed">0.00</span><span class="sim-ht-unit">n</span></span>
-            <span class="sim-ht-sep" aria-hidden="true">·</span>
-            <span class="sim-ht-metric sim-ht-carga"><span id="hdrTugCarga">0.0</span><span class="sim-ht-unit">%</span></span>
+            <div class="sim-ht-row">
+              <span class="sim-ht-metric"><span id="hdrTugSpeed">0.00</span><span class="sim-ht-unit">n</span></span>
+              <span class="sim-ht-sep" aria-hidden="true">·</span>
+              <span class="sim-ht-metric sim-ht-carga"><span id="hdrTugCarga">0.0</span><span class="sim-ht-unit">%</span></span>
+            </div>
           </div>
           <div class="sim-ht-chip sim-ht-ship" title="Navio rebocado: SOG (nós) — módulo |v| em 3D">
             <span class="sim-ht-label">Navio</span>
-            <span class="sim-ht-metric"><span id="hdrShipSpeed">0.00</span><span class="sim-ht-unit">n</span></span>
+            <div class="sim-ht-row">
+              <span class="sim-ht-metric"><span id="hdrShipSpeed">0.00</span><span class="sim-ht-unit">n</span></span>
+            </div>
           </div>
         </div>
         
         <!-- Navigation -->
-        <nav class="hidden md:flex flex-wrap items-center justify-end gap-2 lg:gap-4 text-[11px] sm:text-sm font-medium shrink-0">
+        <nav class="hidden xl:flex flex-wrap items-center justify-end gap-2 lg:gap-4 text-[11px] sm:text-sm font-medium shrink-0" aria-label="Atalhos do dashboard">
           <a href="index.html#visao" class="js-to-dashboard hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Dinâmica</a>
           <a href="index.html#formulas" class="js-to-dashboard hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Fórmulas</a>
           <a href="index.html#safety" class="js-to-dashboard hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Safety</a>
@@ -375,7 +379,7 @@
                             <div class="control-row"><label for="thruster1RPM" class="sr-only">RPM propulsor 1</label><input type="range" id="thruster1RPM" min="650" max="1800" value="650" step="10" disabled><span id="thruster1RPMValue">0</span></div>
                             <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill1"></div></div></div>
                             <div class="asd-carga-real asd-carga-real--compact" aria-hidden="true"><span class="asd-cr-v"><span id="asdCargaReal1">0.0</span><span class="opacity-80">%</span></span></div>
-                            <div class="control-row asd-az-row"><label for="thruster1Azimuth" class="sr-only">Leme azimutal BB (centro = 0°; esquerda BB, direita BE)</label><input type="range" id="thruster1Azimuth" class="asd-az-range" min="-180" max="180" value="0" step="1" disabled title="Centro = à frente (0°). Esquerda = BB, direita = BE."><span id="thruster1AzimuthValue">0°</span></div>
+                            <div class="control-row asd-az-row"><label for="thruster1Azimuth" class="sr-only">Leme azimutal BB (centro = a meio; esquerda BB, direita BE). Duplo clique = a meio.</label><input type="range" id="thruster1Azimuth" class="asd-az-range" min="-180" max="180" value="0" step="1" disabled title="Centro = a meio (0°). Esquerda = BB, direita = BE. Duplo clique = leme a meio."><span id="thruster1AzimuthValue">a meio</span></div>
                         </div>
                     </div>
                 </div>
@@ -416,7 +420,7 @@
                             <div class="control-row"><label for="thruster2RPM" class="sr-only">RPM propulsor 2</label><input type="range" id="thruster2RPM" min="650" max="1800" value="650" step="10" disabled><span id="thruster2RPMValue">0</span></div>
                             <div class="asd-rpm-gauge" aria-hidden="true"><div class="asd-rpm-track"><div class="asd-rpm-fill" id="asdRpmFill2"></div></div></div>
                             <div class="asd-carga-real asd-carga-real--compact" aria-hidden="true"><span class="asd-cr-v"><span id="asdCargaReal2">0.0</span><span class="opacity-80">%</span></span></div>
-                            <div class="control-row asd-az-row"><label for="thruster2Azimuth" class="sr-only">Leme azimutal BE (centro = 0°; esquerda BB, direita BE)</label><input type="range" id="thruster2Azimuth" class="asd-az-range" min="-180" max="180" value="0" step="1" disabled title="Centro = à frente (0°). Esquerda = BB, direita = BE."><span id="thruster2AzimuthValue">0°</span></div>
+                            <div class="control-row asd-az-row"><label for="thruster2Azimuth" class="sr-only">Leme azimutal BE (centro = a meio; esquerda BB, direita BE). Duplo clique = a meio.</label><input type="range" id="thruster2Azimuth" class="asd-az-range" min="-180" max="180" value="0" step="1" disabled title="Centro = a meio (0°). Esquerda = BB, direita = BE. Duplo clique = leme a meio."><span id="thruster2AzimuthValue">a meio</span></div>
                         </div>
                     </div>
                 </div>
@@ -1587,12 +1591,37 @@ function detectPropShaftAxisLocal(propRoot) {
     return best;
 }
 
-/** Rótulo do leme azimutal: centro 0°; negativo = BB; positivo = BE. */
+/** Rótulo do leme azimutal: centro = a meio; negativo = BB; positivo = BE. */
 function formatAzimuthLabel(deg) {
     const d = Math.round(Number(deg) || 0);
-    if (d === 0) return '0°';
+    if (d === 0) return 'a meio';
     if (d < 0) return 'BB ' + Math.abs(d) + '°';
     return 'BE ' + d + '°';
+}
+
+/** 1 = ambos os azimutes ~ a meio (0°); 0 = |az| ≥ ~25°. Usado na estabilidade de rumo. */
+function tugAzimuthMidshipsFactor() {
+    const a1 = Math.abs(clampAzimuthDeg(simParams.thruster1Azimuth));
+    const a2 = Math.abs(clampAzimuthDeg(simParams.isTwinMode ? simParams.thruster1Azimuth : simParams.thruster2Azimuth));
+    const f = (a) => Math.max(0, 1 - a / 25);
+    return 0.5 * (f(a1) + f(a2));
+}
+
+/** Centra o leme azimutal (0° = a meio). Em TWIN, espelha BB→BE. */
+function setAzimuthMidships(sourceKey) {
+    const apply = (key) => {
+        simParams[key] = 0;
+        const c = uiControls[key];
+        if (c && c.el) c.el.value = '0';
+        if (c && c.valEl) c.valEl.innerText = formatAzimuthLabel(0);
+    };
+    if (sourceKey === 'thruster2Azimuth' && !simParams.isTwinMode) {
+        apply('thruster2Azimuth');
+    } else {
+        apply('thruster1Azimuth');
+        apply('thruster2Azimuth');
+    }
+    syncAsdViz();
 }
 
 function clampAzimuthDeg(deg) {
@@ -1851,6 +1880,15 @@ if (uiControls.catModelPreset.el) {
         window._towWBlendEma = 0;
     });
 }
+// Duplo clique no slider do leme azimutal → a meio (0°)
+['thruster1Azimuth', 'thruster2Azimuth'].forEach((key) => {
+    const el = uiControls[key] && uiControls[key].el;
+    if (!el) return;
+    el.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        setAzimuthMidships(key);
+    });
+});
 for (const key in uiControls) {
     if (uiControls[key].el && uiControls[key].el.type === 'range') {
         uiControls[key].el.addEventListener('input', (e) => {
@@ -3618,15 +3656,32 @@ function updatePhysics() {
     ship.mesh.position.x = ship.position.x; ship.mesh.position.z = ship.position.z;
     tug.mesh.position.x = tug.position.x; tug.mesh.position.z = tug.position.z;
     
-    // Guinada do rebocador: I_zz ≈ (1/12)m(B²+L²); amortecimento viscoso ∝ ω (não fator 0.95/frame)
+    // Guinada do rebocador: I_zz ≈ (1/12)m(B²+L²); com leme a meio reforça estabilidade de rumo.
     const tw = tug.mesh.geometry.parameters.width;
     const tl = tug.mesh.geometry.parameters.depth;
     const tugInertiaYaw = Math.max(1e3, (1 / 12) * tug.mass * (tw * tw + tl * tl));
-    const tugYawDampNms = 0.35 * Math.sqrt(tugInertiaYaw * Math.max(tug.mass, 1)); // ~crítico parcial
-    const yawTorqueNet = thrustTorque - tugYawDampNms * tug.angularVelocity;
+    const midF = tugAzimuthMidshipsFactor(); // 1 = a meio
+    const tugYawDampNms = (0.38 + 0.72 * midF) * Math.sqrt(tugInertiaYaw * Math.max(tug.mass, 1));
+    let yawTorqueNet = thrustTorque - tugYawDampNms * tug.angularVelocity;
+    // Estabilidade de rumo com leme a meio: amortece deriva transversal (casco + pods a 0°)
+    if (midF > 0.15 && tug.mass > 0) {
+        const s = Math.sin(tug.angle), c = Math.cos(tug.angle);
+        // Proa local −Z → mundo (−sin, −cos); BE local +X → (cos, −sin)
+        const starboard = new THREE.Vector3(c, 0, -s);
+        const vSway = tug.velocity.dot(starboard);
+        const V = Math.hypot(tug.velocity.x, tug.velocity.z);
+        const Nv = midF * 0.045 * tug.mass * Math.max(8, tl) * Math.min(1.4, 0.35 + V * 0.25);
+        yawTorqueNet -= Nv * vSway;
+        // Com pods a meio, corta torque residual assimétrico fraco (ruído de rumo)
+        if (midF > 0.85 && Math.abs(thrustTorque) < 2.5e5) {
+            yawTorqueNet -= thrustTorque * 0.35 * midF;
+        }
+    }
     tug.angularVelocity += (yawTorqueNet / tugInertiaYaw) * dt;
-    tug.angularVelocity = Math.max(-0.55, Math.min(0.55, tug.angularVelocity));
+    const tugWMax = midF > 0.7 ? 0.32 : 0.55;
+    tug.angularVelocity = Math.max(-tugWMax, Math.min(tugWMax, tug.angularVelocity));
     tug.angle += tug.angularVelocity * dt;
+    window.__simTugYaw = { midF, yawTorqueNet, omega: tug.angularVelocity, damp: tugYawDampNms };
     // Normaliza ângulo
     if (tug.angle > Math.PI) tug.angle -= Math.PI * 2;
     else if (tug.angle < -Math.PI) tug.angle += Math.PI * 2;
