@@ -2791,11 +2791,10 @@ function yawWorldToLocal(world, yawRad) {
 
 /**
  * Sinal do torque de guinada no eixo Y do Three.js.
- * Vista de cima (+Y): τ>0 = anti-horário = proa a BB; τ<0 = horário = proa a BE.
- * Com ASD à popa (z<0) e BB em −X, Σ(r×F) já dá: mais empuxo BB à frente → proa a BE.
- * (Se no futuro os braços vierem espelhados, ajustar só este fator.)
+ * Vista de cima (+Y): τ_aplicado>0 = anti-horário = proa a BB; <0 = horário = proa a BE.
+ * Σ(r×F) cru girava o casco ao contrário dos vetores de empuxo/setas → aplica −1.
  */
-const TUG_YAW_TORQUE_SIGN = 1;
+const TUG_YAW_TORQUE_SIGN = -1;
 
 /**
  * Força total e torque de guinada (eixo Y) dos ASD: τ = Σ (r × F) · TUG_YAW_TORQUE_SIGN.
