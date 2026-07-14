@@ -2658,23 +2658,54 @@ function getPowerFromRPM(rpm) {
     return interpolate(rpm, powerCurve, 'rpm', 'kw');
 }
 
-// Calcula o vetor de força e o torque total gerado pelos propulsores ASD
+/** Posição local do propulsor no casco (braço de alavanca p/ guinada). */
+function getThrusterLeverLocal(side) {
+    if (side === 'BB' && tug.jet1) {
+        return new THREE.Vector3(tug.jet1.position.x, 0, tug.jet1.position.z);
+    }
+    if (side === 'BE' && tug.jet2) {
+        return new THREE.Vector3(tug.jet2.position.x, 0, tug.jet2.position.z);
+    }
+    const w = (tug.mesh.geometry && tug.mesh.geometry.parameters)
+        ? tug.mesh.geometry.parameters.width : (tug.beam || 12);
+    const d = (tug.mesh.geometry && tug.mesh.geometry.parameters)
+        ? tug.mesh.geometry.parameters.depth : (tug.length || 30);
+    // Fallback: ASD à popa, BB/BE a ~1/4 da boca
+    return side === 'BB'
+        ? new THREE.Vector3(-w * 0.25, 0, -d * 0.35)
+        : new THREE.Vector3(w * 0.25, 0, -d * 0.35);
+}
+
+/** Local → mundo (só yaw Y), igual a mesh.rotation.y do Three.js. */
+function yawLocalToWorld(local, yawRad) {
+    const c = Math.cos(yawRad), s = Math.sin(yawRad);
+    return new THREE.Vector3(
+        c * local.x + s * local.z,
+        0,
+        -s * local.x + c * local.z
+    );
+}
+
+/**
+ * Força total e torque de guinada (eixo Y) dos ASD: τ = Σ (r × F).
+ * Cada propulsor contribui com o momento do seu vetor de empuxo no CG do rebocador.
+ */
 function calculateThrust(tugAngle) {
     if (!tug.driveEngaged) {
-        return { force: new THREE.Vector3(0, 0, 0), torque: 0 };
+        return { force: new THREE.Vector3(0, 0, 0), torque: 0, force1: null, force2: null };
     }
     let t1RPM = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : simParams.thruster1RPM;
     let t1Azimuth = clampAzimuthDeg(simParams.thruster1Azimuth);
     let t2RPM = simParams.isTwinMode ? t1RPM : ((typeof tug.motorRpm2 === 'number') ? tug.motorRpm2 : simParams.thruster2RPM);
     let t2Azimuth = clampAzimuthDeg(simParams.isTwinMode ? t1Azimuth : simParams.thruster2Azimuth);
-    
+
     const t1PowerKW = getPowerFromRPM(t1RPM);
     const t2PowerKW = getPowerFromRPM(t2RPM);
 
     let t1ForceMag = t1PowerKW * PROP_KN_PER_KW;
     let t2ForceMag = t2PowerKW * PROP_KN_PER_KW;
-    
-    // Limite de tração à bolina (alinha ao default BP = 80 tf do T‑Sim / index.html; MSC/Circ.884 exige BP documentado)
+
+    // Limite de tração à bolina (BP = 80 tf)
     const BPmaxN = 80 * 9.81 * 1000;
     const FpairMag = t1ForceMag + t2ForceMag;
     if (FpairMag > BPmaxN) {
@@ -2682,17 +2713,33 @@ function calculateThrust(tugAngle) {
         t1ForceMag *= bpScale;
         t2ForceMag *= bpScale;
     }
-    
-    // Calcula os vetores de força para cada propulsor
-    const t1AngleRad = (t1Azimuth - 90) * Math.PI / 180 + tugAngle, t2AngleRad = (t2Azimuth - 90) * Math.PI / 180 + tugAngle;
-    const force1 = new THREE.Vector3(t1ForceMag * Math.cos(t1AngleRad), 0, -t1ForceMag * Math.sin(t1AngleRad));
-    const force2 = new THREE.Vector3(t2ForceMag * Math.cos(t2AngleRad), 0, -t2ForceMag * Math.sin(t2AngleRad));
+
+    // Vetor de empuxo no mundo (oposto ao jato; 0° = à frente do casco)
+    const dirWorld = (azDeg) => {
+        const th = (azDeg - 90) * Math.PI / 180 + tugAngle;
+        return new THREE.Vector3(Math.cos(th), 0, -Math.sin(th));
+    };
+    const force1 = dirWorld(t1Azimuth).multiplyScalar(t1ForceMag);
+    const force2 = dirWorld(t2Azimuth).multiplyScalar(t2ForceMag);
     const totalForce = new THREE.Vector3().addVectors(force1, force2);
-    // Calcula o torque gerado por cada propulsor em relação ao centro do rebocador
-    const thrusterOffset = tug.mesh.geometry.parameters.width / 4;
-    const torque1 = t1ForceMag * thrusterOffset * Math.sin(t1AngleRad - tugAngle - Math.PI/2);
-    const torque2 = t2ForceMag * -thrusterOffset * Math.sin(t2AngleRad - tugAngle - Math.PI/2);
-    return { force: totalForce, torque: torque1 + torque2 };
+
+    // Braços no mundo e τ_y = r_x F_z − r_z F_x
+    const r1w = yawLocalToWorld(getThrusterLeverLocal('BB'), tugAngle);
+    const r2w = yawLocalToWorld(getThrusterLeverLocal('BE'), tugAngle);
+    const torque1 = r1w.x * force1.z - r1w.z * force1.x;
+    const torque2 = r2w.x * force2.z - r2w.z * force2.x;
+    const torque = torque1 + torque2;
+
+    window.__simTugThrust = {
+        az: { bb: t1Azimuth, be: t2Azimuth },
+        F: { bb: t1ForceMag, be: t2ForceMag, tot: totalForce.length() },
+        r: {
+            bb: { x: +r1w.x.toFixed(2), z: +r1w.z.toFixed(2) },
+            be: { x: +r2w.x.toFixed(2), z: +r2w.z.toFixed(2) }
+        },
+        tau: { bb: torque1, be: torque2, sum: torque }
+    };
+    return { force: totalForce, torque, force1, force2 };
 }
 // Calcula a força do vento atuando na área vélica do navio/rebocador
 function calculateWindForce(area, vesselAngle) {
@@ -3208,10 +3255,18 @@ function updatePhysics() {
     ship.mesh.position.x = ship.position.x; ship.mesh.position.z = ship.position.z;
     tug.mesh.position.x = tug.position.x; tug.mesh.position.z = tug.position.z;
     
-    const tugInertia = 0.1 * tug.mass * (tug.mesh.geometry.parameters.width**2 + tug.mesh.geometry.parameters.depth**2);
-    tug.angularVelocity += (thrustTorque / tugInertia) * dt;
-    tug.angularVelocity *= 0.95; // Amortecimento rotacional
+    // Guinada do rebocador: I_zz ≈ (1/12)m(B²+L²); amortecimento viscoso ∝ ω (não fator 0.95/frame)
+    const tw = tug.mesh.geometry.parameters.width;
+    const tl = tug.mesh.geometry.parameters.depth;
+    const tugInertiaYaw = Math.max(1e3, (1 / 12) * tug.mass * (tw * tw + tl * tl));
+    const yawDampNms = 0.35 * Math.sqrt(tugInertiaYaw * Math.max(tug.mass, 1)); // ~crítico parcial
+    const yawTorqueNet = thrustTorque - yawDampNms * tug.angularVelocity;
+    tug.angularVelocity += (yawTorqueNet / tugInertiaYaw) * dt;
+    tug.angularVelocity = Math.max(-0.55, Math.min(0.55, tug.angularVelocity));
     tug.angle += tug.angularVelocity * dt;
+    // Normaliza ângulo
+    if (tug.angle > Math.PI) tug.angle -= Math.PI * 2;
+    else if (tug.angle < -Math.PI) tug.angle += Math.PI * 2;
     
     // Sincronização da rotação do mesh com o ângulo físico
     ship.mesh.rotation.y = ship.angle;
