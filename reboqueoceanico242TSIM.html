@@ -2487,6 +2487,7 @@ function applyShipPreset(presetName) {
     sailSlider.value = preset.sailArea;
     ship.position.set(0, 0, 0); ship.velocity.set(0, 0, 0);
     ship.angle = 0; ship.angularVelocity = 0;
+    _shipDesiredYawEma = null;
     tug.position.set(0, 0, -(preset.length / 2) - (tug.mesh.geometry.parameters.depth / 2) - 50);
     tug.velocity.set(0, 0, 0); tug.angle = Math.PI; tug.angularVelocity = 0;
     _cargaDisplayEma1 = _cargaDisplayEma2 = _cargaDisplayEmaM = null;
@@ -3023,11 +3024,11 @@ function calculateDragForce(vessel) {
 const SHIP_TOW_SPEED = {
     /** Ganho da componente de tração ao longo do cabo 3D (aumenta → rebocado acompanha mais cedo) */
     shapeLong: 1.15,
-    /** Ganho lateral/vertical — ~1 para o r×F na proa gerar guinada e o navio seguir o puxão */
-    shapeRes: 1.05,
-    /** EMA: long rápido; lat suficiente para o momento de guinada não morrer no filtro */
-    emaLong: 0.42,
-    emaLat: 0.28,
+    /** Ganho lateral/vertical — abaixo de 1 evita guinada nervosa no r×F */
+    shapeRes: 0.90,
+    /** EMA: long rápido; lat moderado (alto demais → oscilação BB/BE) */
+    emaLong: 0.40,
+    emaLat: 0.14,
     /** Só no navio rebocado: o modelo simples de vento/corrente não deve dominar o cabo (0,55–0,70 e 0,70–0,85) */
     envWindScaleShip: 0.55,
     envCurrentScaleShip: 0.70,
@@ -3049,17 +3050,26 @@ const SHIP_TOW_SPEED = {
     convoyAlongGain: 7500,
     /** Fracção da massa do cabo suspenso em m_eff; ↓ = menos inércia, acelera + rápido */
     addedCableFrac: 0.28,
-    /** Momento de alinhamento proa→rebocador sob tensão (N·m por rad·por kN de T) */
-    weathervaneNmPerRadPerKN: 2.8e4,
-    /** Amortecimento viscoso de guinada (fracção do crítico ~0,25–0,45) */
-    yawDampFrac: 0.32,
-    /** |ω| máx. do rebocado (rad/s) */
-    yawRateMax: 0.22
+    /** Momento de alinhamento proa→rebocador (N·m por sin(err) e por kN; baixo = sem caça BB/BE) */
+    weathervaneNmPerSinPerKN: 5.5e3,
+    /** Teto de T (kN) no termo weathervane — evita ζ≪1 com cabo tenso */
+    weathervaneTensionCapKN: 90,
+    /** Zona morta de erro de proa (rad) ≈ 3° */
+    weathervaneDeadbandRad: 0.05,
+    /** EMA do rumo desejado (0–1); baixo = menos caça quando o cabo balança */
+    weathervaneDesiredEma: 0.08,
+    /** Amortecimento viscoso de guinada (fracção do crítico; >0,7 estabiliza) */
+    yawDampFrac: 0.82,
+    /** |ω| máx. do rebocado (rad/s) — navio grande ~2–4°/s */
+    yawRateMax: 0.065,
+    /** Acoplamento sway→yaw N_v (coef. adimensional × m × L); baixo evita fishtail */
+    yawSwayCouple: 0.012
 };
 window.SHIP_TOW_SPEED = SHIP_TOW_SPEED;
 
 let _shipTowAssistDrag = 1.0;
 let _shipTowDirF = null;
+let _shipDesiredYawEma = null;
 
 function shapeTowForceForShip(forceTowVec, towDirUnit) {
     const f = forceTowVec.clone();
@@ -3452,41 +3462,60 @@ function updatePhysics() {
     ship.velocity.add(shipForce.clone().divideScalar(mShipEff).multiplyScalar(dt));
     tug.velocity.add(tugForce.clone().divideScalar(tug.mass).multiplyScalar(dt));
 
-    // Guinada do rebocado: τ = r×F na bita + alinhamento proa→rebocador sob tensão + amortecimento viscoso.
-    // Proa (local −Z) deve apontar para o rebocador (−dirF): ângulo desejado = atan2(dirF.x, dirF.z).
+    // Guinada do rebocado: r×F (bita) + weathervane suave sob tensão + amortecimento forte (anti BB/BE).
+    // Proa (local −Z) → rebocador (−dirF): rumo desejado = atan2(dirF.x, dirF.z).
     const rTow = shipAttachPoint.clone().sub(ship.position);
     const towTauY = rTow.x * forceTow.z - rTow.z * forceTow.x;
-    const L2B2 = ship.length * ship.length + ship.beam * ship.beam;
-    const shipInertiaYaw = Math.max(1e3, (1 / 12) * Math.max(1, ship.mass) * L2B2);
+    const L2B2 = Math.max(1, ship.length * ship.length + ship.beam * ship.beam);
+    const shipInertiaYaw = Math.max(1e6, (1 / 12) * Math.max(1, ship.mass) * L2B2);
     let yawTau = towTauY;
+    let yawErr = 0;
     {
         const TkN = (towF.TensionN || 0) / 1000;
-        if (TkN > 8 && dirF.lengthSq() > 0.1) {
-            const desiredYaw = Math.atan2(dirF.x, dirF.z);
-            let err = desiredYaw - ship.angle;
-            while (err > Math.PI) err -= Math.PI * 2;
-            while (err < -Math.PI) err += Math.PI * 2;
-            const K = SHIP_TOW_SPEED.weathervaneNmPerRadPerKN || 2.8e4;
-            yawTau += K * TkN * err;
+        if (TkN > 12 && dirF.lengthSq() > 0.1) {
+            let desiredYaw = Math.atan2(dirF.x, dirF.z);
+            const aDes = SHIP_TOW_SPEED.weathervaneDesiredEma || 0.08;
+            if (_shipDesiredYawEma == null || !Number.isFinite(_shipDesiredYawEma)) {
+                _shipDesiredYawEma = desiredYaw;
+            } else {
+                let d = desiredYaw - _shipDesiredYawEma;
+                while (d > Math.PI) d -= Math.PI * 2;
+                while (d < -Math.PI) d += Math.PI * 2;
+                _shipDesiredYawEma += aDes * d;
+                if (_shipDesiredYawEma > Math.PI) _shipDesiredYawEma -= Math.PI * 2;
+                else if (_shipDesiredYawEma < -Math.PI) _shipDesiredYawEma += Math.PI * 2;
+                desiredYaw = _shipDesiredYawEma;
+            }
+            yawErr = desiredYaw - ship.angle;
+            while (yawErr > Math.PI) yawErr -= Math.PI * 2;
+            while (yawErr < -Math.PI) yawErr += Math.PI * 2;
+            const dead = SHIP_TOW_SPEED.weathervaneDeadbandRad || 0.05;
+            if (Math.abs(yawErr) > dead) {
+                const K = SHIP_TOW_SPEED.weathervaneNmPerSinPerKN || 5.5e3;
+                const Tcap = Math.min(TkN, SHIP_TOW_SPEED.weathervaneTensionCapKN || 90);
+                // sin(err): saturável; corta caça com erro grande. Amortece ainda com |ω|.
+                const soft = Math.sin(yawErr);
+                yawTau += K * Tcap * soft;
+            }
         }
     }
-    const yawDampNms = (SHIP_TOW_SPEED.yawDampFrac || 0.32) * Math.sqrt(shipInertiaYaw * Math.max(ship.mass, 1));
+    const yawDampNms = (SHIP_TOW_SPEED.yawDampFrac || 0.82) * Math.sqrt(shipInertiaYaw * Math.max(ship.mass, 1));
     yawTau -= yawDampNms * ship.angularVelocity;
-    // Momento hidrodinâmico leve de sway (N_v): deriva transversal gera guinada estabilizante
     {
         const { starboard } = shipBodyAxesXZ(ship.angle);
         const vSway = ship.velocity.dot(starboard);
-        const Nv = 0.08 * Math.max(1, ship.mass) * ship.length; // N·m / (m/s)
+        const couple = SHIP_TOW_SPEED.yawSwayCouple != null ? SHIP_TOW_SPEED.yawSwayCouple : 0.012;
+        const Nv = couple * Math.max(1, ship.mass) * Math.max(1, ship.length);
         yawTau += -Nv * vSway;
     }
     ship.angularVelocity += (yawTau / shipInertiaYaw) * dt;
-    const wMax = SHIP_TOW_SPEED.yawRateMax || 0.22;
+    const wMax = SHIP_TOW_SPEED.yawRateMax || 0.065;
     ship.angularVelocity = Math.max(-wMax, Math.min(wMax, ship.angularVelocity));
     ship.angle += ship.angularVelocity * dt;
     if (ship.angle > Math.PI) ship.angle -= Math.PI * 2;
     else if (ship.angle < -Math.PI) ship.angle += Math.PI * 2;
     window.__simShipYaw = {
-        towTauY, yawTau, omega: ship.angularVelocity, angle: ship.angle,
+        towTauY, yawTau, yawErr, omega: ship.angularVelocity, angle: ship.angle,
         Ftx: forceTow.x, Ftz: forceTow.z, TkN: (towF.TensionN || 0) / 1000
     };
     if (!tug.enginesOn) {
