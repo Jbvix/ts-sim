@@ -143,6 +143,13 @@
       const resize = document.createElement('div');
       resize.className = 'sim-float-resize';
       body.appendChild(inner);
+      if (pid === 'buoyPanel') {
+        const redBtn = inner.querySelector('#addRedBuoy');
+        if (redBtn) {
+          redBtn.textContent = 'Bóia encarnada';
+          redBtn.title = 'Cor encarnada; em seguida clique no mar (vista 3D)';
+        }
+      }
       wrap.appendChild(header);
       wrap.appendChild(body);
       wrap.appendChild(resize);
