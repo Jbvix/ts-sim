@@ -62,11 +62,125 @@
     return !!(obj && typeof obj === 'object' && (typeof obj.update === 'function' || obj.sources));
   }
 
+  /** Fator dia 0…1 a partir da hora local (pico ao meio-dia). */
+  function dayFactorFromHours(hours) {
+    const h = ((Number(hours) % 24) + 24) % 24;
+    return Math.max(0, Math.sin(((h - 6) / 12) * Math.PI));
+  }
+
+  /**
+   * Hora local RJ (UTC−3, sem DST) → Date para o relógio Cesium (posição do sol).
+   * Evita depender do fuso do browser.
+   */
+  function dateFromRjLocalHours(hours) {
+    const h = ((Number(hours) % 24) + 24) % 24;
+    const now = new Date();
+    // Calendário “hoje” em UTC−3
+    const rjMs = now.getTime() - 3 * 3600 * 1000;
+    const rj = new Date(rjMs);
+    const y = rj.getUTCFullYear();
+    const mo = rj.getUTCMonth();
+    const d = rj.getUTCDate();
+    const hh = Math.floor(h);
+    const mm = Math.floor((h - hh) * 60);
+    const ss = Math.floor((((h - hh) * 60) - mm) * 60);
+    // RJ local = UTC−3 → UTC = local + 3h
+    return new Date(Date.UTC(y, mo, d, hh + 3, mm, ss));
+  }
+
+  function ensureNightSkyBox(scene) {
+    if (isSkyBoxInstance(scene.skyBox)) return scene.skyBox;
+    try {
+      if (Cesium.SkyBox && typeof Cesium.SkyBox.createEarthSkyBox === 'function') {
+        scene.skyBox = Cesium.SkyBox.createEarthSkyBox();
+      } else {
+        scene.skyBox = new Cesium.SkyBox({
+          sources: {
+            positiveX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_px.jpg'),
+            negativeX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mx.jpg'),
+            positiveY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_py.jpg'),
+            negativeY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_my.jpg'),
+            positiveZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_pz.jpg'),
+            negativeZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mz.jpg')
+          }
+        });
+      }
+      return scene.skyBox;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /** Ajusta cor de fundo + atmosfera + estrelas conforme hora / cobertura / vis. */
+  function applySkyAppearance(scene, opts) {
+    const hours = Number(opts.timeOfDayHours);
+    const h = Number.isFinite(hours) ? hours : 12;
+    const day = dayFactorFromHours(h);
+    const cover = Math.max(0, Math.min(1, Number(opts.cloudCover) || 0));
+    const visKm = Math.max(0.4, Math.min(80, Number(opts.visibilityKm) || 20));
+    const showSky = opts.showSky !== false;
+
+    // Estrelas (skyBox) só à noite — de dia deixam o céu “preto espacial”
+    try {
+      if (day < 0.12 && showSky) {
+        const box = ensureNightSkyBox(scene);
+        if (box) box.show = true;
+      } else if (isSkyBoxInstance(scene.skyBox)) {
+        scene.skyBox.show = false;
+      }
+    } catch (_) { /* */ }
+
+    // Fundo opaco diurno (fallback se a atmosfera for fraca com globe:false)
+    try {
+      let col;
+      if (day > 0.55) {
+        // Meio-dia: azul claro
+        col = new Cesium.Color(0.45 + 0.1 * (1 - cover), 0.68 + 0.08 * (1 - cover), 0.95, 1.0);
+      } else if (day > 0.2) {
+        // Manhã / tarde
+        col = new Cesium.Color(0.35 + 0.2 * day, 0.5 + 0.2 * day, 0.85 + 0.1 * day, 1.0);
+      } else if (day > 0.02) {
+        // Crepúsculo
+        col = new Cesium.Color(0.22, 0.2, 0.42, 1.0);
+      } else {
+        col = new Cesium.Color(0.03, 0.05, 0.12, 1.0);
+      }
+      scene.backgroundColor = col;
+    } catch (_) { /* */ }
+
+    try {
+      if (isSkyAtmosphereInstance(scene.skyAtmosphere)) {
+        scene.skyAtmosphere.show = showSky;
+        // brightnessShift: −1 = escuro total; valores positivos clareiam o céu diurno
+        const haze = cover * 0.12 + (visKm < 8 ? 0.1 : 0);
+        scene.skyAtmosphere.brightnessShift = 0.05 + day * 0.42 - haze;
+        if (scene.skyAtmosphere.saturationShift != null) {
+          scene.skyAtmosphere.saturationShift = day * 0.15 - cover * 0.08;
+        }
+      }
+    } catch (_) { /* */ }
+
+    try {
+      if (scene.fog) {
+        scene.fog.enabled = visKm < 55;
+        scene.fog.density = 0.00002 + (1 / Math.max(visKm, 0.5)) * 0.0014;
+        // Evita céu “apagado” pela névoa
+        scene.fog.minimumBrightness = 0.35 + day * 0.35;
+      }
+    } catch (_) { /* */ }
+
+    try {
+      if (scene.light && scene.light.intensity != null) {
+        scene.light.intensity = 0.5 + day * 1.6;
+      }
+    } catch (_) { /* */ }
+  }
+
   function setupSkyDefaults() {
     if (!viewer || viewer.isDestroyed()) return;
     const scene = viewer.scene;
 
-    // Céu, sol, lua e atmosfera — com globe:false o show default do SkyAtmosphere fica false
+    // Céu / sol / lua — com globe:false o show default do SkyAtmosphere fica false
     try {
       if (!isSkyAtmosphereInstance(scene.skyAtmosphere)) {
         scene.skyAtmosphere = new Cesium.SkyAtmosphere();
@@ -85,54 +199,48 @@
       scene.moon.show = true;
     } catch (_) { /* */ }
 
+    // Desligar skyBox de estrelas por omissão (recriado só à noite em applySkyAppearance)
     try {
-      if (!isSkyBoxInstance(scene.skyBox)) {
-        // Preferir sky box terrestre do Cesium; fallback texturas SkyBox
-        if (Cesium.SkyBox && typeof Cesium.SkyBox.createEarthSkyBox === 'function') {
-          scene.skyBox = Cesium.SkyBox.createEarthSkyBox();
-        } else {
-          scene.skyBox = new Cesium.SkyBox({
-            sources: {
-              positiveX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_px.jpg'),
-              negativeX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mx.jpg'),
-              positiveY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_py.jpg'),
-              negativeY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_my.jpg'),
-              positiveZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_pz.jpg'),
-              negativeZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mz.jpg')
-            }
-          });
-        }
-      }
-      scene.skyBox.show = true;
-    } catch (_) {
-      // Sem skyBox assets: atmosfera basta
-    }
+      if (isSkyBoxInstance(scene.skyBox)) scene.skyBox.show = false;
+    } catch (_) { /* */ }
 
     try {
       if (scene.globe) scene.globe.show = false;
-      // Fundo transparente: o céu Cesium preenche; oceano local continua no Three
-      scene.backgroundColor = Cesium.Color.BLACK.withAlpha(0.0);
+      scene.backgroundColor = new Cesium.Color(0.45, 0.68, 0.95, 1.0);
     } catch (_) { /* */ }
 
     try {
       if (scene.fog) {
         scene.fog.enabled = true;
-        scene.fog.density = 0.00012;
-        scene.fog.minimumBrightness = 0.2;
+        scene.fog.density = 0.00006;
+        scene.fog.minimumBrightness = 0.55;
       }
     } catch (_) { /* */ }
 
     try {
-      // Com globe:false, updateEnvironment usa scene.atmosphere.dynamicLighting
       if (scene.atmosphere && Cesium.DynamicAtmosphereLightingType) {
         scene.atmosphere.dynamicLighting = Cesium.DynamicAtmosphereLightingType.SUNLIGHT;
       }
     } catch (_) { /* */ }
 
     try {
+      if (Cesium.SunLight && (!scene.light || !scene.light.direction)) {
+        scene.light = new Cesium.SunLight();
+      }
+      if (scene.light && scene.light.intensity != null) scene.light.intensity = 2.0;
+    } catch (_) { /* */ }
+
+    try {
       viewer.clock.shouldAnimate = false;
       viewer.clock.multiplier = 1;
     } catch (_) { /* */ }
+
+    applySkyAppearance(scene, {
+      timeOfDayHours: 12,
+      visibilityKm: 20,
+      cloudCover: 0.35,
+      showSky: true
+    });
 
     ensureCloudCollection();
   }
@@ -216,20 +324,21 @@
     lastSkyOpts = opts;
     const scene = viewer.scene;
 
-    // --- Relógio / sol-lua ---
+    // --- Relógio / sol-lua (hora local RJ UTC−3) ---
+    let hoursForAppearance = 12;
     try {
       let date;
       if (opts.wallDate instanceof Date && !isNaN(opts.wallDate.getTime())) {
         date = opts.wallDate;
+        // Hora local RJ a partir do wall clock
+        hoursForAppearance =
+          ((date.getUTCHours() - 3) + 24) % 24 +
+          date.getUTCMinutes() / 60 +
+          date.getUTCSeconds() / 3600;
       } else {
         const h = Number(opts.timeOfDayHours);
-        const hours = Number.isFinite(h) ? ((h % 24) + 24) % 24 : 12;
-        date = new Date();
-        // Meio-dia solar aproximado na Baía de Guanabara (UTC−3)
-        const hh = Math.floor(hours);
-        const mm = Math.floor((hours - hh) * 60);
-        date.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-        date.setHours(hh, mm, 0, 0);
+        hoursForAppearance = Number.isFinite(h) ? ((h % 24) + 24) % 24 : 12;
+        date = dateFromRjLocalHours(hoursForAppearance);
       }
       viewer.clock.currentTime = Cesium.JulianDate.fromDate(date);
       viewer.clock.shouldAnimate = false;
@@ -240,27 +349,17 @@
     const showMoon = opts.showMoon !== false;
 
     try {
-      if (isSkyAtmosphereInstance(scene.skyAtmosphere)) scene.skyAtmosphere.show = showSky;
-      if (isSkyBoxInstance(scene.skyBox)) scene.skyBox.show = showSky;
       if (scene.sun && typeof scene.sun === 'object') scene.sun.show = showSun;
       if (scene.moon && typeof scene.moon === 'object') scene.moon.show = showMoon;
     } catch (_) { /* */ }
 
-    // --- Visibilidade → névoa ---
-    try {
-      const visKm = Math.max(0.4, Math.min(80, Number(opts.visibilityKm) || 20));
-      if (scene.fog) {
-        scene.fog.enabled = visKm < 55;
-        // Densidade empírica: menor visibilidade → mais névoa
-        scene.fog.density = 0.000035 + (1 / Math.max(visKm, 0.5)) * 0.0022;
-        scene.fog.minimumBrightness = Math.max(0.05, Math.min(0.35, visKm / 80));
-      }
-      if (scene.skyAtmosphere && scene.skyAtmosphere.brightnessShift != null) {
-        // Céu mais “pesado” com baixa visibilidade / muitas nuvens
-        const cover = Math.max(0, Math.min(1, Number(opts.cloudCover) || 0));
-        scene.skyAtmosphere.brightnessShift = -0.05 * cover - (visKm < 8 ? 0.08 : 0);
-      }
-    } catch (_) { /* */ }
+    // Cor de fundo, atmosfera, estrelas e névoa (céu diurno claro)
+    applySkyAppearance(scene, {
+      timeOfDayHours: hoursForAppearance,
+      visibilityKm: opts.visibilityKm,
+      cloudCover: opts.cloudCover,
+      showSky: showSky
+    });
 
     // --- Nuvens ---
     try {
@@ -331,6 +430,9 @@
         infoBox: false,
         selectionIndicator: false,
         globe: false,
+        // Sem skyBox no ctor: o default é o mapa de estrelas (céu escuro de dia).
+        // Estrelas só são criadas à noite em applySkyAppearance.
+        skyBox: false,
         orderIndependentTranslucency: true,
         requestRenderMode: true,
         maximumRenderTimeChange: Infinity,

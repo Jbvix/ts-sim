@@ -160,7 +160,8 @@
       z-index: 0;
       pointer-events: none;
       overflow: hidden;
-      background: #0a3d5c;
+      /* Fallback diurno enquanto o Cesium sobe / se a atmosfera falhar */
+      background: linear-gradient(180deg, #7ec8f5 0%, #4aa3e0 42%, #1e6fa8 100%);
     }
     #cesium-scenario .cesium-viewer,
     #cesium-scenario .cesium-viewer-cesiumWidgetContainer,
