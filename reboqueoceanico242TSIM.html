@@ -3524,8 +3524,8 @@ function updatePhysics() {
     const tw = tug.mesh.geometry.parameters.width;
     const tl = tug.mesh.geometry.parameters.depth;
     const tugInertiaYaw = Math.max(1e3, (1 / 12) * tug.mass * (tw * tw + tl * tl));
-    const yawDampNms = 0.35 * Math.sqrt(tugInertiaYaw * Math.max(tug.mass, 1)); // ~crítico parcial
-    const yawTorqueNet = thrustTorque - yawDampNms * tug.angularVelocity;
+    const tugYawDampNms = 0.35 * Math.sqrt(tugInertiaYaw * Math.max(tug.mass, 1)); // ~crítico parcial
+    const yawTorqueNet = thrustTorque - tugYawDampNms * tug.angularVelocity;
     tug.angularVelocity += (yawTorqueNet / tugInertiaYaw) * dt;
     tug.angularVelocity = Math.max(-0.55, Math.min(0.55, tug.angularVelocity));
     tug.angle += tug.angularVelocity * dt;
