@@ -215,6 +215,45 @@
             <div class="control-row"><label>Altura Ondas (m):</label><input type="range" id="waveHeight" min="0" max="15" value="1" step="0.5"><span id="waveHeightValue">1</span></div>
             <div class="control-row"><label>Profundidade (m):</label><input type="range" id="seabedDepth" min="50" max="1000" value="50" step="5"><span id="seabedDepthValue">50</span></div>
             <div class="control-row"><label>Escala Beaufort:</label><span id="beaufortValue">F2</span></div>
+            <hr>
+            <p class="text-[10px] font-bold uppercase tracking-wide" style="color:#7dd3fc;margin:0 0 6px;">Meteo · céu Cesium (cenário GE)</p>
+            <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:0 0 8px;">Controla hora, visibilidade, nuvens, sol e lua no underlay Cesium. Não altera a física de vento/onda (sliders acima). Requer cenário GE activo.</p>
+            <div class="control-row" title="Hora local do cenário (UTC−3 aproximado na Baía de Guanabara)">
+              <label for="skyTimeOfDay">Hora do dia:</label>
+              <input type="range" id="skyTimeOfDay" min="0" max="24" value="12" step="0.25">
+              <span id="skyTimeOfDayValue">12:00</span>
+            </div>
+            <div class="control-row" title="Visibilidade horizontal → névoa Cesium">
+              <label for="skyVisibilityKm">Visibilidade (km):</label>
+              <input type="range" id="skyVisibilityKm" min="0.5" max="50" value="20" step="0.5">
+              <span id="skyVisibilityKmValue">20</span>
+            </div>
+            <div class="control-row" title="Cobertura de nuvens cumulus (CloudCollection)">
+              <label for="skyCloudCover">Nuvens (%):</label>
+              <input type="range" id="skyCloudCover" min="0" max="100" value="35" step="5">
+              <span id="skyCloudCoverValue">35</span>
+            </div>
+            <div class="control-row" style="flex-wrap:wrap;gap:8px;margin-top:4px;">
+              <label class="inline-flex items-center gap-1.5 text-[11px]" style="color:#cbd5e1;cursor:pointer;">
+                <input type="checkbox" id="skyShowSun" checked> Sol
+              </label>
+              <label class="inline-flex items-center gap-1.5 text-[11px]" style="color:#cbd5e1;cursor:pointer;">
+                <input type="checkbox" id="skyShowMoon" checked> Lua
+              </label>
+              <label class="inline-flex items-center gap-1.5 text-[11px]" style="color:#cbd5e1;cursor:pointer;">
+                <input type="checkbox" id="skyShowSky" checked> Céu
+              </label>
+              <label class="inline-flex items-center gap-1.5 text-[11px]" style="color:#cbd5e1;cursor:pointer;">
+                <input type="checkbox" id="skyShowClouds" checked> Nuvens
+              </label>
+            </div>
+            <div class="control-row" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:8px;">
+              <label class="inline-flex items-center gap-1.5 text-[11px] font-semibold" style="color:#e0f2fe;cursor:pointer;">
+                <input type="checkbox" id="skyLiveClock"> Tempo real (relógio do sistema)
+              </label>
+              <button type="button" id="btnSkyFetchMeteo" class="w-full text-left px-2 py-1.5 rounded-md border text-[11px] font-semibold transition-colors" style="border-color: rgba(56,189,248,0.45); background: rgba(14,165,233,0.12); color: #e0f2fe;" title="Open-Meteo · Baía de Guanabara (−23.05, −43.15)">Atualizar meteo agora (Open‑Meteo)</button>
+              <p id="skyMeteoStatus" class="text-[10px] leading-snug" style="color:#8da4b7;margin:0;">Meteo remoto: —</p>
+            </div>
             <div class="control-row imo884-row" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:6px;">
               <button type="button" id="btnImo884Env" class="w-full text-left px-2 py-1.5 rounded-md border text-[11px] font-semibold transition-colors" style="border-color: rgba(56,189,248,0.45); background: rgba(14,165,233,0.12); color: #e0f2fe;">MSC/Circ.884 — ambiente de referência</button>
               <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:0;">Aplica vento <strong>20 m/s</strong>, onda <strong>5 m</strong> (Hs), corrente <strong>0,5 m/s</strong>, com vento e corrente na <strong>mesma direção</strong> (90°), alinhado ao critério documental de manter posição do conjunto. O modelo 3D permanece educativo.</p>
@@ -1467,6 +1506,15 @@ let simParams = {
     windSpeed: 5, windDir: 90, currentSpeed: 0.5, currentDir: 180, waveHeight: 1,
     seabedDepth: 50, thruster1RPM: 0, thruster1Azimuth: 0, thruster2RPM: 0, thruster2Azimuth: 0, isTwinMode: true,
     catModelPreset: 'medio',
+    // Meteo / céu Cesium (visual; não altera física hidro)
+    skyTimeOfDay: 12,
+    skyVisibilityKm: 20,
+    skyCloudCover: 35,
+    skyShowSun: true,
+    skyShowMoon: true,
+    skyShowSky: true,
+    skyShowClouds: true,
+    skyLiveClock: false,
 };
 // Mapeamento dos elementos HTML para fácil acesso no código
 const uiControls = {
@@ -1499,6 +1547,9 @@ const uiControls = {
     waveHeight: { el: document.getElementById('waveHeight'), valEl: document.getElementById('waveHeightValue') },
     seabedDepth: { el: document.getElementById('seabedDepth'), valEl: document.getElementById('seabedDepthValue') },
     beaufort: { valEl: document.getElementById('beaufortValue') },
+    skyTimeOfDay: { el: document.getElementById('skyTimeOfDay'), valEl: document.getElementById('skyTimeOfDayValue') },
+    skyVisibilityKm: { el: document.getElementById('skyVisibilityKm'), valEl: document.getElementById('skyVisibilityKmValue') },
+    skyCloudCover: { el: document.getElementById('skyCloudCover'), valEl: document.getElementById('skyCloudCoverValue') },
     shipMass: { valEl: document.getElementById('shipMassValue') },
     tugMass: { valEl: document.getElementById('tugMassValue') },
     tugCargaReal: { valEl: document.getElementById('tugCargaRealValue') },
@@ -2039,6 +2090,164 @@ document.getElementById('btnBkiRefEnv')?.addEventListener('click', () => {
 document.getElementById('btnCcsBenignEnv')?.addEventListener('click', () => {
     applyEnvPreset({ windSpeed: 15, windDir: 90, currentSpeed: 0.5, currentDir: 90, waveHeight: 2 });
 });
+
+/** Formata hora decimal (0–24) como HH:MM */
+function formatSkyTimeLabel(hours) {
+    const h = ((Number(hours) % 24) + 24) % 24;
+    const hh = Math.floor(h);
+    const mm = Math.round((h - hh) * 60) % 60;
+    return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+
+/** Direção/intensidade do sol Three a partir da hora do dia (ENU aproximado). */
+function applyThreeSunFromSky(timeHours) {
+    const h = Number.isFinite(timeHours) ? timeHours : simParams.skyTimeOfDay;
+    // Ângulo solar simplificado: nascer ~06h, zénite ~12h, pôr ~18h
+    const elevDeg = Math.sin(((h - 6) / 12) * Math.PI) * 75; // −75…75
+    const azRad = ((h / 24) * Math.PI * 2) - Math.PI / 2; // gira no horizonte
+    const elevRad = (elevDeg * Math.PI) / 180;
+    const dist = 220;
+    const y = Math.max(8, Math.sin(elevRad) * dist);
+    const xz = Math.cos(elevRad) * dist;
+    directionalLight.position.set(Math.cos(azRad) * xz, y, Math.sin(azRad) * xz);
+    // Noite: luz mais fraca e fria
+    const dayFactor = Math.max(0, Math.sin(((h - 6) / 12) * Math.PI));
+    directionalLight.intensity = 0.12 + dayFactor * 1.05;
+    directionalLight.color.setHex(dayFactor > 0.15 ? 0xfff4e0 : 0x8aa8ff);
+    fillLight.intensity = 0.12 + (1 - dayFactor) * 0.22;
+    fillLight.position.set(-Math.cos(azRad) * 90, 35 + dayFactor * 20, -Math.sin(azRad) * 90);
+}
+
+let _skyWeatherLastPush = 0;
+function pushSkyWeatherToCesium(force) {
+    const sc = window.__simCesiumScenario;
+    if (!sc || !sc.ready || typeof sc.applySkyWeather !== 'function') return false;
+    const now = performance.now();
+    if (!force && now - _skyWeatherLastPush < 200) return false;
+    _skyWeatherLastPush = now;
+    const live = !!simParams.skyLiveClock;
+    const wall = live ? new Date() : null;
+    if (live && wall) {
+        const localH = wall.getHours() + wall.getMinutes() / 60 + wall.getSeconds() / 3600;
+        simParams.skyTimeOfDay = localH;
+        if (uiControls.skyTimeOfDay.el) {
+            uiControls.skyTimeOfDay.el.value = String(Math.round(localH * 4) / 4);
+            uiControls.skyTimeOfDay.el.disabled = true;
+        }
+        if (uiControls.skyTimeOfDay.valEl) {
+            uiControls.skyTimeOfDay.valEl.textContent = formatSkyTimeLabel(localH);
+        }
+    } else if (uiControls.skyTimeOfDay.el) {
+        uiControls.skyTimeOfDay.el.disabled = false;
+    }
+    sc.applySkyWeather({
+        timeOfDayHours: simParams.skyTimeOfDay,
+        visibilityKm: simParams.skyVisibilityKm,
+        cloudCover: Math.max(0, Math.min(1, (simParams.skyCloudCover || 0) / 100)),
+        showSun: simParams.skyShowSun !== false,
+        showMoon: simParams.skyShowMoon !== false,
+        showSky: simParams.skyShowSky !== false,
+        showClouds: simParams.skyShowClouds !== false,
+        wallDate: wall || undefined,
+    });
+    applyThreeSunFromSky(simParams.skyTimeOfDay);
+    return true;
+}
+
+async function fetchOpenMeteoSky() {
+    const statusEl = document.getElementById('skyMeteoStatus');
+    const setStatus = (t) => { if (statusEl) statusEl.textContent = t; };
+    setStatus('Meteo remoto: a obter…');
+    try {
+        const url =
+            'https://api.open-meteo.com/v1/forecast?latitude=-23.05&longitude=-43.15'
+            + '&current=cloud_cover,visibility,wind_speed_10m,wind_direction_10m'
+            + '&timezone=America%2FSao_Paulo';
+        const res = await fetch(url, { credentials: 'omit' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const cur = data && data.current ? data.current : null;
+        if (!cur) throw new Error('sem current');
+        const cover = Number(cur.cloud_cover);
+        // Open-Meteo visibility em metros
+        const visM = Number(cur.visibility);
+        if (Number.isFinite(cover)) {
+            simParams.skyCloudCover = Math.max(0, Math.min(100, cover));
+            if (uiControls.skyCloudCover.el) uiControls.skyCloudCover.el.value = String(simParams.skyCloudCover);
+            if (uiControls.skyCloudCover.valEl) uiControls.skyCloudCover.valEl.textContent = String(Math.round(simParams.skyCloudCover));
+        }
+        if (Number.isFinite(visM) && visM > 0) {
+            simParams.skyVisibilityKm = Math.max(0.5, Math.min(50, visM / 1000));
+            if (uiControls.skyVisibilityKm.el) uiControls.skyVisibilityKm.el.value = String(simParams.skyVisibilityKm);
+            if (uiControls.skyVisibilityKm.valEl) {
+                uiControls.skyVisibilityKm.valEl.textContent = String(Math.round(simParams.skyVisibilityKm * 10) / 10);
+            }
+        }
+        // Opcional: sugerir vento físico (não força — só status)
+        const wms = Number(cur.wind_speed_10m);
+        const wdir = Number(cur.wind_direction_10m);
+        const bits = [];
+        if (Number.isFinite(cover)) bits.push('nuvens ' + Math.round(cover) + '%');
+        if (Number.isFinite(visM)) bits.push('vis ' + (visM / 1000).toFixed(1) + ' km');
+        if (Number.isFinite(wms)) bits.push('vento ' + wms.toFixed(1) + ' m/s');
+        if (Number.isFinite(wdir)) bits.push(Math.round(wdir) + '°');
+        setStatus('Meteo remoto: ' + (bits.join(' · ') || 'OK') + ' (Open‑Meteo)');
+        pushSkyWeatherToCesium(true);
+    } catch (err) {
+        setStatus('Meteo remoto: falha — ' + (err && err.message ? err.message : String(err)));
+    }
+}
+
+(function wireSkyWeatherUi() {
+    const syncLabel = (key) => {
+        const c = uiControls[key];
+        if (!c || !c.valEl) return;
+        if (key === 'skyTimeOfDay') c.valEl.textContent = formatSkyTimeLabel(simParams.skyTimeOfDay);
+        else if (key === 'skyVisibilityKm') c.valEl.textContent = String(Math.round(simParams.skyVisibilityKm * 10) / 10);
+        else if (key === 'skyCloudCover') c.valEl.textContent = String(Math.round(simParams.skyCloudCover));
+    };
+    ['skyTimeOfDay', 'skyVisibilityKm', 'skyCloudCover'].forEach((key) => {
+        const c = uiControls[key];
+        if (!c || !c.el) return;
+        c.el.addEventListener('input', () => {
+            if (key === 'skyTimeOfDay' && simParams.skyLiveClock) return;
+            const v = parseFloat(c.el.value);
+            if (Number.isFinite(v)) simParams[key] = v;
+            syncLabel(key);
+            pushSkyWeatherToCesium(true);
+        });
+        syncLabel(key);
+    });
+    const bindChk = (id, paramKey) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.checked = !!simParams[paramKey];
+        el.addEventListener('change', () => {
+            simParams[paramKey] = !!el.checked;
+            pushSkyWeatherToCesium(true);
+        });
+    };
+    bindChk('skyShowSun', 'skyShowSun');
+    bindChk('skyShowMoon', 'skyShowMoon');
+    bindChk('skyShowSky', 'skyShowSky');
+    bindChk('skyShowClouds', 'skyShowClouds');
+    const liveEl = document.getElementById('skyLiveClock');
+    if (liveEl) {
+        liveEl.checked = !!simParams.skyLiveClock;
+        liveEl.addEventListener('change', () => {
+            simParams.skyLiveClock = !!liveEl.checked;
+            if (!simParams.skyLiveClock && uiControls.skyTimeOfDay.el) {
+                uiControls.skyTimeOfDay.el.disabled = false;
+            }
+            pushSkyWeatherToCesium(true);
+        });
+    }
+    document.getElementById('btnSkyFetchMeteo')?.addEventListener('click', () => {
+        fetchOpenMeteoSky();
+    });
+    applyThreeSunFromSky(simParams.skyTimeOfDay);
+})();
+
 if (uiControls.catModelPreset.el) {
     uiControls.catModelPreset.el.value = simParams.catModelPreset;
     uiControls.catModelPreset.el.addEventListener('change', (e) => {
@@ -2055,7 +2264,9 @@ for (const key in uiControls) {
             const value = parseFloat(e.target.value);
             if (uiControls[key].valEl) {
                 const azK = key === 'thruster1Azimuth' || key === 'thruster2Azimuth';
-                uiControls[key].valEl.innerText = azK ? formatAzimuthLabel(value) : String(value);
+                if (azK) uiControls[key].valEl.innerText = formatAzimuthLabel(value);
+                else if (key === 'skyTimeOfDay') uiControls[key].valEl.innerText = formatSkyTimeLabel(value);
+                else uiControls[key].valEl.innerText = String(value);
             }
             if (key === 'shipDraft') { ship.draft = value; updateVesselMass(ship); updateVesselYPosition(ship, ship.mesh.geometry.parameters.height); }
             else if (key === 'tugDraft') { tug.draft = value; updateVesselMass(tug); updateVesselYPosition(tug, tug.mesh.geometry.parameters.height); }
@@ -4864,6 +5075,7 @@ async function initScenarioGeUnderlay() {
             setCameraMode('convoy');
             camera.updateMatrixWorld(true);
             if (sc.syncFromThree) sc.syncFromThree(camera, controls_cam.target);
+            pushSkyWeatherToCesium(true);
             // Inset: se estiver em Cesium, mudar para OpenSeaMap para poupar GPU
             if (_coastMode === 'cesium') {
                 await setCoastProvider('leaflet');
@@ -4946,6 +5158,10 @@ function animate() {
         ) {
             camera.updateMatrixWorld(true);
             window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
+            // Tempo real: refresca relógio / sol / névoa ~1×/s
+            if (simParams.skyLiveClock && (_simFrameId % 60 === 0)) {
+                pushSkyWeatherToCesium(true);
+            }
         }
     } catch (err) {
         if (!window.__simAnimErrLogged) {

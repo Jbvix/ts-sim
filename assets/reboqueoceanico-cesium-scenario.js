@@ -1,11 +1,12 @@
 /**
  * Cenário principal: Cesium Ion + Google Photorealistic 3D Tiles sob o canvas Three.
  * Sync de câmera: eye + pivô OrbitControls + up geográfico (ENU) → ECEF.
- * (Não copiar matrixWorld via threeToEnu — a permutação Y↔Z é reflexão e desalinha a órbita.)
+ * Céu / sol / lua / atmosfera / névoa / nuvens via applySkyWeather().
  *
  * API: window.__simCesiumScenario
  *   .tryInit(rioGeo) → Promise<boolean>
  *   .syncFromThree(camera, target)
+ *   .applySkyWeather(opts)
  *   .resize() / .setActive(boolean) / .destroy() / .ready
  */
 (function () {
@@ -17,7 +18,9 @@
 
   let viewer = null;
   let tileset = null;
+  let cloudCollection = null;
   let ready = false;
+  let lastSkyOpts = null;
   let rio = {
     originLat: -23.05,
     originLon: -43.15,
@@ -49,6 +52,222 @@
       window.CESIUM_BASE_URL =
         'https://cesium.com/downloads/cesiumjs/releases/' + CESIUM_RELEASE + '/Build/Cesium/';
     }
+  }
+
+  function setupSkyDefaults() {
+    if (!viewer || viewer.isDestroyed()) return;
+    const scene = viewer.scene;
+
+    // Céu, sol, lua e atmosfera (antes estavam desligados de propósito)
+    try {
+      if (!scene.skyAtmosphere) {
+        scene.skyAtmosphere = new Cesium.SkyAtmosphere();
+      }
+      scene.skyAtmosphere.show = true;
+    } catch (_) { /* */ }
+
+    try {
+      if (!scene.sun) scene.sun = new Cesium.Sun();
+      scene.sun.show = true;
+      if (scene.sunBloom != null) scene.sunBloom = true;
+    } catch (_) { /* */ }
+
+    try {
+      if (!scene.moon) scene.moon = new Cesium.Moon();
+      scene.moon.show = true;
+    } catch (_) { /* */ }
+
+    try {
+      // Stars / deep space behind atmosphere
+      if (!scene.skyBox) {
+        scene.skyBox = new Cesium.SkyBox({
+          sources: {
+            positiveX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_px.jpg'),
+            negativeX: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mx.jpg'),
+            positiveY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_py.jpg'),
+            negativeY: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_my.jpg'),
+            positiveZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_pz.jpg'),
+            negativeZ: Cesium.buildModuleUrl('Assets/Textures/SkyBox/tycho2t3_80_mz.jpg')
+          }
+        });
+      }
+      scene.skyBox.show = true;
+    } catch (_) {
+      // Sem skyBox assets: atmosfera basta
+    }
+
+    try {
+      if (scene.globe) scene.globe.show = false;
+      // Fundo transparente: o céu Cesium preenche; oceano local continua no Three
+      scene.backgroundColor = Cesium.Color.BLACK.withAlpha(0.0);
+    } catch (_) { /* */ }
+
+    try {
+      if (scene.fog) {
+        scene.fog.enabled = true;
+        scene.fog.density = 0.00012;
+        scene.fog.minimumBrightness = 0.2;
+      }
+    } catch (_) { /* */ }
+
+    try {
+      if (scene.atmosphere && Cesium.DynamicAtmosphereLightingType) {
+        scene.atmosphere.dynamicLighting = Cesium.DynamicAtmosphereLightingType.SUNLIGHT;
+      }
+    } catch (_) { /* */ }
+
+    try {
+      viewer.clock.shouldAnimate = false;
+      viewer.clock.multiplier = 1;
+    } catch (_) { /* */ }
+
+    ensureCloudCollection();
+  }
+
+  function ensureCloudCollection() {
+    if (!viewer || viewer.isDestroyed()) return null;
+    if (cloudCollection && !cloudCollection.isDestroyed && !cloudCollection.isDestroyed()) {
+      return cloudCollection;
+    }
+    if (!Cesium.CloudCollection) return null;
+    try {
+      cloudCollection = new Cesium.CloudCollection({ noiseDetail: 16.0 });
+      viewer.scene.primitives.add(cloudCollection);
+      return cloudCollection;
+    } catch (e) {
+      console.warn('[T-Sim] CloudCollection indisponível:', e);
+      cloudCollection = null;
+      return null;
+    }
+  }
+
+  function rebuildClouds(cloudCover) {
+    const cc = ensureCloudCollection();
+    if (!cc) return;
+    try {
+      cc.removeAll();
+    } catch (_) {
+      try {
+        while (cc.length > 0) cc.remove(cc.get(0));
+      } catch (__) { /* */ }
+    }
+    const cover = Math.max(0, Math.min(1, Number(cloudCover) || 0));
+    if (cover < 0.02) {
+      cc.show = false;
+      return;
+    }
+    cc.show = true;
+    // Densidade: até ~28 cumulus em anel ao redor da origem RJ
+    const n = Math.max(1, Math.round(cover * 28));
+    const baseH = 900 + cover * 700;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + cover * 0.7;
+      const distM = 2500 + (i % 7) * 900 + (i % 3) * 400;
+      const dLat = (Math.cos(ang) * distM) / rio.mPerDegLat;
+      const dLon = (Math.sin(ang) * distM) / rio.mPerDegLon;
+      const h = baseH + (i % 5) * 180;
+      const pos = Cesium.Cartesian3.fromDegrees(
+        rio.originLon + dLon,
+        rio.originLat + dLat,
+        h
+      );
+      const sx = 18 + (i % 4) * 6 + cover * 10;
+      const sy = 8 + (i % 3) * 3 + cover * 4;
+      try {
+        cc.add({
+          show: true,
+          position: pos,
+          scale: new Cesium.Cartesian2(sx, sy),
+          maximumSize: new Cesium.Cartesian3(sx * 0.55, sy * 0.9, sx * 0.45),
+          slice: 0.3 + (i % 5) * 0.08,
+          brightness: 0.85 - cover * 0.15
+        });
+      } catch (_) { /* */ }
+    }
+  }
+
+  /**
+   * @param {object} opts
+   * @param {number} [opts.timeOfDayHours] 0–24 (hora local do cenário)
+   * @param {number} [opts.visibilityKm] 0.5–50
+   * @param {number} [opts.cloudCover] 0–1
+   * @param {boolean} [opts.showSun]
+   * @param {boolean} [opts.showMoon]
+   * @param {boolean} [opts.showSky]
+   * @param {boolean} [opts.showClouds]
+   * @param {Date} [opts.wallDate] se definido, usa data/hora wall-clock (tempo real)
+   */
+  function applySkyWeather(opts) {
+    if (!ready || !viewer || viewer.isDestroyed()) return false;
+    opts = opts || {};
+    lastSkyOpts = opts;
+    const scene = viewer.scene;
+
+    // --- Relógio / sol-lua ---
+    try {
+      let date;
+      if (opts.wallDate instanceof Date && !isNaN(opts.wallDate.getTime())) {
+        date = opts.wallDate;
+      } else {
+        const h = Number(opts.timeOfDayHours);
+        const hours = Number.isFinite(h) ? ((h % 24) + 24) % 24 : 12;
+        date = new Date();
+        // Meio-dia solar aproximado na Baía de Guanabara (UTC−3)
+        const hh = Math.floor(hours);
+        const mm = Math.floor((hours - hh) * 60);
+        date.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+        date.setHours(hh, mm, 0, 0);
+      }
+      viewer.clock.currentTime = Cesium.JulianDate.fromDate(date);
+      viewer.clock.shouldAnimate = false;
+    } catch (_) { /* */ }
+
+    const showSky = opts.showSky !== false;
+    const showSun = opts.showSun !== false;
+    const showMoon = opts.showMoon !== false;
+
+    try {
+      if (scene.skyAtmosphere) scene.skyAtmosphere.show = showSky;
+      if (scene.skyBox) scene.skyBox.show = showSky;
+      if (scene.sun) scene.sun.show = showSun;
+      if (scene.moon) scene.moon.show = showMoon;
+    } catch (_) { /* */ }
+
+    // --- Visibilidade → névoa ---
+    try {
+      const visKm = Math.max(0.4, Math.min(80, Number(opts.visibilityKm) || 20));
+      if (scene.fog) {
+        scene.fog.enabled = visKm < 55;
+        // Densidade empírica: menor visibilidade → mais névoa
+        scene.fog.density = 0.000035 + (1 / Math.max(visKm, 0.5)) * 0.0022;
+        scene.fog.minimumBrightness = Math.max(0.05, Math.min(0.35, visKm / 80));
+      }
+      if (scene.skyAtmosphere && scene.skyAtmosphere.brightnessShift != null) {
+        // Céu mais “pesado” com baixa visibilidade / muitas nuvens
+        const cover = Math.max(0, Math.min(1, Number(opts.cloudCover) || 0));
+        scene.skyAtmosphere.brightnessShift = -0.05 * cover - (visKm < 8 ? 0.08 : 0);
+      }
+    } catch (_) { /* */ }
+
+    // --- Nuvens ---
+    try {
+      const showClouds = opts.showClouds !== false;
+      const cover = Math.max(0, Math.min(1, Number(opts.cloudCover) || 0));
+      if (!showClouds || cover < 0.02) {
+        const cc = cloudCollection;
+        if (cc) {
+          try { cc.removeAll(); } catch (_) { /* */ }
+          cc.show = false;
+        }
+      } else {
+        rebuildClouds(cover);
+      }
+    } catch (_) { /* */ }
+
+    try {
+      if (scene.requestRender) scene.requestRender();
+    } catch (_) { /* */ }
+    return true;
   }
 
   async function tryInit(rioGeo) {
@@ -84,8 +303,6 @@
     }
 
     try {
-      // requestRenderMode:true → render sob demanda (syncFromThree pede frame)
-      // globe:false — Photorealistic tiles; oceano além do disco Three = backgroundColor
       viewer = new Cesium.Viewer(CONTAINER_ID, {
         animation: false,
         timeline: false,
@@ -98,32 +315,25 @@
         infoBox: false,
         selectionIndicator: false,
         globe: false,
-        skyBox: false,
-        skyAtmosphere: false,
+        skyBox: true,
+        skyAtmosphere: true,
+        orderIndependentTranslucency: true,
         requestRenderMode: true,
         maximumRenderTimeChange: Infinity,
         useDefaultRenderLoop: true
       });
 
       try {
-        viewer.scene.skyBox = undefined;
-        viewer.scene.sun = undefined;
-        viewer.scene.moon = undefined;
-        viewer.scene.skyAtmosphere = undefined;
         if (viewer.scene.globe) viewer.scene.globe.show = false;
-        // Azul oceano (não quase-preto): além do disco Three parece mar contínuo na órbita
-        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0a3d5c');
         if (viewer.imageryLayers) {
           while (viewer.imageryLayers.length > 0) {
             viewer.imageryLayers.remove(viewer.imageryLayers.get(0), true);
           }
         }
         try {
-          // Alinha ao DPR do Three com GE (cap 1.5) — evita 2× full Retina
           const dpr = Math.min(1.5, window.devicePixelRatio || 1);
           viewer.resolutionScale = dpr;
         } catch (_) { /* */ }
-        // Desativa controller Cesium (só o OrbitControls do Three mexe na vista)
         if (viewer.scene.screenSpaceCameraController) {
           const c = viewer.scene.screenSpaceCameraController;
           c.enableInputs = false;
@@ -135,10 +345,11 @@
         }
       } catch (_) { /* */ }
 
+      setupSkyDefaults();
+
       if (viewer.cesiumWidget && viewer.cesiumWidget.creditContainer) {
         const cc = viewer.cesiumWidget.creditContainer;
         cc.style.display = 'block';
-        // scaleX(-1): canvas GE está espelhado (compensa reflexão threeToEnu); desfaz nos créditos
         cc.style.transform = 'scaleX(-1) scale(0.75)';
         cc.style.transformOrigin = 'bottom left';
         cc.style.opacity = '0.75';
@@ -146,7 +357,6 @@
 
       try {
         tileset = await Cesium.createGooglePhotorealistic3DTileset();
-        // SSE 10: menos tiles no horizonte; dynamic SSE cobre zoom out
         tileset.maximumScreenSpaceError = 10;
         tileset.dynamicScreenSpaceError = true;
         if (tileset.dynamicScreenSpaceErrorDensity != null) tileset.dynamicScreenSpaceErrorDensity = 2.0e-4;
@@ -160,7 +370,6 @@
         return false;
       }
 
-      // Plano de corte longo: costa do Rio fica a ~8–15 km do ponto ao largo
       try {
         const fr0 = viewer.camera.frustum;
         if (fr0) {
@@ -170,7 +379,16 @@
       } catch (_) { /* */ }
 
       ready = true;
-      console.info('[T-Sim] cenário GE Photorealistic ativo (underlay, horizonte ~120 km)');
+      applySkyWeather(lastSkyOpts || {
+        timeOfDayHours: 12,
+        visibilityKm: 20,
+        cloudCover: 0.35,
+        showSun: true,
+        showMoon: true,
+        showSky: true,
+        showClouds: true
+      });
+      console.info('[T-Sim] cenário GE + céu/sol/lua/nuvens ativo');
       return true;
     } catch (err) {
       console.error('[T-Sim] falha ao iniciar cenário Cesium:', err);
@@ -179,10 +397,6 @@
     }
   }
 
-  /**
-   * Three: +X East, +Y Up, +Z North
-   * Cesium ENU: +X East, +Y North, +Z Up
-   */
   function threeToEnu(x, y, z, out) {
     out.x = x;
     out.y = z;
@@ -217,19 +431,11 @@
     return _enuToFixed;
   }
 
-  /**
-   * Sync OrbitControls → Cesium: eye + pivô (target) + up geográfico.
-   *
-   * threeToEnu (x,y,z)→(x,z,y) tem det−1: a vista ECEF fica espelhada face ao Three,
-   * e a órbita GE sai no sentido contrário ao comboio. O espelho é compensado em CSS
-   * (#cesium-scenario canvas { transform: scaleX(-1) }) para comboio e costa girarem iguais.
-   */
   function syncFromThree(camera, target) {
     if (!ready || !viewer || viewer.isDestroyed() || !camera) return;
 
     const enuToFixed = ensureEnuMatrix();
 
-    // 1) Eye (mundo Three)
     let ex, ey, ez;
     if (camera.matrixWorld && camera.matrixWorld.elements) {
       const e = camera.matrixWorld.elements;
@@ -240,28 +446,23 @@
     threeToEnu(ex, ey, ez, _enuPos);
     Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuPos, _eye);
 
-    // 2) Pivô OrbitControls (centro do comboio nos modos follow)
     let tx, ty, tz;
     if (target && typeof target.x === 'number') {
       tx = target.x; ty = target.y; tz = target.z;
     } else {
-      // Fallback: ponto à frente da câmera (~distância típica de órbita)
       tx = ex; ty = ey; tz = ez - 200;
     }
     threeToEnu(tx, ty, tz, _enuTarget);
     Cesium.Matrix4.multiplyByPoint(enuToFixed, _enuTarget, _targetEcef);
 
-    // 3) Up geográfico (ENU +Z) — mesmo “chão” do OrbitControls (+Y Three)
     Cesium.Matrix4.multiplyByPointAsVector(enuToFixed, _enuUp, _up);
     Cesium.Cartesian3.normalize(_up, _up);
 
-    // 4) Direção = target − eye (órbita em torno do pivô, não rotação do comboio)
     Cesium.Cartesian3.subtract(_targetEcef, _eye, _dir);
     const dirLen = Cesium.Cartesian3.magnitude(_dir);
     if (dirLen < 1e-3) return;
     Cesium.Cartesian3.divideByScalar(_dir, dirLen, _dir);
 
-    // Se quase nadir/zenith, estabiliza right com um eixo auxiliar
     const align = Math.abs(Cesium.Cartesian3.dot(_dir, _up));
     if (align > 0.995) {
       Cesium.Matrix4.multiplyByPointAsVector(enuToFixed, _enuEast, _up);
@@ -277,7 +478,6 @@
     Cesium.Cartesian3.cross(viewer.camera.right, viewer.camera.direction, viewer.camera.up);
     Cesium.Cartesian3.normalize(viewer.camera.up, viewer.camera.up);
 
-    // 5) FOV + clipping
     const vFov = (camera.fov != null ? camera.fov : 75) * (Math.PI / 180);
     const aspect = camera.aspect > 0 ? camera.aspect : 1;
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
@@ -288,7 +488,6 @@
       fr.near = Math.max(1.0, (typeof camera.near === 'number' ? camera.near : 1));
       fr.far = Math.max(120000, typeof camera.far === 'number' ? camera.far : 80000);
     }
-    // requestRenderMode: pede frame só quando a câmara Three muda
     try {
       if (viewer.scene && viewer.scene.requestRender) viewer.scene.requestRender();
     } catch (_) { /* */ }
@@ -307,6 +506,12 @@
   function destroyViewer() {
     ready = false;
     try {
+      if (cloudCollection) {
+        try { viewer && viewer.scene.primitives.remove(cloudCollection); } catch (_) { /* */ }
+      }
+    } catch (_) { /* */ }
+    cloudCollection = null;
+    try {
       if (viewer && !viewer.isDestroyed()) viewer.destroy();
     } catch (_) { /* */ }
     viewer = null;
@@ -319,6 +524,7 @@
     get ready() { return ready; },
     tryInit,
     syncFromThree,
+    applySkyWeather,
     resize,
     setActive,
     destroy: destroyViewer
