@@ -2815,6 +2815,7 @@ function applyShipPreset(presetName) {
     _shipDesiredYawEma = null;
     tug.position.set(0, 0, -(preset.length / 2) - (tug.mesh.geometry.parameters.depth / 2) - 50);
     tug.velocity.set(0, 0, 0); tug.angle = Math.PI; tug.angularVelocity = 0;
+    tug.headingHold = { active: true, psi: Math.PI };
     _cargaDisplayEma1 = _cargaDisplayEma2 = _cargaDisplayEmaM = null;
     tug.motorRpm1 = 0; tug.motorRpm2 = 0;
     tug.driveEngaged = false;
