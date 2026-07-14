@@ -471,8 +471,9 @@
         <div id="cesium-scenario" aria-hidden="true"></div>
         <div id="ui-overlay" class="absolute inset-0 z-10 min-h-0 p-4 flex flex-col gap-4 pointer-events-none" aria-hidden="true"></div>
         <div id="asd-thruster-dock" class="absolute bottom-0 left-0 right-0 z-20 flex justify-between items-end gap-2 px-2 pb-3 pt-1 pointer-events-none">
-                <div class="asd-thruster-card asd-thruster-bb pointer-events-auto max-w-[min(42vw,14rem)] w-full min-w-0">
+                <div class="asd-thruster-card asd-thruster-bb pointer-events-auto max-w-[min(42vw,14rem)] w-full min-w-0" data-asd-side="BB">
                     <div class="asd-thruster-head asd-thruster-head--compact">
+                        <button type="button" class="asd-thruster-min" aria-label="Minimizar painel BB" title="Minimizar" aria-expanded="true">−</button>
                         <div class="asd-thruster-head-right asd-thruster-head-right--end">
                             <div class="asd-prop-wrap" aria-hidden="true">
                                 <svg class="asd-prop-svg" viewBox="0 0 64 64" width="48" height="48" focusable="false">
@@ -512,8 +513,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="asd-thruster-card asd-thruster-be pointer-events-auto max-w-[min(42vw,14rem)] w-full min-w-0">
+                <div class="asd-thruster-card asd-thruster-be pointer-events-auto max-w-[min(42vw,14rem)] w-full min-w-0" data-asd-side="BE">
                     <div class="asd-thruster-head asd-thruster-head--compact">
+                        <button type="button" class="asd-thruster-min" aria-label="Minimizar painel BE" title="Minimizar" aria-expanded="true">−</button>
                         <div class="asd-thruster-head-right asd-thruster-head-right--end">
                             <div class="asd-prop-wrap" aria-hidden="true">
                                 <svg class="asd-prop-svg" viewBox="0 0 64 64" width="48" height="48" focusable="false">
@@ -2642,6 +2644,40 @@ function setGeoMapVisible(visible) {
             }
         } catch (e) { /* */ }
     }, 200);
+}
+
+/** Minimizar / expandir cartões BB e BE do dock de governo e propulsão. */
+function wireAsdThrusterMinimize() {
+    const dock = document.getElementById('asd-thruster-dock');
+    if (!dock || dock.dataset.minWired) return;
+    dock.dataset.minWired = '1';
+    dock.querySelectorAll('.asd-thruster-card').forEach((card) => {
+        const btn = card.querySelector('.asd-thruster-min');
+        if (!btn) return;
+        const side = card.getAttribute('data-asd-side') || 'ASD';
+        const apply = (minimized) => {
+            card.classList.toggle('asd-thruster--min', minimized);
+            btn.textContent = minimized ? '+' : '−';
+            btn.setAttribute('aria-expanded', minimized ? 'false' : 'true');
+            btn.title = minimized ? 'Expandir' : 'Minimizar';
+            btn.setAttribute('aria-label', (minimized ? 'Expandir' : 'Minimizar') + ' painel ' + side);
+        };
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            apply(!card.classList.contains('asd-thruster--min'));
+        });
+        // Toque no cabeçalho (fora do botão) também restaura se estiver minimizado
+        const head = card.querySelector('.asd-thruster-head');
+        if (head) {
+            head.addEventListener('click', (e) => {
+                if (e.target && e.target.closest('.asd-thruster-min')) return;
+                if (card.classList.contains('asd-thruster--min')) {
+                    e.preventDefault();
+                    apply(false);
+                }
+            });
+        }
+    });
 }
 
 /** Arrasto + minimizar/ocultar do mapa (mobile e desktop). */
@@ -5439,6 +5475,7 @@ async function bootTSimWithSplash() {
         report(78, 'A configurar interface e mapa…', 'physics');
         wireCoastProviderSelect();
         wireGeoMapPanelChrome();
+        wireAsdThrusterMinimize();
         setGeoMapVisible(false);
         report(92, 'A sincronizar física do comboio…', 'physics');
         await new Promise((r) => setTimeout(r, 180));
@@ -5450,6 +5487,7 @@ async function bootTSimWithSplash() {
         if (splash && splash.done) splash.done();
     }
 }
+wireAsdThrusterMinimize();
 animate();
 bootTSimWithSplash();
   </script>
