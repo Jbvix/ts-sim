@@ -150,6 +150,11 @@
                     </div>
                     <div class="control-row"><label for="sailArea">Área Vélica (m²):</label><input type="range" id="sailArea" min="1000" max="10000" value="5000" step="100" title="Área Vélica"><span id="sailAreaValue">5000</span></div>
                     <div class="control-row"><label for="shipDraft">Calado (m):</label><input type="range" id="shipDraft" min="7" max="12" value="10.75" step="0.25" title="Calado do navio: afunda as obras vivas. Faixa conforme o tipo selecionado."><span id="shipDraftValue">10.75</span></div>
+                    <div class="control-row" title="Leme do rebocado habilitado e fixo a meio (0°). Contribui para estabilidade de rumo; sem governo ativo BB/BE.">
+                        <label for="shipRudder">Leme:</label>
+                        <input type="range" id="shipRudder" min="-35" max="35" value="0" step="1" disabled aria-valuetext="A meio">
+                        <span id="shipRudderValue">a meio (0°)</span>
+                    </div>
                     <hr>
                     <div class="control-row"><label title="Massa vs calado (aprox.)">Massa (ton):</label><span id="shipMassValue">0</span></div>
                     <div class="control-row"><label>Comprimento (m):</label><span id="shipLengthValue">0</span></div>
@@ -1157,7 +1162,10 @@ function makeHullInvisibleMaterial() {
 const ship = {
     mesh: new THREE.Mesh(new THREE.BoxGeometry(20, 12, 100), makeHullInvisibleMaterial()),
     position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(0, 0, 0),
-    angularVelocity: 0, angle: 0, sailArea: 0, beam: 0, draft: 0, minDraft: 0, maxDraft: 0, minMass: 0, maxMass: 0, mass: 0, propArea: 0, lwl: 0, totalResistance: 0, length: 0
+    angularVelocity: 0, angle: 0, sailArea: 0, beam: 0, draft: 0, minDraft: 0, maxDraft: 0, minMass: 0, maxMass: 0, mass: 0, propArea: 0, lwl: 0, totalResistance: 0, length: 0,
+    /** Ângulo do leme (graus): 0 = a meio; negativo BB, positivo BE. Fixo a meio nesta versão. */
+    rudderDeg: 0,
+    rudderLockedMidships: true
 };
 ship.mesh.name = 'shipHull';
 scene.add(ship.mesh);
@@ -1365,6 +1373,7 @@ let simParams = {
 const uiControls = {
     sailArea: { el: document.getElementById('sailArea'), valEl: document.getElementById('sailAreaValue') },
     shipDraft: { el: document.getElementById('shipDraft'), valEl: document.getElementById('shipDraftValue') },
+    shipRudder: { el: document.getElementById('shipRudder'), valEl: document.getElementById('shipRudderValue') },
     tugDraft: { el: document.getElementById('tugDraft'), valEl: document.getElementById('tugDraftValue') },
     cableLength: { el: document.getElementById('cableLength'), valEl: document.getElementById('cableLengthValue') },
     distanceBowStern: { valEl: document.getElementById('distanceBowSternValue') },
@@ -2488,6 +2497,9 @@ function applyShipPreset(presetName) {
     sailSlider.value = preset.sailArea;
     ship.position.set(0, 0, 0); ship.velocity.set(0, 0, 0);
     ship.angle = 0; ship.angularVelocity = 0;
+    ship.rudderDeg = 0;
+    ship.rudderLockedMidships = true;
+    syncShipRudderUI();
     _shipDesiredYawEma = null;
     tug.position.set(0, 0, -(preset.length / 2) - (tug.mesh.geometry.parameters.depth / 2) - 50);
     tug.velocity.set(0, 0, 0); tug.angle = Math.PI; tug.angularVelocity = 0;
@@ -3139,6 +3151,59 @@ function shipBodyAxesXZ(angle) {
     };
 }
 
+function formatShipRudderLabel(deg) {
+    const d = Math.round(deg);
+    if (Math.abs(d) < 0.5) return 'a meio (0°)';
+    if (d < 0) return 'BB ' + Math.abs(d) + '°';
+    return 'BE ' + d + '°';
+}
+
+function syncShipRudderUI() {
+    if (ship.rudderLockedMidships) ship.rudderDeg = 0;
+    const el = uiControls.shipRudder && uiControls.shipRudder.el;
+    const valEl = uiControls.shipRudder && uiControls.shipRudder.valEl;
+    if (el) {
+        el.value = String(ship.rudderDeg);
+        el.disabled = !!ship.rudderLockedMidships;
+        el.setAttribute('aria-valuetext', formatShipRudderLabel(ship.rudderDeg));
+    }
+    if (valEl) valEl.textContent = formatShipRudderLabel(ship.rudderDeg);
+}
+
+/**
+ * Leme do rebocado: força lateral + momento de guinada.
+ * δ = 0 (a meio) → estabilidade de rumo (amortece deriva/guinada), sem governo ativo.
+ */
+function computeShipRudderForces() {
+    const out = { force: new THREE.Vector3(), tauY: 0, alphaRad: 0, areaM2: 0 };
+    if (!ship.mass || !ship.length || !ship.draft) return out;
+    if (ship.rudderLockedMidships) ship.rudderDeg = 0;
+    const delta = (ship.rudderDeg || 0) * Math.PI / 180;
+    const { forward, starboard } = shipBodyAxesXZ(ship.angle);
+    const u = ship.velocity.dot(forward);
+    const v = ship.velocity.dot(starboard);
+    const V = Math.hypot(u, v);
+    if (V < 0.12) return out;
+    // Ângulo de deriva β; ataque efetivo α ≈ β − δ (leme a meio: α ≈ β)
+    const beta = Math.atan2(v, Math.max(0.08, Math.abs(u)) * (u >= 0 ? 1 : -1));
+    const alpha = beta - delta;
+    out.alphaRad = alpha;
+    const Ar = Math.max(0.5, 0.016 * ship.length * Math.max(1, ship.draft));
+    out.areaM2 = Ar;
+    const CL = 2.4 * Math.sin(alpha);
+    const liftN = 0.5 * RHO_WATER * Ar * V * V * CL;
+    // Força no leme (popa): +CL → força a BE no fluxo; reação no casco oposta à lift convencional
+    const force = starboard.clone().multiplyScalar(-liftN);
+    // Braço à popa (~0,42 L a partir do CG, sentido −proa)
+    const r = forward.clone().multiplyScalar(-0.42 * ship.length);
+    out.force.copy(force);
+    out.tauY = r.x * force.z - r.z * force.x;
+    // Amortecimento extra de guinada do leme a meio (N_r rudder)
+    out.tauY -= 0.35 * Math.max(1, ship.mass) * ship.length * ship.angularVelocity * Math.min(1, V / 2);
+    return out;
+}
+syncShipRudderUI();
+
 // Resistência hidrodinâmica anisotrópica: surge (proa) + sway reforçado (casco não “craba” sem guinar).
 function calculateTotalShipResistance() {
     const shipSpeed = ship.velocity.length();
@@ -3451,6 +3516,9 @@ function updatePhysics() {
             waterClearanceM: waterC
         }));
     }
+    // Leme do navio (a meio): força lateral + estabilidade de rumo
+    const rudderFx = computeShipRudderForces();
+    shipForce.add(rudderFx.force);
     
     // Forças no rebocador
     const tugForce = new THREE.Vector3();
@@ -3468,7 +3536,7 @@ function updatePhysics() {
     const towTauY = rTow.x * forceTow.z - rTow.z * forceTow.x;
     const L2B2 = Math.max(1, ship.length * ship.length + ship.beam * ship.beam);
     const shipInertiaYaw = Math.max(1e6, (1 / 12) * Math.max(1, ship.mass) * L2B2);
-    let yawTau = towTauY;
+    let yawTau = towTauY + (rudderFx.tauY || 0);
     let yawErr = 0;
     {
         const TkN = (towF.TensionN || 0) / 1000;
@@ -3516,7 +3584,8 @@ function updatePhysics() {
     else if (ship.angle < -Math.PI) ship.angle += Math.PI * 2;
     window.__simShipYaw = {
         towTauY, yawTau, yawErr, omega: ship.angularVelocity, angle: ship.angle,
-        Ftx: forceTow.x, Ftz: forceTow.z, TkN: (towF.TensionN || 0) / 1000
+        Ftx: forceTow.x, Ftz: forceTow.z, TkN: (towF.TensionN || 0) / 1000,
+        rudderDeg: ship.rudderDeg, rudderTauY: rudderFx.tauY || 0
     };
     if (!tug.enginesOn) {
         const relV = ship.velocity.clone().sub(tug.velocity);
@@ -3884,6 +3953,13 @@ function updateUI() {
     const knT = tug.velocity.length() * 1.94384;
     uiControls.shipSpeed.valEl.innerText = knS.toFixed(2);
     uiControls.tugSpeed.valEl.innerText = knT.toFixed(2);
+    if (ship.rudderLockedMidships && ship.rudderDeg !== 0) {
+        ship.rudderDeg = 0;
+        syncShipRudderUI();
+    } else if (uiControls.shipRudder && uiControls.shipRudder.valEl) {
+        const label = formatShipRudderLabel(ship.rudderDeg);
+        if (uiControls.shipRudder.valEl.textContent !== label) syncShipRudderUI();
+    }
     if (uiControls.tugSpeed.valEl) uiControls.tugSpeed.valEl.title = 'SOG (nós); teto ∝ rpm de comando: 650→0,58 n, 1300→11 n (ref. escoteiro), 1800→12,5 n. f(SOG) pleno ≈ a partir de 11 n; calado 5 m na escala 100%.';
     const hdrShipSp = document.getElementById('hdrShipSpeed');
     const hdrTugSp = document.getElementById('hdrTugSpeed');
