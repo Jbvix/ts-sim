@@ -1520,18 +1520,28 @@ function getPropellerVisualRpm(motorRpm) {
     return m * ASD_DISENGAGED_PROP_RPM_FRACTION;
 }
 
-/** Eixo do veio na malha GLB (menor extensão do bbox local ≈ disco da hélice). */
+/** Eixo do veio da hélice: eixo LOCAL mais horizontal no mundo (ASD = veio ≈ horizontal). */
 function detectPropShaftAxisLocal(propRoot) {
-    let mesh = propRoot.isMesh ? propRoot : null;
-    if (!mesh) propRoot.traverse((c) => { if (!mesh && c.isMesh) mesh = c; });
-    if (!mesh || !mesh.geometry) return 'y';
-    mesh.geometry.computeBoundingBox();
-    const bb = mesh.geometry.boundingBox;
-    if (!bb) return 'y';
-    const sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
-    if (sy <= sx && sy <= sz) return 'y';
-    if (sx <= sy && sx <= sz) return 'x';
-    return 'z';
+    let node = propRoot;
+    if (!node) return 'z';
+    node.updateMatrixWorld(true);
+    const candidates = [
+        { name: 'x', local: new THREE.Vector3(1, 0, 0) },
+        { name: 'y', local: new THREE.Vector3(0, 1, 0) },
+        { name: 'z', local: new THREE.Vector3(0, 0, 1) }
+    ];
+    let best = 'z';
+    let bestScore = Infinity;
+    for (const c of candidates) {
+        const w = c.local.clone().transformDirection(node.matrixWorld).normalize();
+        // Prefere eixo horizontal (|wy| baixo); desempate: alinhado ao comprimento do casco (Z)
+        const score = Math.abs(w.y) * 2 - Math.abs(w.z) * 0.15;
+        if (score < bestScore) {
+            bestScore = score;
+            best = c.name;
+        }
+    }
+    return best;
 }
 
 /** Rótulo do leme azimutal: centro 0°; negativo = BB; positivo = BE. */
@@ -1578,8 +1588,9 @@ function updateGlbPropellerSpin(dt) {
 }
 
 /**
- * Aplica o azimute dos sliders aos pods (TugBoatT2RudderLeft/Right).
- * 0° = posição de repouso do GLB (à frente); ±Yaw em torno do eixo vertical do casco.
+ * Azimute dos pods em torno do eixo VERTICAL do casco (plano horizontal).
+ * O Y local do nó Rudder no GLB Sketchfab NÃO é vertical após o fit — por isso
+ * não usamos multiply no Y local (isso fazia o propulsor “tombar” no vertical).
  */
 function updateGlbAzimuthPods() {
     if (!tug.azPodBB || !tug.azPodBE) return;
@@ -1587,11 +1598,22 @@ function updateGlbAzimuthPods() {
     const a1 = clampAzimuthDeg(simParams.thruster1Azimuth);
     const a2 = clampAzimuthDeg(simParams.isTwinMode ? a1 : simParams.thruster2Azimuth);
     const sign = (typeof tug._azYawSign === 'number') ? tug._azYawSign : 1;
-    const up = tug._azYawAxisLocal || new THREE.Vector3(0, 1, 0);
+
+    tug.mesh.updateMatrixWorld(true);
+    const upWorld = new THREE.Vector3(0, 1, 0).transformDirection(tug.mesh.matrixWorld).normalize();
+
     const apply = (pod, baseQuat, deg) => {
         const rad = sign * deg * Math.PI / 180;
-        const qYaw = new THREE.Quaternion().setFromAxisAngle(up, rad);
-        pod.quaternion.copy(baseQuat).multiply(qYaw);
+        const parent = pod.parent;
+        let axisInParent = upWorld.clone();
+        if (parent) {
+            parent.updateMatrixWorld(true);
+            const invParent = new THREE.Matrix4().copy(parent.matrixWorld).invert();
+            axisInParent.transformDirection(invParent).normalize();
+        }
+        const qYaw = new THREE.Quaternion().setFromAxisAngle(axisInParent, rad);
+        // Premultiply: yaw no referencial do casco/pai (plano horizontal), depois pose base
+        pod.quaternion.copy(baseQuat).premultiply(qYaw);
     };
     apply(tug.azPodBB, tug._azPodBBBaseQuat, a1);
     apply(tug.azPodBE, tug._azPodBEBaseQuat, a2);
@@ -2191,8 +2213,6 @@ function snapTugJetsToGlbPropellers() {
     // Pose de repouso dos pods (antes de qualquer leme)
     tug._azPodBBBaseQuat = podBB.quaternion.clone();
     tug._azPodBEBaseQuat = podBE.quaternion.clone();
-    // Yaw em espaço local do pod (eixo Y do nó após o fit ≈ vertical do casco)
-    tug._azYawAxisLocal = new THREE.Vector3(0, 1, 0);
     tug._azYawSign = 1;
 
     const info = {
@@ -2204,7 +2224,7 @@ function snapTugJetsToGlbPropellers() {
         podBE: podBE.name,
         shaftAxis: tug._propShaftAxis,
         spin: { bb: 'horário (+)', be: 'anti-horário (−)' },
-        azimuth: { slider: '−180…+180 (centro=0° à frente; −=BB; +=BE)', yawSign: tug._azYawSign },
+        azimuth: { plane: 'horizontal (yaw no vertical do casco)', yawSign: tug._azYawSign },
         bb: { x: +bb.x.toFixed(3), y: +bb.y.toFixed(3), z: +bb.z.toFixed(3) },
         be: { x: +be.x.toFixed(3), y: +be.y.toFixed(3), z: +be.z.toFixed(3) }
     };
