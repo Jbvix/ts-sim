@@ -1,16 +1,24 @@
 <!DOCTYPE html>
 <html lang="pt-BR" class="scroll-smooth">
 <head>
-  <!-- Jossian Brito 2025 -->
+  <!-- Jossian Brito 2026 · T-Sim v2.8.3 -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>T‑Sim • Catenária e Tração Offshore</title>
   <meta name="description" content="Dashboard técnico e visual sobre catenária submersa, tração efetiva no navio e limites de segurança de reboque." />
   <meta name="author" content="Jossian Brito — TugLife Systems" />
+  <meta name="application-version" content="2.8.3" />
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+  <style>
+    /* Splash visível antes do CSS principal */
+    #sim-splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(120% 80% at 50% -10%,#0c4a6e 0%,#0f172a 42%,#020617 100%);color:#e2e8f0;
+      font-family:Inter,system-ui,sans-serif;transition:opacity .55s ease,visibility .55s ease}
+    #sim-splash.sim-splash--done{opacity:0;visibility:hidden;pointer-events:none}
+  </style>
   
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <link rel="stylesheet" href="assets/tw.min.css" />
@@ -23,6 +31,88 @@
   <link rel="preload" href="assets/rastar_3200_tugboat.glb" as="fetch" crossorigin="anonymous" />
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
+  <!-- Splash de apresentação / preparação do cenário -->
+  <div id="sim-splash" class="sim-splash" role="status" aria-live="polite" aria-busy="true" aria-label="A carregar T-Sim">
+    <div class="sim-splash-glow" aria-hidden="true"></div>
+    <div class="sim-splash-inner">
+      <div class="sim-splash-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 24h40"/><path d="M18 36h12"/><path d="M24 6v4"/><path d="m10 32 4-8"/><path d="m38 32-4-8"/><path d="m16 12 2 4"/><path d="m32 12-2 4"/>
+        </svg>
+      </div>
+      <p class="sim-splash-brand">T‑Sim</p>
+      <p class="sim-splash-tag">Towing Analytics</p>
+      <p class="sim-splash-meta"><span id="sim-splash-year">2026</span> · v<span id="sim-splash-version">2.8.3</span></p>
+      <p class="sim-splash-author">Jossian Brito</p>
+      <p class="sim-splash-org">TugLife Systems</p>
+      <div class="sim-splash-progress" aria-describedby="sim-splash-stage">
+        <div class="sim-splash-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="sim-splash-bar">
+          <div class="sim-splash-fill" id="sim-splash-fill"></div>
+        </div>
+        <div class="sim-splash-progress-meta">
+          <span id="sim-splash-stage">A iniciar…</span>
+          <span id="sim-splash-pct">0%</span>
+        </div>
+      </div>
+      <ol class="sim-splash-steps" id="sim-splash-steps" aria-hidden="true">
+        <li data-step="boot">Motor 3D</li>
+        <li data-step="models">Modelos GLB</li>
+        <li data-step="scenario">Cenário GE</li>
+        <li data-step="physics">Física e UI</li>
+        <li data-step="ready">Pronto</li>
+      </ol>
+    </div>
+  </div>
+  <script>
+    // API do splash (disponível antes do módulo 3D)
+    window.TSIM_META = { year: 2026, version: '2.8.3', author: 'Jossian Brito', org: 'TugLife Systems' };
+    window.__simSplash = (function () {
+      const root = document.getElementById('sim-splash');
+      const fill = document.getElementById('sim-splash-fill');
+      const bar = document.getElementById('sim-splash-bar');
+      const stageEl = document.getElementById('sim-splash-stage');
+      const pctEl = document.getElementById('sim-splash-pct');
+      const steps = document.getElementById('sim-splash-steps');
+      let pct = 0;
+      function markStep(id) {
+        if (!steps) return;
+        let hit = false;
+        steps.querySelectorAll('li').forEach((li) => {
+          const sid = li.getAttribute('data-step');
+          if (sid === id) {
+            li.classList.add('is-active');
+            li.classList.remove('is-done');
+            hit = true;
+          } else if (!hit) {
+            li.classList.add('is-done');
+            li.classList.remove('is-active');
+          } else {
+            li.classList.remove('is-active', 'is-done');
+          }
+        });
+      }
+      function set(progress, label, stepId) {
+        pct = Math.max(pct, Math.min(100, Number(progress) || 0));
+        if (fill) fill.style.width = pct + '%';
+        if (bar) bar.setAttribute('aria-valuenow', String(Math.round(pct)));
+        if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+        if (label && stageEl) stageEl.textContent = label;
+        if (stepId) markStep(stepId);
+      }
+      function done() {
+        set(100, 'Cenário pronto', 'ready');
+        if (steps) steps.querySelectorAll('li').forEach((li) => { li.classList.add('is-done'); li.classList.remove('is-active'); });
+        if (!root) return;
+        root.setAttribute('aria-busy', 'false');
+        window.setTimeout(() => {
+          root.classList.add('sim-splash--done');
+          window.setTimeout(() => { try { root.remove(); } catch (_) { /* */ } }, 700);
+        }, 420);
+      }
+      set(2, 'A iniciar T‑Sim…', 'boot');
+      return { set, done, get progress() { return pct; } };
+    })();
+  </script>
 <header class="sticky top-0 z-50 glass-card rounded-none border-t-0 border-x-0 border-b border-slate-200 dark:border-slate-800">
     <div class="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between gap-2 sm:gap-4 min-h-16 py-2 sm:py-0 sm:h-16">
@@ -4763,14 +4853,34 @@ function animate() {
     }
 }
 uiControls.tugDraft.el.dispatchEvent(new Event('input'));
-// Cenário GE no viewport; mapa inset desligado na tela inicial (ativa pelo ícone Mapa)
-initScenarioGeUnderlay().then(() => {
-    wireCoastProviderSelect();
-    wireGeoMapPanelChrome();
-    setGeoMapVisible(false);
-});
-loadVesselGlbs();
+
+/** Arranque com splash: etapas de preparação do cenário + progresso. */
+async function bootTSimWithSplash() {
+    const splash = window.__simSplash;
+    const report = (p, msg, step) => { try { splash && splash.set(p, msg, step); } catch (_) { /* */ } };
+    try {
+        report(8, 'Motor 3D e controlos…', 'boot');
+        await new Promise((r) => requestAnimationFrame(() => r()));
+        report(18, 'A carregar modelos GLB (navio e rebocador)…', 'models');
+        await loadVesselGlbs();
+        report(52, 'A preparar cenário GE (costa / horizonte)…', 'scenario');
+        await initScenarioGeUnderlay();
+        report(78, 'A configurar interface e mapa…', 'physics');
+        wireCoastProviderSelect();
+        wireGeoMapPanelChrome();
+        setGeoMapVisible(false);
+        report(92, 'A sincronizar física do comboio…', 'physics');
+        await new Promise((r) => setTimeout(r, 180));
+        report(100, 'Cenário pronto', 'ready');
+        if (splash && splash.done) splash.done();
+    } catch (err) {
+        console.error('[T-Sim] falha no arranque:', err);
+        report(100, 'Arranque com avisos — a continuar…', 'ready');
+        if (splash && splash.done) splash.done();
+    }
+}
 animate();
+bootTSimWithSplash();
   </script>
 </body>
 </html>
