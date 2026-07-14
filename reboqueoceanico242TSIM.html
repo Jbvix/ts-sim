@@ -1588,13 +1588,35 @@ function updateGlbPropellerSpin(dt) {
 }
 
 /**
- * Azimute dos pods em torno do eixo VERTICAL do casco (plano horizontal).
- * O Y local do nó Rudder no GLB Sketchfab NÃO é vertical após o fit — por isso
- * não usamos multiply no Y local (isso fazia o propulsor “tombar” no vertical).
+ * Centro local do pod (eixo vertical de azimute) — bbox das malhas do leme/hélice.
+ * O origin do nó Rudder no GLB Sketchfab NÃO coincide com o stock do ASD.
+ */
+function computeAzimuthPivotLocal(pod) {
+    const box = new THREE.Box3();
+    let found = false;
+    pod.updateMatrixWorld(true);
+    const invPod = new THREE.Matrix4().copy(pod.matrixWorld).invert();
+    pod.traverse((c) => {
+        if (!c.isMesh || !c.geometry) return;
+        if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+        const b = c.geometry.boundingBox.clone();
+        const toPod = new THREE.Matrix4().multiplyMatrices(invPod, c.matrixWorld);
+        b.applyMatrix4(toPod);
+        if (!found) { box.copy(b); found = true; }
+        else box.union(b);
+    });
+    if (!found) return new THREE.Vector3(0, 0, 0);
+    return box.getCenter(new THREE.Vector3());
+}
+
+/**
+ * Azimute dos pods em torno do eixo VERTICAL do casco (plano horizontal),
+ * com pivô no centro do propulsor (não no origin deslocado do nó GLB).
  */
 function updateGlbAzimuthPods() {
     if (!tug.azPodBB || !tug.azPodBE) return;
     if (!tug._azPodBBBaseQuat || !tug._azPodBEBaseQuat) return;
+    if (!tug._azPodBBBasePos || !tug._azPodBEBasePos) return;
     const a1 = clampAzimuthDeg(simParams.thruster1Azimuth);
     const a2 = clampAzimuthDeg(simParams.isTwinMode ? a1 : simParams.thruster2Azimuth);
     const sign = (typeof tug._azYawSign === 'number') ? tug._azYawSign : 1;
@@ -1602,7 +1624,7 @@ function updateGlbAzimuthPods() {
     tug.mesh.updateMatrixWorld(true);
     const upWorld = new THREE.Vector3(0, 1, 0).transformDirection(tug.mesh.matrixWorld).normalize();
 
-    const apply = (pod, baseQuat, deg) => {
+    const apply = (pod, basePos, baseQuat, pivotLocal, pivotParent, deg) => {
         const rad = sign * deg * Math.PI / 180;
         const parent = pod.parent;
         let axisInParent = upWorld.clone();
@@ -1612,11 +1634,33 @@ function updateGlbAzimuthPods() {
             axisInParent.transformDirection(invParent).normalize();
         }
         const qYaw = new THREE.Quaternion().setFromAxisAngle(axisInParent, rad);
-        // Premultiply: yaw no referencial do casco/pai (plano horizontal), depois pose base
-        pod.quaternion.copy(baseQuat).premultiply(qYaw);
+        const newQuat = baseQuat.clone().premultiply(qYaw);
+        pod.quaternion.copy(newQuat);
+        // Mantém o ponto-pivô fixo no pai: pos = pivotParent − R * pivotLocal
+        const pivoted = pivotLocal.clone().applyQuaternion(newQuat);
+        pod.position.copy(pivotParent).sub(pivoted);
     };
-    apply(tug.azPodBB, tug._azPodBBBaseQuat, a1);
-    apply(tug.azPodBE, tug._azPodBEBaseQuat, a2);
+    apply(
+        tug.azPodBB, tug._azPodBBBasePos, tug._azPodBBBaseQuat,
+        tug._azPodBBPivotLocal, tug._azPodBBPivotParent, a1
+    );
+    apply(
+        tug.azPodBE, tug._azPodBEBasePos, tug._azPodBEBaseQuat,
+        tug._azPodBEPivotLocal, tug._azPodBEPivotParent, a2
+    );
+    // Jatos acompanham o pivô (hélices movem-se com o pod)
+    if (tug.jet1 && tug.propMeshBB) {
+        const w = new THREE.Vector3();
+        tug.propMeshBB.getWorldPosition(w);
+        tug.mesh.worldToLocal(w);
+        tug.jet1.position.copy(w);
+    }
+    if (tug.jet2 && tug.propMeshBE) {
+        const w = new THREE.Vector3();
+        tug.propMeshBE.getWorldPosition(w);
+        tug.mesh.worldToLocal(w);
+        tug.jet2.position.copy(w);
+    }
 }
 
 function updateAsdPropellerGauges(dt) {
@@ -2210,9 +2254,28 @@ function snapTugJetsToGlbPropellers() {
     tug.azPodBB = podBB;
     tug.azPodBE = podBE;
     tug._propShaftAxis = detectPropShaftAxisLocal(meshBB);
-    // Pose de repouso dos pods (antes de qualquer leme)
-    tug._azPodBBBaseQuat = podBB.quaternion.clone();
-    tug._azPodBEBaseQuat = podBE.quaternion.clone();
+
+    // Pose de repouso + pivô no centro do propulsor (stock ASD)
+    const bindPod = (pod, side) => {
+        pod.updateMatrixWorld(true);
+        const basePos = pod.position.clone();
+        const baseQuat = pod.quaternion.clone();
+        const pivotLocal = computeAzimuthPivotLocal(pod);
+        const pivotParent = basePos.clone().add(pivotLocal.clone().applyQuaternion(baseQuat));
+        if (side === 'BB') {
+            tug._azPodBBBasePos = basePos;
+            tug._azPodBBBaseQuat = baseQuat;
+            tug._azPodBBPivotLocal = pivotLocal;
+            tug._azPodBBPivotParent = pivotParent;
+        } else {
+            tug._azPodBEBasePos = basePos;
+            tug._azPodBEBaseQuat = baseQuat;
+            tug._azPodBEPivotLocal = pivotLocal;
+            tug._azPodBEPivotParent = pivotParent;
+        }
+    };
+    bindPod(podBB, 'BB');
+    bindPod(podBE, 'BE');
     tug._azYawSign = 1;
 
     const info = {
@@ -2224,7 +2287,16 @@ function snapTugJetsToGlbPropellers() {
         podBE: podBE.name,
         shaftAxis: tug._propShaftAxis,
         spin: { bb: 'horário (+)', be: 'anti-horário (−)' },
-        azimuth: { plane: 'horizontal (yaw no vertical do casco)', yawSign: tug._azYawSign },
+        azimuth: {
+            plane: 'horizontal (yaw no vertical do casco)',
+            pivot: 'bbox center do pod',
+            yawSign: tug._azYawSign,
+            pivotBB: {
+                x: +tug._azPodBBPivotLocal.x.toFixed(3),
+                y: +tug._azPodBBPivotLocal.y.toFixed(3),
+                z: +tug._azPodBBPivotLocal.z.toFixed(3)
+            }
+        },
         bb: { x: +bb.x.toFixed(3), y: +bb.y.toFixed(3), z: +bb.z.toFixed(3) },
         be: { x: +be.x.toFixed(3), y: +be.y.toFixed(3), z: +be.z.toFixed(3) }
     };
