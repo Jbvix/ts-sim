@@ -84,7 +84,7 @@
     }
 
     try {
-      // requestRenderMode:false → render contínuo, alinhado ao animate() do Three
+      // requestRenderMode:true → render sob demanda (syncFromThree pede frame)
       // globe:false — Photorealistic tiles; oceano além do disco Three = backgroundColor
       viewer = new Cesium.Viewer(CONTAINER_ID, {
         animation: false,
@@ -100,7 +100,8 @@
         globe: false,
         skyBox: false,
         skyAtmosphere: false,
-        requestRenderMode: false,
+        requestRenderMode: true,
+        maximumRenderTimeChange: Infinity,
         useDefaultRenderLoop: true
       });
 
@@ -118,7 +119,8 @@
           }
         }
         try {
-          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          // Alinha ao DPR do Three com GE (cap 1.5) — evita 2× full Retina
+          const dpr = Math.min(1.5, window.devicePixelRatio || 1);
           viewer.resolutionScale = dpr;
         } catch (_) { /* */ }
         // Desativa controller Cesium (só o OrbitControls do Three mexe na vista)
@@ -144,13 +146,13 @@
 
       try {
         tileset = await Cesium.createGooglePhotorealistic3DTileset();
-        // SSE baixo + dynamic SSE: costa permanece no zoom out / horizonte (~10–20 km)
-        tileset.maximumScreenSpaceError = 4;
+        // SSE 10: menos tiles no horizonte; dynamic SSE cobre zoom out
+        tileset.maximumScreenSpaceError = 10;
         tileset.dynamicScreenSpaceError = true;
         if (tileset.dynamicScreenSpaceErrorDensity != null) tileset.dynamicScreenSpaceErrorDensity = 2.0e-4;
         if (tileset.dynamicScreenSpaceErrorFactor != null) tileset.dynamicScreenSpaceErrorFactor = 24.0;
-        if (tileset.preloadWhenHidden != null) tileset.preloadWhenHidden = true;
-        if (tileset.cullWithChildrenBounds != null) tileset.cullWithChildrenBounds = false;
+        if (tileset.preloadWhenHidden != null) tileset.preloadWhenHidden = false;
+        if (tileset.cullWithChildrenBounds != null) tileset.cullWithChildrenBounds = true;
         viewer.scene.primitives.add(tileset);
       } catch (tileErr) {
         console.warn('[T-Sim] Photorealistic 3D Tiles (cenário) falharam:', tileErr);
@@ -286,6 +288,10 @@
       fr.near = Math.max(1.0, (typeof camera.near === 'number' ? camera.near : 1));
       fr.far = Math.max(120000, typeof camera.far === 'number' ? camera.far : 80000);
     }
+    // requestRenderMode: pede frame só quando a câmara Three muda
+    try {
+      if (viewer.scene && viewer.scene.requestRender) viewer.scene.requestRender();
+    } catch (_) { /* */ }
   }
 
   function setActive(on) {

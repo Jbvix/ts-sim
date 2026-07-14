@@ -19,6 +19,8 @@
   <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <link rel="stylesheet" href="assets/reboqueoceanico-242tsim.css" />
+  <link rel="preload" href="assets/container_ship.glb" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="assets/rastar_3200_tugboat.glb" as="fetch" crossorigin="anonymous" />
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
 <header class="sticky top-0 z-50 glass-card rounded-none border-t-0 border-x-0 border-b border-slate-200 dark:border-slate-800">
@@ -465,7 +467,12 @@ const container = document.getElementById('sim-container');
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 1, 80000);
 camera.position.set(60, 90, 200);
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
+const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    logarithmicDepthBuffer: true,
+    powerPreference: 'high-performance'
+});
 renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
@@ -489,6 +496,11 @@ controls_cam.update();
 let seabedMesh; // Declarado aqui para ser acessível globalmente no script
 /** true quando GE Photorealistic underlay está ativo no viewport */
 let _scenarioGeActive = false;
+/** DPR: sem GE até 2; com GE underlay limita a 1.5 (dois WebGL a full-res é caro). */
+function applyRendererPixelRatio() {
+    const cap = _scenarioGeActive ? 1.5 : 2;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, cap));
+}
 const WATER_OPACITY_DEFAULT = 0.8;
 const WATER_OPACITY_GE = 0.22;
 const WATER_SIZE_DEFAULT = 10000;
@@ -531,10 +543,10 @@ water.material.depthWrite = false;
 water.renderOrder = 0;
 scene.add(water);
 
-// Plano para representar o fundo do mar (seabed)
+// Plano para representar o fundo do mar (seabed) — 1×1 quads (plano plano; 50×50 era custo sem ganho)
 seabedMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(10000, 10000, 50, 50), // Segmentos para futura topografia
-    new THREE.MeshPhongMaterial({ color: 0x4a443b, shininess: 10, transparent: true, opacity: 1 })
+    new THREE.PlaneGeometry(10000, 10000),
+    new THREE.MeshPhongMaterial({ color: 0x4a443b, shininess: 10, transparent: false, opacity: 1 })
 );
 seabedMesh.rotation.x = -Math.PI / 2;
 scene.add(seabedMesh);
@@ -542,8 +554,8 @@ scene.add(seabedMesh);
 function setWaterGeometryForScenario(geOn) {
     water.geometry.dispose();
     if (geOn) {
-        // Disco suave (mais segmentos) — evita artefacto de “grade” no bordo
-        water.geometry = new THREE.CircleGeometry(WATER_RADIUS_GE, 96);
+        // Disco suave — 64 segmentos bastam (96 era overkill no underlay)
+        water.geometry = new THREE.CircleGeometry(WATER_RADIUS_GE, 64);
     } else {
         water.geometry = new THREE.PlaneGeometry(WATER_SIZE_DEFAULT, WATER_SIZE_DEFAULT);
     }
@@ -559,6 +571,7 @@ function applyShipGlbLiftForScenario(geOn) {
 
 function applyScenarioGeVisuals(on) {
     _scenarioGeActive = !!on;
+    applyRendererPixelRatio();
     setWaterGeometryForScenario(on);
     if (on) {
         scene.background = null;
@@ -1761,7 +1774,7 @@ function syncAsdViz() {
     const rpmPct = (rpm) => (rpm < 0.5) ? 0 : Math.max(0, Math.min(100, (rpm / 1800) * 100));
     if (f1) f1.style.width = rpmPct(p1) + '%';
     if (f2) f2.style.width = rpmPct(p2) + '%';
-    updateGlbAzimuthPods();
+    // Azimute 3D: só em updatePropulsorJets (evita 2× matrixWorld/frame)
 }
 // --- Listeners de Eventos da UI ---
 // Adiciona listeners para todos os sliders (input range)
@@ -1953,17 +1966,27 @@ let _shipGlbRoot = null;
 let _tugGlbRoot = null;
 
 function meshVisibleBounds(object3d) {
+    object3d.updateMatrixWorld(true);
+    // Um único setFromObject + exclusão de cascos/oclusores via traverse curto
     const realBox = new THREE.Box3();
     let ok = false;
-    object3d.updateMatrixWorld(true);
     object3d.traverse((child) => {
         if (!child.isMesh || !child.visible) return;
         if (child.name === 'shipHull' || child.name === 'tugHull') return;
+        let p = child;
+        while (p) {
+            if (p.name === 'bridgeOccluder') return;
+            p = p.parent;
+        }
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         if (mats.length && mats.every((m) => m && (m.visible === false || m.opacity === 0))) return;
-        const childBox = new THREE.Box3().setFromObject(child);
-        if (!ok) { realBox.copy(childBox); ok = true; }
-        else realBox.union(childBox);
+        // Geometria local → mundo (mais barato que Box3.setFromObject por mesh)
+        if (!child.geometry) return;
+        if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+        const b = child.geometry.boundingBox.clone();
+        b.applyMatrix4(child.matrixWorld);
+        if (!ok) { realBox.copy(b); ok = true; }
+        else realBox.union(b);
     });
     if (!ok) realBox.setFromObject(object3d);
     return realBox;
@@ -2028,14 +2051,13 @@ function makeOpaqueColorMap(tex) {
 }
 
 /**
- * Corrige materiais GLB da superestrutura “fantasma”.
- * O material "Bridge" do container_ship.glb vem com alphaMode:BLEND — Three.js mete-o
- * na fila transparente (depthWrite fraco) e o mar/contentores aparecem através do casario.
- * Forçamos MeshStandard opaco + NoBlending; no Bridge neutralizamos o alpha do albedo.
+ * Corrige materiais GLB problemáticos (Bridge BLEND / transparent).
+ * Materiais já opacos: só força flags leves — evita recriar MeshStandard + canvas no albedo.
  */
 function sanitizeGlbMaterials(root) {
     if (!root) return;
     let n = 0;
+    let light = 0;
     root.traverse((c) => {
         if (!c.isMesh || !c.material) return;
         const mats = Array.isArray(c.material) ? c.material : [c.material];
@@ -2045,6 +2067,18 @@ function sanitizeGlbMaterials(root) {
             if (!m) continue;
             const matName = (m.name || '');
             const isBridge = /bridge/i.test(matName) || /bridge|superstructure|deckhouse|casario|ponte/i.test(meshName);
+            const needsFull = isBridge || m.transparent === true || (typeof m.opacity === 'number' && m.opacity < 0.999)
+                || (m.alphaMode && String(m.alphaMode).toUpperCase() === 'BLEND');
+
+            if (!needsFull) {
+                m.transparent = false;
+                m.opacity = 1;
+                m.depthWrite = true;
+                if (m.side === THREE.DoubleSide) m.side = THREE.FrontSide;
+                m.needsUpdate = true;
+                light++;
+                continue;
+            }
 
             let colorMap = m.map || null;
             if (isBridge && colorMap) colorMap = makeOpaqueColorMap(colorMap);
@@ -2053,13 +2087,13 @@ function sanitizeGlbMaterials(root) {
                 name: matName || 'glbSolid',
                 color: m.color ? m.color.clone() : new THREE.Color(isBridge ? 0xe8e8ea : 0xffffff),
                 map: colorMap,
-                metalnessMap: m.metalnessMap || null,
-                roughnessMap: m.roughnessMap || null,
-                normalMap: m.normalMap || null,
+                metalnessMap: isBridge ? null : (m.metalnessMap || null),
+                roughnessMap: isBridge ? null : (m.roughnessMap || null),
+                normalMap: isBridge ? null : (m.normalMap || null),
                 metalness: typeof m.metalness === 'number' ? m.metalness : (isBridge ? 0.12 : 0.25),
                 roughness: typeof m.roughness === 'number' ? m.roughness : (isBridge ? 0.62 : 0.65),
                 emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0x000000),
-                emissiveMap: m.emissiveMap || null,
+                emissiveMap: isBridge ? null : (m.emissiveMap || null),
                 emissiveIntensity: typeof m.emissiveIntensity === 'number' ? m.emissiveIntensity : 1,
                 transparent: false,
                 opacity: 1,
@@ -2067,14 +2101,13 @@ function sanitizeGlbMaterials(root) {
                 depthTest: true,
                 colorWrite: true,
                 blending: THREE.NoBlending,
-                side: THREE.DoubleSide,
+                side: isBridge ? THREE.DoubleSide : THREE.FrontSide,
                 flatShading: false,
                 fog: m.fog !== false,
                 alphaTest: 0,
                 alphaHash: false
             });
             if (solid.map) solid.map.colorSpace = (m.map && m.map.colorSpace) || solid.map.colorSpace;
-            // Impede qualquer caminho de transparência residual do GLTFLoader
             solid.transparent = false;
             solid.opacity = 1;
             solid.depthWrite = true;
@@ -2087,7 +2120,7 @@ function sanitizeGlbMaterials(root) {
         c.renderOrder = 0;
         c.frustumCulled = true;
     });
-    console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' materiais → opacos');
+    console.info('[T-Sim] sanitizeGlbMaterials: ' + n + ' reconstruídos, ' + light + ' leves');
 }
 
 /** Diagnóstico: materiais do GLB do navio já encaixado. */
@@ -2770,8 +2803,13 @@ function getAttachmentPoints() {
 }
 // Geometria do cabo sem heave/assentamento (ondas): o updateVesselMotions pós-física altera o mesh e a corda 3D
 // com pitch/rolagem pode *parecer* > L_pago e forçar TAUT/esticado sem folga. Física de regime e restrição usam isto; o desenho do cabo continua a usar getAttachmentPoints().
+let _simFrameId = 0;
+let _attachQuietFrame = -1;
+let _attachQuietCache = null;
 function getAttachmentPointsQuiescent() {
     if (!ship.mesh.geometry.parameters.depth) return { shipAttachPoint: new THREE.Vector3(), tugAttachPoint: new THREE.Vector3() };
+    // Cache por frame — física/UI/catenária pediam isto 3× com 4× updateMatrixWorld cada
+    if (_attachQuietFrame === _simFrameId && _attachQuietCache) return _attachQuietCache;
     const sh = ship.mesh.position.clone();
     const sr = ship.mesh.rotation.clone();
     const th = tug.mesh.position.clone();
@@ -2791,6 +2829,8 @@ function getAttachmentPointsQuiescent() {
     tug.mesh.rotation.copy(tr);
     ship.mesh.updateMatrixWorld(true);
     tug.mesh.updateMatrixWorld(true);
+    _attachQuietFrame = _simFrameId;
+    _attachQuietCache = p;
     return p;
 }
 
@@ -3273,12 +3313,45 @@ function updatePhysics() {
     tug.mesh.rotation.y = tug.angle;
 }
 
+/** AABB do casco BoxGeometry (colisor), sem percorrer o GLB visual. */
+function hullWorldAABB(vessel, outBox) {
+    const mesh = vessel.mesh;
+    const p = mesh.geometry && mesh.geometry.parameters;
+    if (!p) {
+        outBox.makeEmpty();
+        return outBox;
+    }
+    const hx = p.width * 0.5, hy = p.height * 0.5, hz = p.depth * 0.5;
+    // 8 cantos do box local → mundo (só yaw+posição do mesh)
+    mesh.updateMatrixWorld(true);
+    const m = mesh.matrixWorld.elements;
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    for (let ix = -1; ix <= 1; ix += 2) {
+        for (let iy = -1; iy <= 1; iy += 2) {
+            for (let iz = -1; iz <= 1; iz += 2) {
+                const lx = ix * hx, ly = iy * hy, lz = iz * hz;
+                const wx = m[0] * lx + m[4] * ly + m[8] * lz + m[12];
+                const wy = m[1] * lx + m[5] * ly + m[9] * lz + m[13];
+                const wz = m[2] * lx + m[6] * ly + m[10] * lz + m[14];
+                if (wx < minX) minX = wx; if (wx > maxX) maxX = wx;
+                if (wy < minY) minY = wy; if (wy > maxY) maxY = wy;
+                if (wz < minZ) minZ = wz; if (wz > maxZ) maxZ = wz;
+            }
+        }
+    }
+    outBox.min.set(minX, minY, minZ);
+    outBox.max.set(maxX, maxY, maxZ);
+    return outBox;
+}
+const _shipHullBB = new THREE.Box3();
+const _tugHullBB = new THREE.Box3();
+
 // Função para detectar e resolver colisões entre o navio e o rebocador
 function handleCollisions() {
-    // Usamos as bounding boxes dos objetos para detectar a colisão.
-    // É uma aproximação (AABB - Axis-Aligned Bounding Box) que funciona bem para este caso.
-    const shipBB = new THREE.Box3().setFromObject(ship.mesh);
-    const tugBB = new THREE.Box3().setFromObject(tug.mesh);
+    // AABB só do BoxGeometry do casco (não setFromObject no GLB completo)
+    const shipBB = hullWorldAABB(ship, _shipHullBB);
+    const tugBB = hullWorldAABB(tug, _tugHullBB);
 
     if (shipBB.intersectsBox(tugBB)) {
         // --- 1. Correção de Posição (para evitar que os objetos fiquem presos) ---
@@ -3398,6 +3471,7 @@ function mapCableStateToUI(state) {
 }
 
 const speedHistory = { ship: [], tug: [], maxPoints: 200 };
+let _speedChartLastMs = 0;
 
 function drawSpeedHistoryChart() {
     const el = document.getElementById('speedHistoryChart');
@@ -3586,7 +3660,13 @@ function updateUI() {
         speedHistory.ship.shift();
         speedHistory.tug.shift();
     }
-    drawSpeedHistoryChart();
+    // Gráfico 2D: ~8 Hz (DOM de telemetria continua a 60 Hz)
+    if (!_speedChartLastMs) _speedChartLastMs = 0;
+    const nowChart = performance.now();
+    if (nowChart - _speedChartLastMs >= 120) {
+        _speedChartLastMs = nowChart;
+        drawSpeedHistoryChart();
+    }
     
     const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsQuiescent();
     const d3 = shipAttachPoint.distanceTo(tugAttachPoint);
@@ -4133,6 +4213,7 @@ function onWindowResize(){
     if (container) {
         camera.aspect = container.clientWidth / container.clientHeight;
         camera.updateProjectionMatrix();
+        applyRendererPixelRatio();
         renderer.setSize(container.clientWidth, container.clientHeight);
     }
     if (window.__simCesiumScenario && window.__simCesiumScenario.ready && window.__simCesiumScenario.resize) {
@@ -4149,6 +4230,7 @@ window.addEventListener('resize', onWindowResize, false);
 // --- 10. LOOP DE ANIMAÇÃO E INICIALIZAÇÃO ---
 function animate() {
     requestAnimationFrame(animate);
+    _simFrameId++;
     try {
         updatePhysics();
         updateCatenary();
