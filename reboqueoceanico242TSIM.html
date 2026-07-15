@@ -2850,7 +2850,8 @@ function meshVisibleBounds(object3d, opts) {
         let p = child;
         while (p) {
             if (p.name === 'bridgeOccluder') return;
-            if (excludeNameRe && p.name && excludeNameRe.test(p.name)) return;
+            // Só ancestral direto com nome de propulsor/leme (evita /prop/ largo a excluir a árvore inteira)
+            if (excludeNameRe && p !== child && p.name && excludeNameRe.test(p.name)) return;
             p = p.parent;
         }
         const mats = Array.isArray(child.material) ? child.material : [child.material];
@@ -3107,12 +3108,29 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     // Quilha na base do colisor (−height/2). No rebocador, excluir hélices/leme da bbox —
     // senão o min.y desce com os props e o casco visual fica a flutuar acima da água.
     model.updateMatrixWorld(true);
+    const fullKeelBox = meshVisibleBounds(model);
     const keelBox = opts.keelExcludeNameRe
         ? meshVisibleBounds(model, { excludeNameRe: opts.keelExcludeNameRe })
-        : meshVisibleBounds(model);
+        : fullKeelBox;
+    // propsHang > 0 ⇒ exclusão funcionou (hélices abaixo do casco)
+    const propsHang = keelBox.min.y - fullKeelBox.min.y;
     model.position.y += (-th / 2) - keelBox.min.y;
+    // Fallback: se a exclusão não alterou a bbox, afunda o visual pelo sink empírico
+    let appliedSink = 0;
+    if (opts.keelSinkM && propsHang < 0.25) {
+        appliedSink = opts.keelSinkM;
+        model.position.y -= appliedSink;
+    }
     // Eleva o visual para a linha d'água ficar abaixo das marcas de costado (ex.: MRC)
     if (opts.visualLiftM) model.position.y += opts.visualLiftM;
+    if (hullMesh.name === 'tugHull') {
+        hullMesh.userData.glbKeelDiag = {
+            fullMinY: +fullKeelBox.min.y.toFixed(3),
+            keelMinY: +keelBox.min.y.toFixed(3),
+            propsHang: +propsHang.toFixed(3),
+            sink: appliedSink
+        };
+    }
 
     model.traverse((c) => {
         if (!c.isMesh) return;
@@ -3263,7 +3281,9 @@ function refreshVesselGlbVisuals() {
         fitGlbIntoHull(tug.mesh, _tugGlbRoot, {
             fitInside: false,
             // Props/rudders ASD abaixo da quilha não devem definir o min.y do encaixe
-            keelExcludeNameRe: /propeller|rudder|prop/i
+            keelExcludeNameRe: /propeller|rudder/i,
+            // Folga empírica: bbox do casco Rastar ainda deixa o visual ~2 m alto vs calado
+            keelSinkM: 2.0
         });
     }
     if (ship.mesh.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
@@ -3293,9 +3313,10 @@ async function loadVesselGlbs() {
             tugFit: tug.mesh.userData.glbFittedSize || null,
             shipHull: ship.mesh.geometry.parameters,
             tugHull: tug.mesh.geometry.parameters,
-            propellers: window.__simTugPropellers || null
+            propellers: window.__simTugPropellers || null,
+            tugKeelDiag: tug.mesh.userData.glbKeelDiag || null
         };
-        console.info('[T-Sim] modelos GLB carregados: container_ship + rastar_3200');
+        console.info('[T-Sim] modelos GLB carregados: container_ship + rastar_3200', window.__simGlbReady.tugKeelDiag || '');
     } catch (err) {
         window.__simGlbReady = { error: String(err) };
         console.error('[T-Sim] falha ao carregar GLB de navio/rebocador:', err);
