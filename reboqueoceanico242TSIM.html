@@ -198,6 +198,9 @@
           <button type="button" class="sim-rail" data-panel-group="buoy" data-label="Bóias" title="Bóias" aria-label="Bóias" aria-pressed="false">
             <svg class="sim-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4"/><circle cx="12" cy="11" r="4"/><path d="M8.5 14.5 6 21"/><path d="M15.5 14.5 18 21"/><path d="M4 18c2 .8 4 1.2 8 1.2s6-.4 8-1.2"/></svg>
           </button>
+          <button type="button" class="sim-rail" data-panel-group="route" data-label="Rota" title="Rota, waypoints e GPX" aria-label="Rota e waypoints" aria-pressed="false">
+            <svg class="sim-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="10" r="2.2"/><circle cx="8" cy="18" r="2.2"/><path d="M7.8 7.6 16.2 9.4"/><path d="M16.5 11.8 9.2 16.6"/></svg>
+          </button>
           <button type="button" class="sim-rail" id="btn-sidebar-geo-mapa" data-map-toggle="true" data-label="Mapa" title="Mostrar mapa (costa 3D Cesium / OSM)" aria-label="Mapa costa 3D / OSM" aria-pressed="false" aria-controls="geo-mapa-wrap">
             <svg class="sim-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3 3 5.5v15L9 18l6 2.5L21 18V3l-6 2.5L9 3z"/><path d="M9 3v15"/><path d="M15 5.5v15"/></svg>
           </button>
@@ -421,6 +424,20 @@
             <button id="clearBuoys" style="margin-top: 15px; background-color: #522;">Limpar todas as bóias</button>
             <div class="resize-handle"></div>
         </div>
+
+        <div id="routePanel" class="panel hidden">
+            <h4>Rota e waypoints</h4>
+            <p class="text-[11px] leading-snug mb-2" style="color:#8da4b7;">Edite no mapa <strong>OpenSeaMap</strong> (arrastar marcadores). A derrota aparece também na vista 3D. Origem ENU: Rio (−23.05, −43.15). GPX: só <span class="font-mono">&lt;wpt&gt;</span>.</p>
+            <div class="route-actions">
+                <button type="button" id="routePlaceToggle" aria-pressed="false" title="Clique no mapa Leaflet para criar waypoints numerados">Adicionar no mapa</button>
+                <button type="button" id="routeGpxBtn" title="Importar ficheiro GPX (apenas waypoints)">Importar GPX</button>
+                <button type="button" id="routeClear" style="background-color:#522;" title="Apagar todos os waypoints">Limpar</button>
+            </div>
+            <input type="file" id="routeGpxInput" accept=".gpx,application/gpx+xml,text/xml" class="sr-only" tabindex="-1" aria-hidden="true">
+            <p id="routeStatus" class="route-status" aria-live="polite">—</p>
+            <ul id="routeWaypointList" class="route-wp-list" aria-label="Lista de waypoints"></ul>
+            <div class="resize-handle"></div>
+        </div>
         
         <div id="asdPanel" class="panel asd-panel hidden">
             <h4>Governo ASD (rebocador)</h4>
@@ -596,6 +613,7 @@
   <script src="assets/reboqueoceanico-cesium.js"></script>
   <script src="assets/reboqueoceanico-cesium-scenario.js"></script>
   <script src="assets/reboqueoceanico-float.js"></script>
+  <script src="assets/reboqueoceanico-route.js"></script>
 <script type="importmap">
         {
             "imports": {
@@ -3246,6 +3264,37 @@ async function loadVesselGlbs() {
     }
 }
 
+/** Teleporta o comboio (navio + rebocador, vão ~50 m) para (ox, oz) ENU; governo manual (sem autopilot de derrota). */
+function placeConvoyAt(ox, oz) {
+    const L_ship = ship.length || (ship.mesh.geometry && ship.mesh.geometry.parameters.depth) || 200;
+    const L_tug = (tug.mesh.geometry && tug.mesh.geometry.parameters.depth) || (tug.length || 30);
+    ship.position.set(ox, 0, oz);
+    ship.velocity.set(0, 0, 0);
+    ship.angle = 0;
+    ship.angularVelocity = 0;
+    ship.rudderDeg = 0;
+    ship.rudderLockedMidships = true;
+    syncShipRudderUI();
+    _shipDesiredYawEma = null;
+    tug.position.set(ox, 0, oz - (L_ship / 2) - (L_tug / 2) - 50);
+    tug.velocity.set(0, 0, 0);
+    tug.angle = Math.PI;
+    tug.angularVelocity = 0;
+    tug.headingHold = { active: true, psi: Math.PI };
+    _cargaDisplayEma1 = _cargaDisplayEma2 = _cargaDisplayEmaM = null;
+    tug.motorRpm1 = 0;
+    tug.motorRpm2 = 0;
+    tug.driveEngaged = false;
+    asdPropVisAngle1 = 0;
+    asdPropVisAngle2 = 0;
+    if (asdPropBladeG1) asdPropBladeG1.setAttribute('transform', 'rotate(0 32 32)');
+    if (asdPropBladeG2) asdPropBladeG2.setAttribute('transform', 'rotate(0 32 32)');
+    syncDriveClutchUI();
+    if (typeof updateRioContextMap === 'function') {
+        try { updateRioContextMap(true); } catch (_) { /* mapa ainda não definido no 1.º preset */ }
+    }
+}
+
 // Aplica as propriedades de um preset de navio selecionado
 function applyShipPreset(presetName) {
     const preset = shipPresets[presetName];
@@ -3282,22 +3331,7 @@ function applyShipPreset(presetName) {
     const sailSlider = uiControls.sailArea.el;
     sailSlider.min = preset.sailArea * 0.5; sailSlider.max = preset.sailArea * 1.5;
     sailSlider.value = preset.sailArea;
-    ship.position.set(0, 0, 0); ship.velocity.set(0, 0, 0);
-    ship.angle = 0; ship.angularVelocity = 0;
-    ship.rudderDeg = 0;
-    ship.rudderLockedMidships = true;
-    syncShipRudderUI();
-    _shipDesiredYawEma = null;
-    tug.position.set(0, 0, -(preset.length / 2) - (tug.mesh.geometry.parameters.depth / 2) - 50);
-    tug.velocity.set(0, 0, 0); tug.angle = Math.PI; tug.angularVelocity = 0;
-    tug.headingHold = { active: true, psi: Math.PI };
-    _cargaDisplayEma1 = _cargaDisplayEma2 = _cargaDisplayEmaM = null;
-    tug.motorRpm1 = 0; tug.motorRpm2 = 0;
-    tug.driveEngaged = false;
-    asdPropVisAngle1 = 0; asdPropVisAngle2 = 0;
-    if (asdPropBladeG1) asdPropBladeG1.setAttribute('transform', 'rotate(0 32 32)');
-    if (asdPropBladeG2) asdPropBladeG2.setAttribute('transform', 'rotate(0 32 32)');
-    syncDriveClutchUI();
+    placeConvoyAt(0, 0);
     draftSlider.dispatchEvent(new Event('input'));
     sailSlider.dispatchEvent(new Event('input'));
 }
@@ -5196,6 +5230,9 @@ function wireGeoMapMinimize(onToggle) {
 }
 
 function destroyLeafletMap() {
+    if (window.__simRoute && typeof window.__simRoute.detachLeafletMap === 'function') {
+        try { window.__simRoute.detachLeafletMap(); } catch (_) { /* */ }
+    }
     if (_rioMap) {
         try { _rioMap.remove(); } catch (_) { /* */ }
     }
@@ -5243,6 +5280,9 @@ function initLeafletMap() {
     setGeoMapTitle('leaflet');
     syncCoastProviderSelect('leaflet');
     _coastMode = 'leaflet';
+    if (window.__simRoute && typeof window.__simRoute.attachLeafletMap === 'function') {
+        try { window.__simRoute.attachLeafletMap(_rioMap); } catch (_) { /* */ }
+    }
     console.info('[T-Sim] OpenSeaMap: comboio ao largo RJ', ps.lat.toFixed(4), ps.lon.toFixed(4));
     return true;
 }
@@ -5488,6 +5528,36 @@ async function bootTSimWithSplash() {
     }
 }
 wireAsdThrusterMinimize();
+
+if (window.__simRoute && typeof window.__simRoute.init === 'function') {
+    window.__simRoute.init({
+        THREE,
+        scene,
+        rio: RIO_GEO,
+        simXZtoLatLng,
+        getMap: () => _rioMap,
+        getLeaflet: () => globalThis.L,
+        getWaterY: () => (typeof water !== 'undefined' && water ? water.position.y : water_level),
+        placeConvoyAt,
+        ensureLeafletVisible: async () => {
+            await ensureCoastMapInited();
+            await setCoastProvider('leaflet');
+            setGeoMapVisible(true);
+            const wrap = document.getElementById('geo-mapa-wrap');
+            if (wrap) wrap.classList.remove('geo-mapa--min');
+            const body = document.getElementById('geo-mapa-body');
+            if (body) body.classList.remove('hidden');
+            if (_rioMap) {
+                window.__simRoute.attachLeafletMap(_rioMap);
+                setTimeout(() => { try { _rioMap.invalidateSize(); } catch (_) { /* */ } }, 180);
+            }
+        },
+        afterPlaceConvoy: () => {
+            try { updateRioContextMap(true); } catch (_) { /* */ }
+        }
+    });
+}
+
 animate();
 bootTSimWithSplash();
   </script>

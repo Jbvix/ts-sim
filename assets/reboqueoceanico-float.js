@@ -12,11 +12,12 @@
       towlinePanel: 'Towline Safety',
       catenaryGuidePanel: 'Catenária e trancos',
       buoyPanel: 'Bóias',
+      routePanel: 'Rota e waypoints',
       asdPanel: 'Governo ASD (rebocador)',
       twinSafetyPanel: 'TWIN e segurança',
       cameraPanel: 'Câmera 3D',
     };
-    const ORDER = ['envPanel', 'vesselPanel', 'winchPanel', 'towlinePanel', 'catenaryGuidePanel', 'buoyPanel', 'asdPanel', 'twinSafetyPanel', 'cameraPanel'];
+    const ORDER = ['envPanel', 'vesselPanel', 'winchPanel', 'towlinePanel', 'catenaryGuidePanel', 'buoyPanel', 'routePanel', 'asdPanel', 'twinSafetyPanel', 'cameraPanel'];
     const root = document.getElementById('sim-float-root');
     if (!root) return;
     let zStack = 50;
@@ -244,7 +245,7 @@
       attachResize(wrap, resize);
     });
 
-    const GROUP_TO_ID = { env: 'envPanel', vessel: 'vesselPanel', winch: 'winchPanel', towline: 'towlinePanel', catGuide: 'catenaryGuidePanel', asd: 'asdPanel', twinSafety: 'twinSafetyPanel', buoy: 'buoyPanel', camera: 'cameraPanel' };
+    const GROUP_TO_ID = { env: 'envPanel', vessel: 'vesselPanel', winch: 'winchPanel', towline: 'towlinePanel', catGuide: 'catenaryGuidePanel', asd: 'asdPanel', twinSafety: 'twinSafetyPanel', buoy: 'buoyPanel', route: 'routePanel', camera: 'cameraPanel' };
 
     function syncRail() {
       document.querySelectorAll('.sim-rail').forEach((btn) => {
