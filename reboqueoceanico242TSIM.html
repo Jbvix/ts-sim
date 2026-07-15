@@ -1613,7 +1613,10 @@ function surfaceYAt(x, z) {
 
 /** Y do mesh sem heave de onda (calado + flutuação calma) — pivô de órbita estável. */
 function getCalmVesselMeshY(vessel) {
-    const wl = surfaceYAt(vessel.position.x, vessel.position.z);
+    // Preferir a água real (já com sag GE) para câmera e cascos partilharem a mesma referência
+    const wl = (typeof water !== 'undefined' && water)
+        ? water.position.y
+        : surfaceYAt(vessel.position.x, vessel.position.z);
     const h = (vessel.mesh && vessel.mesh.geometry && vessel.mesh.geometry.parameters &&
         typeof vessel.mesh.geometry.parameters.height === 'number')
         ? vessel.mesh.geometry.parameters.height
@@ -2291,8 +2294,10 @@ function updateVesselMass(vessel) {
 }
 // Ajusta a posição vertical do mesh para o calado relativamente à superfície da água visível
 function updateVesselYPosition(vessel, height) {
-    // Com GE: superfície = sag ENU no (x,z) do casco (evita “flutuar” longe de RJ)
-    const wl = surfaceYAt(vessel.position.x, vessel.position.z);
+    // Uma só referência: disco de água (GE já aplica sag em syncGeWaterToConvoy)
+    const wl = (typeof water !== 'undefined' && water)
+        ? water.position.y
+        : surfaceYAt(vessel.position.x, vessel.position.z);
     vessel.mesh.position.y = wl - vessel.draft + (height / 2);
 }
 
@@ -2827,7 +2832,13 @@ const VESSEL_GLB_PATHS = {
 let _shipGlbRoot = null;
 let _tugGlbRoot = null;
 
-function meshVisibleBounds(object3d) {
+/**
+ * Bounds visíveis do GLB.
+ * @param {object} [opts]
+ * @param {RegExp} [opts.excludeNameRe] — ignora meshes cujo nome casa (ex.: hélices na quilha)
+ */
+function meshVisibleBounds(object3d, opts) {
+    const excludeNameRe = opts && opts.excludeNameRe;
     object3d.updateMatrixWorld(true);
     // Um único setFromObject + exclusão de cascos/oclusores via traverse curto
     const realBox = new THREE.Box3();
@@ -2835,9 +2846,11 @@ function meshVisibleBounds(object3d) {
     object3d.traverse((child) => {
         if (!child.isMesh || !child.visible) return;
         if (child.name === 'shipHull' || child.name === 'tugHull') return;
+        if (excludeNameRe && child.name && excludeNameRe.test(child.name)) return;
         let p = child;
         while (p) {
             if (p.name === 'bridgeOccluder') return;
+            if (excludeNameRe && p.name && excludeNameRe.test(p.name)) return;
             p = p.parent;
         }
         const mats = Array.isArray(child.material) ? child.material : [child.material];
@@ -3091,10 +3104,13 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     center.x = 0;
     model.position.x -= center.x;
     model.position.z -= center.z;
-    // Quilha na base do colisor (−height/2): o calado afunda as obras vivas de forma correta
+    // Quilha na base do colisor (−height/2). No rebocador, excluir hélices/leme da bbox —
+    // senão o min.y desce com os props e o casco visual fica a flutuar acima da água.
     model.updateMatrixWorld(true);
-    box = meshVisibleBounds(model);
-    model.position.y += (-th / 2) - box.min.y;
+    const keelBox = opts.keelExcludeNameRe
+        ? meshVisibleBounds(model, { excludeNameRe: opts.keelExcludeNameRe })
+        : meshVisibleBounds(model);
+    model.position.y += (-th / 2) - keelBox.min.y;
     // Eleva o visual para a linha d'água ficar abaixo das marcas de costado (ex.: MRC)
     if (opts.visualLiftM) model.position.y += opts.visualLiftM;
 
@@ -3243,7 +3259,13 @@ function refreshVesselGlbVisuals() {
         const lift = _scenarioGeActive ? SHIP_GLB_VISUAL_LIFT_GE_M : SHIP_GLB_VISUAL_LIFT_M;
         fitGlbIntoHull(ship.mesh, _shipGlbRoot, { fitInside: false, visualLiftM: lift });
     }
-    if (_tugGlbRoot) fitGlbIntoHull(tug.mesh, _tugGlbRoot, { fitInside: false });
+    if (_tugGlbRoot) {
+        fitGlbIntoHull(tug.mesh, _tugGlbRoot, {
+            fitInside: false,
+            // Props/rudders ASD abaixo da quilha não devem definir o min.y do encaixe
+            keelExcludeNameRe: /propeller|rudder|prop/i
+        });
+    }
     if (ship.mesh.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
     if (tug.mesh.geometry?.parameters) updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
     snapTugJetsToGlbPropellers();
@@ -3306,18 +3328,20 @@ function placeConvoyAt(ox, oz) {
     if (asdPropBladeG1) asdPropBladeG1.setAttribute('transform', 'rotate(0 32 32)');
     if (asdPropBladeG2) asdPropBladeG2.setAttribute('transform', 'rotate(0 32 32)');
     syncDriveClutchUI();
-    // Alinha meshes XZ + calado/sag imediatamente (mar calmo não atualizava Y todos os frames)
+    // Alinha meshes XZ; água (sag) primeiro, depois calado; recentra órbita
     ship.mesh.position.x = ship.position.x;
     ship.mesh.position.z = ship.position.z;
     tug.mesh.position.x = tug.position.x;
     tug.mesh.position.z = tug.position.z;
+    try { syncGeWaterToConvoy(); } catch (_) { /* */ }
     if (ship.mesh.geometry && ship.mesh.geometry.parameters) {
         updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
     }
     if (tug.mesh.geometry && tug.mesh.geometry.parameters) {
         updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
     }
-    try { syncGeWaterToConvoy(); } catch (_) { /* */ }
+    _simCamLastAim = null;
+    try { stepCameraFollow(); } catch (_) { /* */ }
     if (typeof updateRioContextMap === 'function') {
         try { updateRioContextMap(true); } catch (_) { /* mapa ainda não definido no 1.º preset */ }
     }
@@ -5488,8 +5512,9 @@ function animate() {
         updateEnvironmentVisuals();
         updatePropulsorJets();
         updateBuoys();
-        updateVesselMotions();
+        // Água (sag GE) antes dos cascos — mesma referência vertical
         syncGeWaterToConvoy();
+        updateVesselMotions();
         if (!draggedObject) stepCameraFollow();
         if (!draggedObject) controls_cam.update();
         // GE underlay: sync contínuo da pose Three → Cesium (matrixWorld / ENU)
@@ -5554,6 +5579,55 @@ async function bootTSimWithSplash() {
     }
 }
 wireAsdThrusterMinimize();
+
+window.__simForceGeVisuals = (on) => { applyScenarioGeVisuals(!!on); };
+window.__simDebugFloat = () => {
+    const sh = ship.mesh.geometry && ship.mesh.geometry.parameters
+        ? ship.mesh.geometry.parameters.height : null;
+    const th = tug.mesh.geometry && tug.mesh.geometry.parameters
+        ? tug.mesh.geometry.parameters.height : null;
+    const shipBottom = sh != null ? ship.mesh.position.y - sh / 2 : null;
+    const tugBottom = th != null ? tug.mesh.position.y - th / 2 : null;
+    const shipGlb = ship.mesh.getObjectByName('glbVisual');
+    const tugGlb = tug.mesh.getObjectByName('glbVisual');
+    let shipGlbMin = null;
+    let tugGlbMin = null;
+    let tugGlbMinHullOnly = null;
+    if (shipGlb) {
+        ship.mesh.updateMatrixWorld(true);
+        shipGlbMin = new THREE.Box3().setFromObject(shipGlb).min.y;
+    }
+    if (tugGlb) {
+        tug.mesh.updateMatrixWorld(true);
+        tugGlbMin = new THREE.Box3().setFromObject(tugGlb).min.y;
+        tugGlbMinHullOnly = meshVisibleBounds(tugGlb, {
+            excludeNameRe: /propeller|rudder|prop/i
+        }).min.y;
+    }
+    return {
+        ge: !!_scenarioGeActive,
+        waterY: water ? water.position.y : null,
+        waterXZ: water ? { x: water.position.x, z: water.position.z } : null,
+        ship: {
+            meshY: ship.mesh.position.y,
+            draft: ship.draft,
+            bottom: shipBottom,
+            gapAboveWater: shipBottom != null && water ? shipBottom - water.position.y : null,
+            glbMin: shipGlbMin,
+            glbGap: shipGlbMin != null && water ? shipGlbMin - water.position.y : null
+        },
+        tug: {
+            meshY: tug.mesh.position.y,
+            draft: tug.draft,
+            bottom: tugBottom,
+            gapAboveWater: tugBottom != null && water ? tugBottom - water.position.y : null,
+            glbMin: tugGlbMin,
+            glbGap: tugGlbMin != null && water ? tugGlbMin - water.position.y : null,
+            glbMinHullOnly: tugGlbMinHullOnly,
+            glbHullGap: tugGlbMinHullOnly != null && water ? tugGlbMinHullOnly - water.position.y : null
+        }
+    };
+};
 
 if (window.__simRoute && typeof window.__simRoute.init === 'function') {
     window.__simRoute.init({
