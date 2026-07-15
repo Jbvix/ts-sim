@@ -672,7 +672,8 @@ function applyRendererPixelRatio() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, cap));
 }
 const WATER_OPACITY_DEFAULT = 0.8;
-const WATER_OPACITY_GE = 0.22;
+/** Com GE: água local mais legível (0.22 deixava o oceano Cesium “por baixo” a parecer flutuação). */
+const WATER_OPACITY_GE = 0.55;
 const WATER_SIZE_DEFAULT = 10000;
 /**
  * Disco GE: cobre o FOV em órbita (~até a costa ~8–10 km) sem tapar o terreno
