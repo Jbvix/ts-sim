@@ -1595,9 +1595,25 @@ const _simCamConvoyCenter = new THREE.Vector3();
 /** Altura do pivô de órbita acima da média vertical do comboio (metros ENU). */
 const CONVOY_ORBIT_PIVOT_LIFT_M = 8;
 
+/**
+ * Correção ENU↔elipsoide: o plano tangente em RIO_GEO fica acima do mar Cesium
+ * à medida que nos afastamos (≈ r²/2R). Negativo = descer para a superfície.
+ */
+const WGS84_A_M = 6378137;
+function enuEllipsoidSagY(x, z) {
+    const r2 = (x || 0) * (x || 0) + (z || 0) * (z || 0);
+    return -r2 / (2 * WGS84_A_M);
+}
+
+/** Y da superfície da água no ENU local (com GE: segue o elipsoide; senão: plano flat). */
+function surfaceYAt(x, z) {
+    if (_scenarioGeActive) return enuEllipsoidSagY(x, z);
+    return (typeof water !== 'undefined' && water) ? water.position.y : water_level;
+}
+
 /** Y do mesh sem heave de onda (calado + flutuação calma) — pivô de órbita estável. */
 function getCalmVesselMeshY(vessel) {
-    const wl = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
+    const wl = surfaceYAt(vessel.position.x, vessel.position.z);
     const h = (vessel.mesh && vessel.mesh.geometry && vessel.mesh.geometry.parameters &&
         typeof vessel.mesh.geometry.parameters.height === 'number')
         ? vessel.mesh.geometry.parameters.height
@@ -1627,13 +1643,13 @@ function getWorldAimForCameraMode(mode) {
     return o;
 }
 
-/** Com GE: disco de água acompanha o comboio (borda longe do FOV na órbita). */
+/** Com GE: disco de água acompanha o comboio e desce com o sag do elipsoide. */
 function syncGeWaterToConvoy() {
     if (!_scenarioGeActive || !water) return;
     const c = getConvoyCenter(_simCamConvoyCenter);
     water.position.x = c.x;
     water.position.z = c.z;
-    water.position.y = 0;
+    water.position.y = enuEllipsoidSagY(c.x, c.z);
 }
 function setCameraMode(mode) {
     if (!['free', 'tug', 'ship', 'convoy'].includes(mode)) return;
@@ -2275,8 +2291,8 @@ function updateVesselMass(vessel) {
 }
 // Ajusta a posição vertical do mesh para o calado relativamente à superfície da água visível
 function updateVesselYPosition(vessel, height) {
-    // Com GE a água local está em y≈0; sem GE usa water_level (−1)
-    const wl = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
+    // Com GE: superfície = sag ENU no (x,z) do casco (evita “flutuar” longe de RJ)
+    const wl = surfaceYAt(vessel.position.x, vessel.position.z);
     vessel.mesh.position.y = wl - vessel.draft + (height / 2);
 }
 
@@ -3290,6 +3306,18 @@ function placeConvoyAt(ox, oz) {
     if (asdPropBladeG1) asdPropBladeG1.setAttribute('transform', 'rotate(0 32 32)');
     if (asdPropBladeG2) asdPropBladeG2.setAttribute('transform', 'rotate(0 32 32)');
     syncDriveClutchUI();
+    // Alinha meshes XZ + calado/sag imediatamente (mar calmo não atualizava Y todos os frames)
+    ship.mesh.position.x = ship.position.x;
+    ship.mesh.position.z = ship.position.z;
+    tug.mesh.position.x = tug.position.x;
+    tug.mesh.position.z = tug.position.z;
+    if (ship.mesh.geometry && ship.mesh.geometry.parameters) {
+        updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+    }
+    if (tug.mesh.geometry && tug.mesh.geometry.parameters) {
+        updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
+    }
+    try { syncGeWaterToConvoy(); } catch (_) { /* */ }
     if (typeof updateRioContextMap === 'function') {
         try { updateRioContextMap(true); } catch (_) { /* mapa ainda não definido no 1.º preset */ }
     }
@@ -5143,16 +5171,14 @@ function updateVesselMotions() {
     const time = clock.getElapsedTime();
     const waveHeight = simParams.waveHeight;
 
-    // Se não houver ondas, reseta a rotação e a posição vertical para o padrão.
+    // Sem ondas: mantém calado + sag ENU (necessário após teleporte / derrota)
     if (waveHeight <= 0.1) {
-        if(ship.mesh.rotation.x !== 0 || ship.mesh.rotation.z !== 0) {
-            ship.mesh.rotation.x = 0;
-            ship.mesh.rotation.z = 0;
-            tug.mesh.rotation.x = 0;
-            tug.mesh.rotation.z = 0;
-            updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
-            updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
-        }
+        ship.mesh.rotation.x = 0;
+        ship.mesh.rotation.z = 0;
+        tug.mesh.rotation.x = 0;
+        tug.mesh.rotation.z = 0;
+        updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+        updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
         return;
     }
 
@@ -5538,6 +5564,7 @@ if (window.__simRoute && typeof window.__simRoute.init === 'function') {
         getMap: () => _rioMap,
         getLeaflet: () => globalThis.L,
         getWaterY: () => (typeof water !== 'undefined' && water ? water.position.y : water_level),
+        surfaceYAt,
         placeConvoyAt,
         ensureLeafletVisible: async () => {
             await ensureCoastMapInited();

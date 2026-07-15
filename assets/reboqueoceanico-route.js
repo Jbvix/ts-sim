@@ -204,11 +204,17 @@
     }
     threeLine = null;
 
-    const wl = deps.getWaterY ? deps.getWaterY() : 0;
+    const surfaceAt = (x, z) =>
+      typeof deps.surfaceYAt === 'function'
+        ? deps.surfaceYAt(x, z)
+        : deps.getWaterY
+          ? deps.getWaterY()
+          : 0;
     const matCone = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
     const matLabel = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
 
     waypoints.forEach((w) => {
+      const wl = surfaceAt(w.x, w.z);
       const cone = new THREE.Mesh(
         new THREE.ConeGeometry(4.5, 14, 10),
         matCone.clone()
@@ -228,7 +234,7 @@
     });
 
     if (waypoints.length >= 2) {
-      const pts = waypoints.map((w) => new THREE.Vector3(w.x, wl + 1.5, w.z));
+      const pts = waypoints.map((w) => new THREE.Vector3(w.x, surfaceAt(w.x, w.z) + 1.5, w.z));
       const geo = new THREE.BufferGeometry().setFromPoints(pts);
       threeLine = new THREE.Line(
         geo,
