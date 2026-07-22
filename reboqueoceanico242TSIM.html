@@ -595,10 +595,16 @@
   <script>
     window.CESIUM_BASE_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/';
     // Marca saída para o dashboard: o botão Voltar usa history.back() e o bfcache restaura o sim sem reset.
+    // Se o bfcache falhar (página recarrega), o estado salvo em tsimSimState é restaurado no boot.
     document.addEventListener('click', (e) => {
       const a = e.target && e.target.closest && e.target.closest('a.js-to-dashboard, a[href^="index.html"]');
       if (!a) return;
       try { sessionStorage.setItem('tsimNavFromSim', '1'); } catch (_) { /* ignore */ }
+      try {
+        if (window.__simCaptureState) {
+          sessionStorage.setItem('tsimSimState', JSON.stringify(window.__simCaptureState()));
+        }
+      } catch (_) { /* ignore */ }
     }, true);
   </script>
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js" crossorigin="anonymous"></script>
@@ -5617,6 +5623,136 @@ function animate() {
 uiControls.tugDraft.el.dispatchEvent(new Event('input'));
 
 /** Arranque com splash: etapas de preparação do cenário + progresso. */
+// --- Estado da simulação: salvar ao ir ao dashboard / restaurar sem reset ---
+// Caminho rápido: bfcache via history.back() (dashboard). Caminho robusto:
+// se a página recarregar, o boot aplica o estado salvo em sessionStorage.
+const SIM_STATE_KEY = 'tsimSimState';
+const SIM_STATE_TTL_MS = 30 * 60 * 1000;
+
+function captureSimState() {
+    const sliders = {};
+    for (const key in uiControls) {
+        const c = uiControls[key];
+        if (c && c.el && c.el.type === 'range') sliders[key] = c.el.value;
+    }
+    return {
+        v: 1,
+        ts: Date.now(),
+        sliders,
+        shipPreset: (document.getElementById('shipPreset') || {}).value || null,
+        catModelPreset: simParams.catModelPreset,
+        isTwinMode: !!simParams.isTwinMode,
+        ship: {
+            x: ship.position.x, z: ship.position.z,
+            vx: ship.velocity.x, vy: ship.velocity.y, vz: ship.velocity.z,
+            angle: ship.angle, av: ship.angularVelocity
+        },
+        tug: {
+            x: tug.position.x, z: tug.position.z,
+            vx: tug.velocity.x, vy: tug.velocity.y, vz: tug.velocity.z,
+            angle: tug.angle, av: tug.angularVelocity,
+            enginesOn: !!tug.enginesOn,
+            driveEngaged: !!tug.driveEngaged,
+            motorRpm1: tug.motorRpm1 || 0,
+            motorRpm2: tug.motorRpm2 || 0
+        },
+        cable: { length: cable.length, targetLength: cable.targetLength },
+        buoys: buoys.map((b) => ({
+            x: b.position.x, z: b.position.z,
+            color: b.material && b.material.color ? '#' + b.material.color.getHexString() : '#ffff00'
+        }))
+    };
+}
+window.__simCaptureState = captureSimState;
+
+function setRangeControl(key, value) {
+    const c = uiControls[key];
+    if (!c || !c.el || c.el.type !== 'range' || value == null) return;
+    c.el.value = String(value);
+    c.el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function applySimState(s) {
+    // 1) Preset do navio (geometria/massa) — teleporta o comboio; posições vêm depois
+    if (s.shipPreset) {
+        const sel = document.getElementById('shipPreset');
+        if (sel) {
+            sel.value = s.shipPreset;
+            sel.dispatchEvent(new Event('change'));
+        }
+    }
+    // 2) Preset do modelo de catenária
+    if (s.catModelPreset && uiControls.catModelPreset.el) {
+        uiControls.catModelPreset.el.value = s.catModelPreset;
+        uiControls.catModelPreset.el.dispatchEvent(new Event('change'));
+    }
+    // 3) Modo TWIN/INDIVIDUAL
+    if (!!s.isTwinMode !== !!simParams.isTwinMode) uiControls.asdModeToggle.el.click();
+    // 4) Motores (a partida repõe RPM mínimo; os sliders salvos corrigem a seguir)
+    if (s.tug && !!s.tug.enginesOn !== !!tug.enginesOn) uiControls.engineStartStop.el.click();
+    // 5) Sliders (ambiente, calados, cabo pago, RPM, azimutes, céu)
+    if (s.sliders) for (const k in s.sliders) setRangeControl(k, s.sliders[k]);
+    // 6) Transmissão + RPM real dos eixos
+    if (s.tug) {
+        const want = !!s.tug.driveEngaged;
+        if (want !== !!tug.driveEngaged) {
+            const b = want ? btnAsdEngage : btnAsdDisengage;
+            if (b) b.click();
+        }
+        tug.motorRpm1 = s.tug.motorRpm1 || 0;
+        tug.motorRpm2 = s.tug.motorRpm2 || 0;
+    }
+    // 7) Posições, velocidades e rumos
+    if (s.ship) {
+        ship.position.set(s.ship.x || 0, 0, s.ship.z || 0);
+        ship.velocity.set(s.ship.vx || 0, s.ship.vy || 0, s.ship.vz || 0);
+        ship.angle = s.ship.angle || 0;
+        ship.angularVelocity = s.ship.av || 0;
+    }
+    if (s.tug) {
+        tug.position.set(s.tug.x || 0, 0, s.tug.z || 0);
+        tug.velocity.set(s.tug.vx || 0, s.tug.vy || 0, s.tug.vz || 0);
+        tug.angle = (typeof s.tug.angle === 'number') ? s.tug.angle : Math.PI;
+        tug.angularVelocity = s.tug.av || 0;
+    }
+    // 8) Cabo pago (exato — o guincho não precisa "andar" até lá)
+    if (s.cable) {
+        if (Number.isFinite(s.cable.length)) cable.length = s.cable.length;
+        if (Number.isFinite(s.cable.targetLength)) cable.targetLength = s.cable.targetLength;
+    }
+    // 9) Bóias
+    if (Array.isArray(s.buoys)) {
+        clearBuoys();
+        s.buoys.forEach((b) => addBuoyAt(b.color || '#ffff00', b.x || 0, b.z || 0));
+    }
+    // Meshes acompanham as novas posições de imediato
+    updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
+    updateVesselYPosition(tug, tug.mesh.geometry.parameters.height);
+}
+
+function maybeRestoreSimState() {
+    let raw = null;
+    try { raw = sessionStorage.getItem(SIM_STATE_KEY); } catch (_) { /* */ }
+    if (!raw) return;
+    try { sessionStorage.removeItem(SIM_STATE_KEY); } catch (_) { /* */ }
+    try {
+        const s = JSON.parse(raw);
+        if (!s || s.v !== 1 || !s.ts || (Date.now() - s.ts) > SIM_STATE_TTL_MS) return;
+        applySimState(s);
+        console.info('[T-Sim] estado da simulação restaurado (volta do dashboard, sem reset).');
+    } catch (err) {
+        console.warn('[T-Sim] falha ao restaurar estado da simulação:', err);
+    }
+}
+
+// bfcache restaurou a página (volta rápida): descarta o estado salvo para não
+// reaplicá-lo num reload futuro — a página viva já É o estado.
+window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+        try { sessionStorage.removeItem(SIM_STATE_KEY); } catch (_) { /* */ }
+    }
+});
+
 async function bootTSimWithSplash() {
     const splash = window.__simSplash;
     const report = (p, msg, step) => { try { splash && splash.set(p, msg, step); } catch (_) { /* */ } };
@@ -5634,6 +5770,8 @@ async function bootTSimWithSplash() {
         setGeoMapVisible(false);
         report(92, 'A sincronizar física do comboio…', 'physics');
         await new Promise((r) => setTimeout(r, 180));
+        // Volta do dashboard sem reset: aplica o estado salvo (se houver e fresco)
+        maybeRestoreSimState();
         report(100, 'Cenário pronto', 'ready');
         if (splash && splash.done) splash.done();
     } catch (err) {
