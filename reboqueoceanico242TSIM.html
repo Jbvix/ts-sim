@@ -1362,18 +1362,23 @@ tug.yawSenseArrow.visible = false;
 tug.mesh.add(tug.jet1, tug.jet2, tug.thrustResultArrow, tug.yawSenseArrow);
 
 /**
- * Aguagem (wash) dos propulsores ASD — partículas em cone a partir do bocal.
- * Vida 3,2–5,6 s; meia-abertura ~15°; emissão e velocidade ∝ potência do jato (RPM).
+ * Aguagem (wash) dos propulsores ASD — partículas em cone separado por bocal
+ * (uma esteira por propulsor, na posição de cada um), junto à superfície.
+ * Comprimento ∝ potência, limitado a 2× o comprimento do rebocador.
  */
 const PROP_WASH = (() => {
-    const MAX = 1100;
-    const LIFE_MIN = 3.2;
-    const LIFE_MAX = 5.6;
+    const MAX = 2000;
+    const LIFE_MIN = 4.5;
+    const LIFE_MAX = 8.0;
     const HALF_ANGLE_RAD = (15 * Math.PI) / 180;
     const SPAWN_RATE_MAX = 95; // part./s por propulsor a 100 %
     const SPEED_MIN = 4.5;
     const SPEED_MAX = 22;
     const NOZZLE_JITTER = 0.08; // m — vértice apertado no bocal
+    // Arrasto exponencial exp(-k·t): distância máx. da partícula ≈ SPEED_MAX/k.
+    // k escolhido para que a aguagem a 100 % atinja no máximo 2× o comprimento do rebocador.
+    const MAX_WASH_LEN = 2 * (tug.length || 30);
+    const DRAG_RATE = SPEED_MAX / MAX_WASH_LEN;
 
     const positions = new Float32Array(MAX * 3);
     const velocities = new Float32Array(MAX * 3);
@@ -1500,6 +1505,7 @@ const PROP_WASH = (() => {
         acc -= n;
         if (n <= 0) return acc;
 
+        // Origem: o bocal do próprio propulsor (um cone por bocal)
         jetHelper.getWorldPosition(_origin);
         // Direção do jato no espaço do casco → mundo (igual ArrowHelper)
         const thrustAngle = (azimuthDeg - 90) * Math.PI / 180;
@@ -1524,7 +1530,7 @@ const PROP_WASH = (() => {
         spawnAcc2 = emitFromJet(tug.jet2, t2Az, p2, dt, spawnAcc2);
 
         const wl = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
-        const drag = Math.exp(-1.1 * dt);
+        const drag = Math.exp(-DRAG_RATE * dt);
 
         for (let i = 0; i < alive; ) {
             ages[i] += dt;
@@ -1543,7 +1549,7 @@ const PROP_WASH = (() => {
             const targetY = wl + 0.08 + (1 - t) * 0.25;
             positions[i * 3 + 1] += (targetY - positions[i * 3 + 1]) * Math.min(1, 4 * dt);
 
-            // Fade: pico cedo, cauda longa (vida 3,2–5,6 s)
+            // Fade: pico cedo, cauda longa (vida 4,5–8 s)
             const fade = t < 0.12 ? (t / 0.12) : Math.pow(1 - (t - 0.12) / 0.88, 1.35);
             alphas[i] = (0.5 + (1 - t) * 0.35) * fade;
             sizes[i] = (1.4 + (1 - t) * 2.2) * (0.85 + fade * 0.4);
@@ -2180,16 +2186,15 @@ function updateGlbAzimuthPods() {
         tug.azPodBE, tug._azPodBEBasePos, tug._azPodBEBaseQuat,
         tug._azPodBEPivotLocal, tug._azPodBEPivotParent, a2
     );
-    // Jatos acompanham o pivô (hélices movem-se com o pod)
+    // Jatos acompanham o pivô (hélices movem-se com o pod) — âncora no centro
+    // da bbox da hélice (eixo central do propulsor), não no origin do nó GLB
     if (tug.jet1 && tug.propMeshBB) {
-        const w = new THREE.Vector3();
-        tug.propMeshBB.getWorldPosition(w);
+        const w = new THREE.Box3().setFromObject(tug.propMeshBB).getCenter(new THREE.Vector3());
         tug.mesh.worldToLocal(w);
         tug.jet1.position.copy(w);
     }
     if (tug.jet2 && tug.propMeshBE) {
-        const w = new THREE.Vector3();
-        tug.propMeshBE.getWorldPosition(w);
+        const w = new THREE.Box3().setFromObject(tug.propMeshBE).getCenter(new THREE.Vector3());
         tug.mesh.worldToLocal(w);
         tug.jet2.position.copy(w);
     }
@@ -3171,9 +3176,10 @@ function snapTugJetsToGlbPropellers() {
     };
 
     tug.mesh.updateMatrixWorld(true);
+    // Âncora do jato = CENTRO da bbox da malha da hélice → exatamente no eixo
+    // central do propulsor (o origin do nó GLB não coincide com o cubo/eixo).
     const toHullLocal = (obj) => {
-        const w = new THREE.Vector3();
-        obj.getWorldPosition(w);
+        const w = new THREE.Box3().setFromObject(obj).getCenter(new THREE.Vector3());
         return tug.mesh.worldToLocal(w);
     };
     const pL = toHullLocal(left);
