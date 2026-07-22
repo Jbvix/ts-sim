@@ -193,10 +193,12 @@ async function initCesium() {
     maximumRenderTimeChange: Infinity,
     useDefaultRenderLoop: true
   });
+  // Créditos Cesium/Google: exigidos visíveis pelos ToS — apenas compactados.
   if (viewer.cesiumWidget?.creditContainer) {
-    viewer.cesiumWidget.creditContainer.style.display = 'none';
+    const cc = viewer.cesiumWidget.creditContainer;
+    cc.style.fontSize = '9px';
+    cc.style.opacity = '0.7';
   }
-  // Credits still required by ToS — show a compact line in status instead
   const tileset = await Cesium.createGooglePhotorealistic3DTileset();
   viewer.scene.primitives.add(tileset);
   viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#051d40');

@@ -4870,15 +4870,23 @@ function updateCatenaryGuide() {
     if (uTips) uTips.innerHTML = tips.map(t => '<li style="color:#e2e8f0;">' + t + '</li>').join('');
 }
 
+// Escreve texto (e título opcional) no valEl de um controle, tolerando
+// controle ou elemento ausente — evita exceções a cada frame no updateUI.
+function setCtrlText(ctrl, text, title) {
+    if (!ctrl || !ctrl.valEl) return;
+    ctrl.valEl.innerText = text;
+    if (title !== undefined) ctrl.valEl.title = title;
+}
+
 function updateUI() {
-    uiControls.shipMass.valEl.innerText = (ship.mass / 1000).toFixed(0);
-    uiControls.shipLength.valEl.innerText = ship.length.toFixed(0);
-    uiControls.tugMass.valEl.innerText = (tug.mass / 1000).toFixed(0);
+    setCtrlText(uiControls.shipMass, (ship.mass / 1000).toFixed(0));
+    setCtrlText(uiControls.shipLength, ship.length.toFixed(0));
+    setCtrlText(uiControls.tugMass, (tug.mass / 1000).toFixed(0));
     // Velocidade em nós: módulo 3D de v; a física vem de ΣF/m (proa/ASD + arrasto + reboque). O "peso" do cabo de aço entra só via towF (tensão catenária + arrasto do cabo), não como massa extra no rebocador.
     const knS = ship.velocity.length() * 1.94384;
     const knT = tug.velocity.length() * 1.94384;
-    uiControls.shipSpeed.valEl.innerText = knS.toFixed(2);
-    uiControls.tugSpeed.valEl.innerText = knT.toFixed(2);
+    setCtrlText(uiControls.shipSpeed, knS.toFixed(2));
+    setCtrlText(uiControls.tugSpeed, knT.toFixed(2));
     if (ship.rudderLockedMidships && ship.rudderDeg !== 0) {
         ship.rudderDeg = 0;
         syncShipRudderUI();
@@ -4927,8 +4935,7 @@ function updateUI() {
     const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsQuiescent();
     const d3 = shipAttachPoint.distanceTo(tugAttachPoint);
     const dH = Math.hypot(shipAttachPoint.x - tugAttachPoint.x, shipAttachPoint.z - tugAttachPoint.z);
-    uiControls.distanceBowStern.valEl.innerText = d3.toFixed(1);
-    uiControls.distanceBowStern.valEl.title = 'Distância em linha reta 3D entre as bitas. Com muito cabo e catenária, a tensão na boca (T_end) puxa ao longo dessa reta: o vão tende a encolher, sobretudo com rebocador parado, até o equilíbrio com vento e mar.';
+    setCtrlText(uiControls.distanceBowStern, d3.toFixed(1), 'Distância em linha reta 3D entre as bitas. Com muito cabo e catenária, a tensão na boca (T_end) puxa ao longo dessa reta: o vão tende a encolher, sobretudo com rebocador parado, até o equilíbrio com vento e mar.');
     if (uiControls.distanceFairleadHz && uiControls.distanceFairleadHz.valEl) {
         uiControls.distanceFairleadHz.valEl.innerText = dH.toFixed(1);
         uiControls.distanceFairleadHz.valEl.title = 'Vão em planta (X–Z) entre amarras; o mesmo S usado no modelo de H / catenária, sem embandeiramento de onda na leitura.';
@@ -4941,34 +4948,33 @@ function updateUI() {
     const Lcab = cable.length;
     const tonWet = wWetNpm > 0 ? cableWetWeightTonnes(p, Lcab) : 0;
     const tonDry = p ? cableDryWeightTonnes(p, Lcab) : (Lcab * cable.weightPerMeter / 1000);
-    uiControls.cableWeight.valEl.innerText = (wWetNpm > 0 ? tonWet : tonDry).toFixed(2);
     if (p && wWetNpm > 0) {
         const ex500 = cableWetWeightTonnes(p, 500);
         const wAir = p.wNpm_air;
         const b = p.buoy_factor ?? 0.12;
-        uiControls.cableWeight.valEl.title = `Peso aparente em água (t): t = w_água·L/9,81/1000, w_água = w_ar·(1−b) [N/m] — o mesmo w da catenária. Catálogo: w_ar=${wAir} N/m, b=${b} → w_água=${wWetNpm.toFixed(2)} N/m. Peso seco no ar: ${tonDry.toFixed(2)} t (kg/m = w_ar/9,81). Ex.: 500 m → ≈${ex500.toFixed(2)} t (água).`;
+        setCtrlText(uiControls.cableWeight, (wWetNpm > 0 ? tonWet : tonDry).toFixed(2), `Peso aparente em água (t): t = w_água·L/9,81/1000, w_água = w_ar·(1−b) [N/m] — o mesmo w da catenária. Catálogo: w_ar=${wAir} N/m, b=${b} → w_água=${wWetNpm.toFixed(2)} N/m. Peso seco no ar: ${tonDry.toFixed(2)} t (kg/m = w_ar/9,81). Ex.: 500 m → ≈${ex500.toFixed(2)} t (água).`);
     } else {
-        uiControls.cableWeight.valEl.title = 'Peso em ton (ar) × comprimento; selecione um tipo de cabo no catálogo.';
+        setCtrlText(uiControls.cableWeight, (wWetNpm > 0 ? tonWet : tonDry).toFixed(2), 'Peso em ton (ar) × comprimento; selecione um tipo de cabo no catálogo.');
     }
     }
-    uiControls.actualCableLength.valEl.innerText = cable.length.toFixed(1);
+    setCtrlText(uiControls.actualCableLength, cable.length.toFixed(1));
     const tEndKN = (towF.T_end / 1000).toFixed(1);
-    uiControls.cableTension.valEl.innerText = tEndKN;
+    setCtrlText(uiControls.cableTension, tEndKN);
     cableTension = towF.TensionN;
-    uiControls.catenaryForce.valEl.innerText = (towF.H / 1000).toFixed(1); // H (kN)
+    setCtrlText(uiControls.catenaryForce, (towF.H / 1000).toFixed(1)); // H (kN)
 
     // Filtra valores da catenária antes de mandar pro HUD/render para evitar valores absurdos
     let sag_display = towF.sag || 0;
     if (!Number.isFinite(sag_display) || sag_display > 1.1 * cable.length) {
         sag_display = cable.length; // fallback seguro
     }
-    uiControls.cableSag.valEl.innerText = sag_display.toFixed(2);
+    setCtrlText(uiControls.cableSag, sag_display.toFixed(2));
 
     // Atualiza os novos campos da UI
-    uiControls.cableStateValue.valEl.innerText = mapCableStateToUI(towF.state);
-    uiControls.maxDeploymentSpeedValue.valEl.innerText = calculateMaxDeploymentSpeed(simParams.waveHeight);
+    setCtrlText(uiControls.cableStateValue, mapCableStateToUI(towF.state));
+    setCtrlText(uiControls.maxDeploymentSpeedValue, calculateMaxDeploymentSpeed(simParams.waveHeight));
     const sagVarDisplay = Number.isFinite(sagVariation) ? sagVariation.toFixed(2) : "0.00";
-    uiControls.cableSagVariationValue.valEl.innerText = sagVarDisplay; 
+    setCtrlText(uiControls.cableSagVariationValue, sagVarDisplay);
     
     // Carga = traction×f(RPM cmd)×f(SOG); f(RPM) segue o COMANDO (slider), não o eixo ainda a subir (inércia) — 1800 no comando = f_RPM=100%.
     const t1Mot = (typeof tug.motorRpm1 === 'number') ? tug.motorRpm1 : simParams.thruster1RPM;
@@ -5009,9 +5015,9 @@ function updateUI() {
     const actualPowerKW_1 = tr * getPowerFromRPM(t1Mot);
     const actualPowerKW_2 = tr * getPowerFromRPM(t2Mot);
     const fuelConsumption = tug.enginesOn ? interpolate(actualPowerKW_1, fuelCurve, 'kw', 'lph') + interpolate(actualPowerKW_2, fuelCurve, 'kw', 'lph') : 0;
-    uiControls.tugFuelConsumption.valEl.innerText = fuelConsumption.toFixed(1);
-    uiControls.shipTotalResistance.valEl.innerText = (ship.totalResistance / 1000).toFixed(1);
-    uiControls.beaufort.valEl.innerText = 'F' + getBeaufortFromWaveHeight(simParams.waveHeight);
+    setCtrlText(uiControls.tugFuelConsumption, fuelConsumption.toFixed(1));
+    setCtrlText(uiControls.shipTotalResistance, (ship.totalResistance / 1000).toFixed(1));
+    setCtrlText(uiControls.beaufort, 'F' + getBeaufortFromWaveHeight(simParams.waveHeight));
 
     // Trancos (ondas) na “Tensão extrema”: atenua com cabo longo; usa tração de referência (N), não a variável morta cableTension
     let waveInducedTension = 0;
@@ -5031,7 +5037,7 @@ function updateUI() {
     if (!Number.isFinite(_extremeTensionEma) || _extremeTensionEma <= 0) _extremeTensionEma = extremeRaw;
     _extremeTensionEma += (extremeRaw - _extremeTensionEma) * kEma;
     extremeTension = _extremeTensionEma;
-    uiControls.extremeTension.valEl.innerText = (extremeTension / 1000).toFixed(1);
+    setCtrlText(uiControls.extremeTension, (extremeTension / 1000).toFixed(1));
     updateCatenaryGuide();
 }
 // Atualiza a direção e o comprimento das setas que representam vento e corrente
@@ -5472,40 +5478,74 @@ function onWindowResize(){
 window.addEventListener('resize', onWindowResize, false);
 
 // --- 10. LOOP DE ANIMAÇÃO E INICIALIZAÇÃO ---
+// Erros de frame: loga os primeiros; após ~1 s de falhas consecutivas, pausa a
+// simulação e mostra banner visível (em vez de correr em estado corrompido).
+let _simAnimErrStreak = 0;
+let _simPaused = false;
+const SIM_ANIM_ERR_PAUSE_THRESHOLD = 60;
+
+function showSimErrorBanner(err) {
+    if (document.getElementById('sim-error-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'sim-error-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+        + 'background:#b91c1c;color:#fff;padding:10px 16px;font:13px/1.4 system-ui,sans-serif;'
+        + 'display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;';
+    const msg = document.createElement('span');
+    msg.textContent = 'Simulação pausada por erro repetido: '
+        + (err && err.message ? err.message : String(err));
+    const btn = document.createElement('button');
+    btn.textContent = 'Recarregar';
+    btn.style.cssText = 'background:#fff;color:#b91c1c;border:0;border-radius:6px;'
+        + 'padding:4px 12px;font-weight:600;cursor:pointer;';
+    btn.addEventListener('click', () => window.location.reload());
+    banner.appendChild(msg);
+    banner.appendChild(btn);
+    document.body.appendChild(banner);
+}
+
 function animate() {
     requestAnimationFrame(animate);
     _simFrameId++;
-    try {
-        updatePhysics();
-        updateCatenary();
-        updateUI();
-        updateRioContextMap();
-        updateEnvironmentVisuals();
-        updatePropulsorJets();
-        updateBuoys();
-        // Água (sag GE) antes dos cascos — mesma referência vertical
-        syncGeWaterToConvoy();
-        updateVesselMotions();
-        if (!draggedObject) stepCameraFollow();
-        if (!draggedObject) controls_cam.update();
-        // GE underlay: sync contínuo da pose Three → Cesium (matrixWorld / ENU)
-        // em todos os modos — comboio e cenário giram juntos
-        if (
-            _scenarioGeActive &&
-            window.__simCesiumScenario &&
-            window.__simCesiumScenario.ready
-        ) {
-            camera.updateMatrixWorld(true);
-            window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
-            // Tempo real: refresca relógio / sol / névoa ~1×/s
-            if (simParams.skyLiveClock && (_simFrameId % 60 === 0)) {
-                pushSkyWeatherToCesium(true);
+    if (!_simPaused) {
+        try {
+            updatePhysics();
+            updateCatenary();
+            updateUI();
+            updateRioContextMap();
+            updateEnvironmentVisuals();
+            updatePropulsorJets();
+            updateBuoys();
+            // Água (sag GE) antes dos cascos — mesma referência vertical
+            syncGeWaterToConvoy();
+            updateVesselMotions();
+            if (!draggedObject) stepCameraFollow();
+            if (!draggedObject) controls_cam.update();
+            // GE underlay: sync contínuo da pose Three → Cesium (matrixWorld / ENU)
+            // em todos os modos — comboio e cenário giram juntos
+            if (
+                _scenarioGeActive &&
+                window.__simCesiumScenario &&
+                window.__simCesiumScenario.ready
+            ) {
+                camera.updateMatrixWorld(true);
+                window.__simCesiumScenario.syncFromThree(camera, controls_cam.target);
+                // Tempo real: refresca relógio / sol / névoa ~1×/s
+                if (simParams.skyLiveClock && (_simFrameId % 60 === 0)) {
+                    pushSkyWeatherToCesium(true);
+                }
             }
-        }
-    } catch (err) {
-        if (!window.__simAnimErrLogged) {
-            window.__simAnimErrLogged = true;
-            console.error('[T-Sim] erro no loop (cena continua a renderizar):', err);
+            _simAnimErrStreak = 0;
+        } catch (err) {
+            _simAnimErrStreak++;
+            if (_simAnimErrStreak <= 3) {
+                console.error('[T-Sim] erro no loop de simulação:', err);
+            }
+            if (_simAnimErrStreak >= SIM_ANIM_ERR_PAUSE_THRESHOLD) {
+                _simPaused = true;
+                console.error('[T-Sim] simulação pausada após erros consecutivos:', err);
+                showSimErrorBanner(err);
+            }
         }
     }
     renderer.render(scene, camera);

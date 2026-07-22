@@ -463,10 +463,10 @@
 
       setupSkyDefaults();
 
+      // Créditos Cesium/Google: exigidos visíveis pelos ToS — apenas compactados.
       if (viewer.cesiumWidget && viewer.cesiumWidget.creditContainer) {
         const cc = viewer.cesiumWidget.creditContainer;
-        cc.style.display = 'block';
-        cc.style.transform = 'scaleX(-1) scale(0.75)';
+        cc.style.transform = 'scale(0.75)';
         cc.style.transformOrigin = 'bottom left';
         cc.style.opacity = '0.75';
       }

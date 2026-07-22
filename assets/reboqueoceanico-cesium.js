@@ -96,8 +96,11 @@
         maximumRenderTimeChange: Infinity
       });
 
+      // Créditos Cesium/Google: exigidos visíveis pelos ToS — apenas compactados.
       if (viewer.cesiumWidget && viewer.cesiumWidget.creditContainer) {
-        viewer.cesiumWidget.creditContainer.style.display = 'none';
+        const cc = viewer.cesiumWidget.creditContainer;
+        cc.style.fontSize = '9px';
+        cc.style.opacity = '0.7';
       }
 
       try {

@@ -21,25 +21,15 @@ function json(status, body) {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Cache-Control': 'no-store'
+      // Sem Access-Control-Allow-Origin: o endpoint é same-origin (o site e a
+      // function vivem no mesmo domínio Netlify); CORS aberto exporia o token
+      // a qualquer site de terceiros.
     }
   });
 }
 
 export default async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
-    });
-  }
   if (req.method !== 'GET') {
     return json(405, { error: 'Method not allowed' });
   }
@@ -59,5 +49,5 @@ export default async (req) => {
 
 export const config = {
   path: '/api/cesium-token',
-  method: ['GET', 'OPTIONS']
+  method: ['GET']
 };
