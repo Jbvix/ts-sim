@@ -1078,6 +1078,11 @@ function getCatModelPreset() {
   // Calcula a força de arrasto hidrodinâmico no cabo
   function towlineDragForce(vTug, vShip, span_m, scope_m, cable){
     const vAvg = vTug.clone().add(vShip).multiplyScalar(0.5);
+    // Correnteza: o arrasto depende da velocidade do cabo RELATIVA à água
+    // (mesma convenção de direção de updateEnvironmentVisuals / força de corrente no casco)
+    const curRad = (simParams.currentDir - 90) * Math.PI / 180;
+    vAvg.x -= Math.cos(curRad) * simParams.currentSpeed;
+    vAvg.z += Math.sin(curRad) * simParams.currentSpeed;
     const V = vAvg.length();
     if (V < 1e-3 || scope_m < 1e-3) return { Dmag:0, Dvec:new THREE.Vector3() };
     const Cd=cable.Cd||1.2, d=cable.d||0.064; const fracProj=Math.min(1, span_m/Math.max(scope_m,EPS));
@@ -4124,23 +4129,46 @@ function calculateTotalShipResistance() {
 }
 
 // Forma do cabo: em folga, resposta dominada pela geometria (flecha/seio, boca). Em S₃>L, fecho numérico com EA axial no towF (interp. w) — regime esticado, não a “moleza” do serviço em curva.
-// Uma **única** geometria: corda 3D + flecha em parábola; depois o fundo limita (sem segundo algoritmo
-// quando Lb>0 — o modelo antigo misturava Lb com interpolação linear e mudava a forma de forma brusca).
+// Uma **única** geometria: corda 3D + flecha com a forma REAL da catenária (parâmetro a do solver,
+// escalada para a flecha suavizada por EMA); fallback para parábola quando a é inválido (TAUT).
+// O fundo limita depois (sem segundo algoritmo quando Lb>0).
+function coshClamped(x) {
+    // cosh explode rápido; o solver usa o mesmo teto de 70 no argumento
+    return Math.cosh(Math.max(-70, Math.min(70, x)));
+}
 let _cableSagEma = 0;
 function updateCatenary() {
     const { shipAttachPoint, tugAttachPoint } = getAttachmentPoints();
-    const seabed_y = water_level - simParams.seabedDepth;
+    // Referência vertical: a superfície real da água (em GE sobe ~1 m vs water_level fixo)
+    const waterY = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
+    const seabed_y = waterY - simParams.seabedDepth;
 
     const rawSag = (towF.sag != null && Number.isFinite(towF.sag)) ? Math.max(0, towF.sag) : 0;
     const blend = (cable.length > 300) ? 0.1 : 0.2; // L>300: flecha ainda mais inercial — menos treme na polilinha
     _cableSagEma = _cableSagEma + blend * (rawSag - _cableSagEma);
     const sag_for_render = _cableSagEma;
 
+    // Forma da catenária real: depth(t) = a·(cosh(S/2a) − cosh(x/a)), escalada p/ bater na flecha EMA
+    const aCat = (towF.a != null && Number.isFinite(towF.a) && towF.a > 1e-6) ? towF.a : null;
+    const spanHz = Math.hypot(shipAttachPoint.x - tugAttachPoint.x, shipAttachPoint.z - tugAttachPoint.z);
+    let catScale = 0, catEndCosh = 0;
+    if (aCat !== null && spanHz > 1e-3 && sag_for_render > 1e-6) {
+        catEndCosh = coshClamped(spanHz / (2 * aCat));
+        const sagGeo = aCat * (catEndCosh - 1);
+        if (sagGeo > 1e-6) catScale = sag_for_render / sagGeo;
+    }
+
     for (let i = 0; i <= cable.numSegments; i++) {
         const t = i / cable.numSegments;
         const point = cablePoints[i];
         point.lerpVectors(tugAttachPoint, shipAttachPoint, t);
-        const sag_at_t = sag_for_render * 4 * t * (1 - t);
+        let sag_at_t;
+        if (catScale > 0) {
+            const xLocal = (t - 0.5) * spanHz;
+            sag_at_t = catScale * aCat * (catEndCosh - coshClamped(xLocal / aCat));
+        } else {
+            sag_at_t = sag_for_render * 4 * t * (1 - t); // fallback: parábola
+        }
         point.y -= sag_at_t;
         if (point.y < seabed_y) {
             point.y = seabed_y;
@@ -5052,8 +5080,10 @@ function updateEnvironmentVisuals() {
     currentArrow.setLength(simParams.currentSpeed * 20, 15, 8);
 
     // Atualiza a posição do fundo do mar com base na profundidade definida na UI
+    // (mesma referência vertical da superfície real da água — em GE ela difere de water_level)
     if (seabedMesh) {
-        seabedMesh.position.y = water_level - simParams.seabedDepth;
+        const waterY = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
+        seabedMesh.position.y = waterY - simParams.seabedDepth;
     }
 }
 

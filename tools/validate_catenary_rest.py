@@ -82,13 +82,21 @@ def main():
         print("OK: sag(S) decresce quando S aumenta (L fixo) <=> vao horizontal menor => sag maior.")
     else:
         print("FALHOU: monotonicidade.")
-    # Joint: when S3 > L, T-Sim uses TAUT not catenary; simulate check
+    # Joint: when S3 > L, T-Sim blends catenary -> axial EA spring; simulate check.
+    # Espelha computeTowlineForces (reboqueoceanico242TSIM.html):
+    #   tautSlackTol = max(0.28, 0.00060 * min(L, 2000))  (+tautTolAddM se L>=300)
+    #   blendSpan    = max(1.10, 0.00180 * min(L, 2000))  (*blendSpanScale se L>=300)
     print()
-    print("Criterio T-Sim regime: TAUT se S3 - L > max(0.05, 1.2e-4*min(L,2000))")
-    thr = max(0.05, 1.2e-4 * min(L, 2000))
-    print(f"  L=200, limiar = {thr:.4f} m => S3>200.05 m forca mola, sag_UI=0")
-    print("  Com S3<200.05: regime folgado; S_hz < S3 se diferenca de calado/bitas.")
+    print("Criterio T-Sim regime (computeTowlineForces): BLEND/TAUT quando excess = S3 - L")
+    sc_cap = min(L, 2000)
+    taut_tol = max(0.28, 0.00060 * sc_cap)
+    blend_span = max(1.10, 0.00180 * sc_cap)
+    print(f"  L={L:g}: tautSlackTol = {taut_tol:.3f} m, blendSpan = {blend_span:.3f} m")
+    print(f"  => mola EA engata a partir de S3 > {L + taut_tol:.3f} m; TAUT pleno acima de ~S3 > {L + taut_tol + blend_span:.3f} m (sag_UI=0)")
+    print("  Com excess <= 0: regime folgado (catenaria); S_hz < S3 se diferenca de calado/bitas.")
+    return 0 if monotonic else 1
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main())
