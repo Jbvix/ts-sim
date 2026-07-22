@@ -1497,16 +1497,17 @@ const PROP_WASH = (() => {
         alphas[i] = 0.55 + power01 * 0.35;
     }
 
-    function emitFromJet(jetHelper, azimuthDeg, power01, dt, accRef) {
-        if (!jetHelper || power01 < 0.02) return 0;
+    function emitFromJet(anchorObj, azimuthDeg, power01, dt, accRef) {
+        if (!anchorObj || power01 < 0.02) return 0;
         const rate = SPAWN_RATE_MAX * power01;
         let acc = accRef + rate * dt;
         const n = Math.floor(acc);
         acc -= n;
         if (n <= 0) return acc;
 
-        // Origem: o bocal do próprio propulsor (um cone por bocal)
-        jetHelper.getWorldPosition(_origin);
+        // Origem: posição mundo da MALHA da hélice (eixo central do propulsor,
+        // sem depender da cópia para jet.position) — fallback: o ArrowHelper
+        anchorObj.getWorldPosition(_origin);
         // Direção do jato no espaço do casco → mundo (igual ArrowHelper)
         const thrustAngle = (azimuthDeg - 90) * Math.PI / 180;
         _dirLocal.set(-Math.cos(thrustAngle), 0, Math.sin(thrustAngle)).normalize();
@@ -1526,8 +1527,10 @@ const PROP_WASH = (() => {
         const p2 = Math.max(0, Math.min(1, t2Power / 100));
 
         tug.mesh.updateMatrixWorld(true);
-        spawnAcc1 = emitFromJet(tug.jet1, t1Az, p1, dt, spawnAcc1);
-        spawnAcc2 = emitFromJet(tug.jet2, t2Az, p2, dt, spawnAcc2);
+        // Âncora = malha da hélice quando disponível (eixo central do propulsor);
+        // fallback para o ArrowHelper quando o GLB ainda não carregou
+        spawnAcc1 = emitFromJet(tug.propMeshBB || tug.jet1, t1Az, p1, dt, spawnAcc1);
+        spawnAcc2 = emitFromJet(tug.propMeshBE || tug.jet2, t2Az, p2, dt, spawnAcc2);
 
         const wl = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
         const drag = Math.exp(-DRAG_RATE * dt);
@@ -2186,15 +2189,17 @@ function updateGlbAzimuthPods() {
         tug.azPodBE, tug._azPodBEBasePos, tug._azPodBEBaseQuat,
         tug._azPodBEPivotLocal, tug._azPodBEPivotParent, a2
     );
-    // Jatos acompanham o pivô (hélices movem-se com o pod) — âncora no centro
-    // da bbox da hélice (eixo central do propulsor), não no origin do nó GLB
+    // Jatos acompanham o pivô (hélices movem-se com o pod) — origem do nó da
+    // hélice = eixo central do propulsor (malha é um disco centrado no nó)
     if (tug.jet1 && tug.propMeshBB) {
-        const w = new THREE.Box3().setFromObject(tug.propMeshBB).getCenter(new THREE.Vector3());
+        const w = new THREE.Vector3();
+        tug.propMeshBB.getWorldPosition(w);
         tug.mesh.worldToLocal(w);
         tug.jet1.position.copy(w);
     }
     if (tug.jet2 && tug.propMeshBE) {
-        const w = new THREE.Box3().setFromObject(tug.propMeshBE).getCenter(new THREE.Vector3());
+        const w = new THREE.Vector3();
+        tug.propMeshBE.getWorldPosition(w);
         tug.mesh.worldToLocal(w);
         tug.jet2.position.copy(w);
     }
@@ -3176,10 +3181,11 @@ function snapTugJetsToGlbPropellers() {
     };
 
     tug.mesh.updateMatrixWorld(true);
-    // Âncora do jato = CENTRO da bbox da malha da hélice → exatamente no eixo
-    // central do propulsor (o origin do nó GLB não coincide com o cubo/eixo).
+    // Âncora do jato = origem do nó da hélice: no GLB Rastar a malha da hélice é
+    // um disco centrado no nó, logo a origem do nó É o eixo central do propulsor.
     const toHullLocal = (obj) => {
-        const w = new THREE.Box3().setFromObject(obj).getCenter(new THREE.Vector3());
+        const w = new THREE.Vector3();
+        obj.getWorldPosition(w);
         return tug.mesh.worldToLocal(w);
     };
     const pL = toHullLocal(left);
