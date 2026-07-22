@@ -23,9 +23,6 @@
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <link rel="stylesheet" href="assets/tw.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
-  <!-- Importando Pixi.js v7 e html2canvas -->
-  <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <link rel="stylesheet" href="assets/reboqueoceanico-242tsim.css" />
   <link rel="preload" href="assets/container_ship.glb" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="assets/rastar_3200_tugboat.glb" as="fetch" crossorigin="anonymous" />
@@ -155,10 +152,6 @@
 
         <!-- CTA Button -->
         <div class="flex items-center gap-1 sm:gap-3 shrink-0">
-          <button id="btnExport" class="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors flex items-center gap-2 px-2 py-2" title="Exportar Snapshot da Simulação">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-            <span class="hidden xl:inline text-xs font-semibold">Snapshot</span>
-          </button>
           <a href="index.html" class="js-to-dashboard px-3 sm:px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-md hover:shadow-lg flex items-center gap-2" title="Vista catenária e KPIs">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             <span class="hidden sm:inline">Dashboard</span>
@@ -1157,9 +1150,6 @@ function getCatModelPreset() {
     if (Lb_cat > 1e-5) {
         const ss = seabedFriction(H_geo, wNpm, Lb_cat, seabed.mu_s, seabed.mu_k);
         H_cat = ss.H;
-        isSeabedSliding = ss.sliding;
-    } else {
-        isSeabedSliding = false;
     }
     const Tend_cat = cat.T_end * (H_cat / Math.max(H_geo, 1e-9));
     const sag_cat = cat.sag;
@@ -1268,19 +1258,6 @@ function getCatModelPreset() {
 })();
 
 // --- Módulo de Física Avançada do Cabo (com Estado e Atrito Realista) ---
-let LINE_STATE = "CATENARY"; // "CATENARY" | "BLEND" | "TAUT"
-let isSeabedSliding = false;
-
-function updateLineState(S, scope, EPS_REGIME = 2.0) {
-  if (LINE_STATE === "CATENARY" && S >= scope - EPS_REGIME) LINE_STATE = "BLEND";
-  if (LINE_STATE === "BLEND") {
-    if (S >= scope) LINE_STATE = "TAUT";
-    if (S < scope - 2 * EPS_REGIME) LINE_STATE = "CATENARY";
-  }
-  if (LINE_STATE === "TAUT" && S < scope - EPS_REGIME) LINE_STATE = "BLEND";
-  return LINE_STATE;
-}
-
 function seabedFriction(H_try, wNpm, Lb, mu_s = 0.6, mu_k = 0.5) {
   if (!Number.isFinite(H_try) || Lb <= 0) {
     return { H: H_try, sliding: false };
@@ -1291,10 +1268,8 @@ function seabedFriction(H_try, wNpm, Lb, mu_s = 0.6, mu_k = 0.5) {
   // da catenária ainda se transmite ao navio. O modelo antigo (H:0) anulava o puxo
   // útil praticamente sempre que Lb>0 (|H_try| ≪ μ_s·N), impedindo o reboque.
   if (Math.abs(H_try) <= H_max_static) {
-    isSeabedSliding = false;
     return { H: H_try, sliding: false };
   }
-  isSeabedSliding = true;
   const sgn = H_try >= 0 ? 1 : -1;
   const H_kinetic = sgn * Math.max(0, Math.abs(H_try) - mu_k * N);
   return { H: H_kinetic, sliding: true };
@@ -1676,7 +1651,6 @@ function setCameraMode(mode) {
     camera.updateMatrixWorld(true);
     // Órbita comboio/rebocador/navio: GE vivo; encerra modo posicionamento
     if (mode !== 'free' && _scenarioGeActive) {
-        _geOrbitPositioning = false;
         const el = document.getElementById('cesium-scenario');
         if (el) el.style.visibility = 'visible';
         scene.background = null;
@@ -1715,14 +1689,7 @@ if (typeof window !== 'undefined') {
 }
 
 /** Com sync ENU por matrixWorld, o GE acompanha a órbita ao vivo (incl. comboio). */
-let _geOrbitPositioning = false;
-
-function beginGeOrbitPositioning() {
-    // No-op: sync contínuo — não esconde mais o GE ao arrastar
-}
-
 function endGeOrbitPositioning(forceSync) {
-    _geOrbitPositioning = false;
     if (!_scenarioGeActive || !window.__simCesiumScenario || !window.__simCesiumScenario.ready) return;
     if (!forceSync) return;
     camera.updateMatrixWorld(true);
@@ -3646,7 +3613,7 @@ const powerCurve = [
  * N/kW ao longo: equilibrado p/ reboque lento 3–6 n; teto carga/SOG pode ir a ~11+ n (escoteiro).
  * (pouco alinhado a prática de reboque oceânico lento; ver texto no painel «Navio e rebocador»).
  */
-const PROP_KN_PER_KW = 172;
+const PROP_N_PER_KW = 172;
 const fuelCurve = [ // Curva de consumo ajustada para 6000 kW
     {kw: 101, lph: 27.8}, {kw: 161, lph: 43.0}, {kw: 240, lph: 61.5}, {kw: 342, lph: 89.7},
     {kw: 469, lph: 122.5}, {kw: 624, lph: 161.1}, {kw: 810, lph: 202.2}, {kw: 1030, lph: 253.3},
@@ -3735,8 +3702,8 @@ function calculateThrust(tugAngle) {
     const t1PowerKW = getPowerFromRPM(t1RPM);
     const t2PowerKW = getPowerFromRPM(t2RPM);
 
-    let t1ForceMag = t1PowerKW * PROP_KN_PER_KW;
-    let t2ForceMag = t2PowerKW * PROP_KN_PER_KW;
+    let t1ForceMag = t1PowerKW * PROP_N_PER_KW;
+    let t2ForceMag = t2PowerKW * PROP_N_PER_KW;
 
     // Limite de tração à bolina (BP = 80 tf)
     const BPmaxN = 80 * 9.81 * 1000;
@@ -5296,11 +5263,6 @@ function syncCoastProviderSelect(mode) {
     if (sel && sel.value !== mode) sel.value = mode;
 }
 
-function wireGeoMapMinimize(onToggle) {
-    // Minimizar/fechar/arrasto ficam em wireGeoMapPanelChrome (evita listeners duplicados).
-    void onToggle;
-}
-
 function destroyLeafletMap() {
     if (window.__simRoute && typeof window.__simRoute.detachLeafletMap === 'function') {
         try { window.__simRoute.detachLeafletMap(); } catch (_) { /* */ }
@@ -5410,14 +5372,6 @@ async function setCoastProvider(mode, opts) {
             }
             initLeafletMap();
         }
-        wireGeoMapMinimize((on) => {
-            if (_coastMode === 'cesium' && window.__simCesiumCoast) {
-                if (window.__simCesiumCoast.setActive) window.__simCesiumCoast.setActive(on);
-                if (window.__simCesiumCoast.resize) window.__simCesiumCoast.resize();
-            } else if (_rioMap) {
-                _rioMap.invalidateSize();
-            }
-        });
     } finally {
         _coastSwitching = false;
         if (sel) sel.disabled = false;
@@ -5477,11 +5431,6 @@ async function initScenarioGeUnderlay() {
         console.warn('[T-Sim] cenário GE falhou:', err);
         applyScenarioGeVisuals(false);
     }
-}
-
-/** @deprecated nome legado — usa initCoastContextMap */
-function initRioContextMap() {
-    initCoastContextMap();
 }
 
 function updateRioContextMap(force) {
@@ -5600,7 +5549,6 @@ async function bootTSimWithSplash() {
         if (splash && splash.done) splash.done();
     }
 }
-wireAsdThrusterMinimize();
 
 window.__simForceGeVisuals = (on) => { applyScenarioGeVisuals(!!on); };
 window.__simDebugFloat = () => {
