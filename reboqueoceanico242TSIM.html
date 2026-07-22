@@ -3082,7 +3082,8 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
         th / Math.max(size.y, 1e-6),
         td / Math.max(size.z, 1e-6)
     );
-    model.scale.setScalar(opts.fitInside ? sFit : sLen);
+    const s = opts.fitInside ? sFit : sLen;
+    model.scale.setScalar(s);
     model.updateMatrixWorld(true);
     box = meshVisibleBounds(model);
     const center = box.getCenter(new THREE.Vector3());
@@ -3090,8 +3091,6 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
     center.x = 0;
     model.position.x -= center.x;
     model.position.z -= center.z;
-    // Quilha na base do colisor (−height/2). No rebocador, excluir hélices/leme da bbox —
-    // senão o min.y desce com os props e o casco visual fica a flutuar acima da água.
     model.updateMatrixWorld(true);
     const fullKeelBox = meshVisibleBounds(model);
     const keelBox = opts.keelExcludeNameRe
@@ -3099,17 +3098,29 @@ function fitGlbIntoHull(hullMesh, glbRoot, opts = {}) {
         : fullKeelBox;
     // propsHang > 0 ⇒ exclusão funcionou (hélices abaixo do casco)
     const propsHang = keelBox.min.y - fullKeelBox.min.y;
-    model.position.y += (-th / 2) - keelBox.min.y;
-    // Fallback: se a exclusão não alterou a bbox, afunda o visual pelo sink empírico
     let appliedSink = 0;
-    if (opts.keelSinkM && propsHang < 0.25) {
-        appliedSink = opts.keelSinkM;
-        model.position.y -= appliedSink;
+    let fitMode = 'keel';
+    if (opts.waterlineModelY != null && opts.draft != null) {
+        // Linha d'água: alinha a linha d'água de PROJETO do modelo (waterlineModelY,
+        // em unidades do modelo antes da escala) com a do casco (−th/2 + draft).
+        // Mudanças de calado depois do encaixe movem mesh+GLB juntos — continua físico.
+        fitMode = 'waterline';
+        model.position.y += (-th / 2 + opts.draft) - opts.waterlineModelY * s;
+    } else {
+        // Quilha na base do colisor (−height/2). No rebocador, excluir hélices/leme da bbox —
+        // senão o min.y desce com os props e o casco visual fica a flutuar acima da água.
+        model.position.y += (-th / 2) - keelBox.min.y;
+        // Fallback: se a exclusão não alterou a bbox, afunda o visual pelo sink empírico
+        if (opts.keelSinkM && propsHang < 0.25) {
+            appliedSink = opts.keelSinkM;
+            model.position.y -= appliedSink;
+        }
     }
     // Eleva o visual para a linha d'água ficar abaixo das marcas de costado (ex.: MRC)
     if (opts.visualLiftM) model.position.y += opts.visualLiftM;
     if (hullMesh.name === 'tugHull') {
         hullMesh.userData.glbKeelDiag = {
+            mode: fitMode,
             fullMinY: +fullKeelBox.min.y.toFixed(3),
             keelMinY: +keelBox.min.y.toFixed(3),
             propsHang: +propsHang.toFixed(3),
@@ -3267,10 +3278,11 @@ function refreshVesselGlbVisuals() {
     if (_tugGlbRoot) {
         fitGlbIntoHull(tug.mesh, _tugGlbRoot, {
             fitInside: false,
-            // Props/rudders ASD abaixo da quilha não devem definir o min.y do encaixe
-            keelExcludeNameRe: /propeller|rudder/i,
-            // Folga empírica: bbox do casco Rastar ainda deixa o visual ~2 m alto vs calado
-            keelSinkM: 2.0
+            // O GLB Rastar é modelado com a linha d'água de projeto em y=0
+            // (pé das hélices −5,28 ≈ calado de projeto) — alinha por ela,
+            // não pela quilha da bbox, senão o rebocador fica afundado.
+            waterlineModelY: 0,
+            draft: tug.draft
         });
     }
     if (ship.mesh.geometry?.parameters) updateVesselYPosition(ship, ship.mesh.geometry.parameters.height);
