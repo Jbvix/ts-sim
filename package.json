@@ -2,7 +2,9 @@
   "name": "reboque-oceanico-tsim",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i ./src/tailwind-input.css -o ./assets/tw.min.css --minify"
+    "build:css": "tailwindcss -i ./src/tailwind-input.css -o ./assets/tw.min.css --minify",
+    "dev": "npx netlify dev",
+    "serve": "python -m http.server 8080 --bind 127.0.0.1"
   },
   "devDependencies": {
     "tailwindcss": "3.4.17"

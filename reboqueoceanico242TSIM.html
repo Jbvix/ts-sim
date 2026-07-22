@@ -603,6 +603,7 @@
   </script>
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script src="assets/reboqueoceanico-cesium-common.js"></script>
   <script src="assets/reboqueoceanico-cesium.js"></script>
   <script src="assets/reboqueoceanico-cesium-scenario.js"></script>
   <script src="assets/reboqueoceanico-float.js"></script>
@@ -5261,11 +5262,8 @@ function updateVesselMotions() {
 }
 
 // — Contexto geográfico (Rio): GE Cesium (Photorealistic) ou OpenSeaMap (Leaflet)
-const RIO_GEO = {
-    /**
-     * Origem ENU ao largo da costa sul do Rio (Atlântico), ~8–10 km a sul de Copacabana.
-     * +X = Leste, +Z = Norte. Comboio em (0,0,*) fica em mar aberto com a costa a norte.
-     */
+// Origem ENU partilhada com os módulos Cesium (assets/reboqueoceanico-cesium-common.js).
+const RIO_GEO = (window.__simCesiumCommon && window.__simCesiumCommon.RIO_GEO_DEFAULT) || {
     originLat: -23.05,
     originLon: -43.15,
     mPerDegLat: 110852,

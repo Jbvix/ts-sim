@@ -13,8 +13,9 @@
 (function () {
   'use strict';
 
-  const TOKEN_URLS = ['/api/cesium-token', '/.netlify/functions/cesium-token'];
-  const CESIUM_RELEASE = '1.125';
+  const COMMON = window.__simCesiumCommon;
+  const fetchTokenConfig = COMMON.fetchTokenConfig;
+  const ensureCesiumBaseUrl = COMMON.ensureCesiumBaseUrl;
 
   let viewer = null;
   let entityShip = null;
@@ -24,32 +25,6 @@
   let ready = false;
   let followCam = true;
   let lastCamT = 0;
-
-  async function fetchTokenConfig() {
-    let lastErr = null;
-    for (const url of TOKEN_URLS) {
-      try {
-        const res = await fetch(url, { credentials: 'same-origin' });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          lastErr = data.error || ('HTTP ' + res.status);
-          continue;
-        }
-        if (data.token) return data;
-        lastErr = 'token ausente na resposta';
-      } catch (e) {
-        lastErr = String(e && e.message ? e.message : e);
-      }
-    }
-    throw new Error(lastErr || 'Falha ao obter CESIUM_API_KEY');
-  }
-
-  function ensureCesiumBaseUrl() {
-    if (!window.CESIUM_BASE_URL) {
-      window.CESIUM_BASE_URL =
-        'https://cesium.com/downloads/cesiumjs/releases/' + CESIUM_RELEASE + '/Build/Cesium/';
-    }
-  }
 
   async function tryInit(rioGeo) {
     const el = document.getElementById('geo-mapa');
@@ -74,8 +49,8 @@
       Cesium.GoogleMaps.defaultApiKey = cfg.googleMapsApiKey;
     }
 
-    const originLat = (rioGeo && rioGeo.originLat) || -23.05;
-    const originLon = (rioGeo && rioGeo.originLon) || -43.15;
+    const originLat = (rioGeo && rioGeo.originLat) || COMMON.RIO_GEO_DEFAULT.originLat;
+    const originLon = (rioGeo && rioGeo.originLon) || COMMON.RIO_GEO_DEFAULT.originLon;
 
     try {
       viewer = new Cesium.Viewer('geo-mapa', {

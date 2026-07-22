@@ -34,7 +34,16 @@ O *deploy* na Netlify executa `npm ci && npm run build:css` (ver `netlify.toml`)
 
 ## Desenvolvimento local
 
-`npm install` e `npm run build:css` (uma vez, ou após mudar utilitários Tailwind). Depois abrir `index.html` no browser (ou `reboqueoceanico242TSIM.html`).
+`npm install` e `npm run build:css` (uma vez, ou após mudar utilitários Tailwind).
+
+O simulador **não funciona via `file://`** (usa ES modules/import maps) — é preciso servir por HTTP:
+
+- **Rápido (sem cenário GE/Cesium):** `servir-local.bat` / `servir-local.ps1` (ou `npm run serve`) e abrir <http://127.0.0.1:8080/reboqueoceanico242TSIM.html>. Sem a function `/api/cesium-token`, o simulador cai automaticamente no mapa OpenSeaMap/Leaflet.
+- **Completo (com cenário GE):** `npm run dev` (Netlify CLI; pede login na 1.ª vez) com um `.env` contendo `CESIUM_API_KEY` (e opcionalmente `GOOGLE_MAPS_API_KEY`) — ver `.env.example`.
+
+Validação do solver de catenária (espelho Python): `python tools/validate_catenary_rest.py` (exit code ≠ 0 em falha).
+
+> **Nota sobre o token Cesium:** em produção, restrinja os domínios permitidos do token no painel Cesium Ion (e da chave no Google Cloud) — o endpoint `/api/cesium-token` é same-origin, mas o token viaja ao browser por natureza.
 
 ## Deploy (Netlify)
 

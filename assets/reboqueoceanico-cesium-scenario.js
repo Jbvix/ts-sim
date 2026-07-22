@@ -12,8 +12,9 @@
 (function () {
   'use strict';
 
-  const TOKEN_URLS = ['/api/cesium-token', '/.netlify/functions/cesium-token'];
-  const CESIUM_RELEASE = '1.125';
+  const COMMON = window.__simCesiumCommon;
+  const fetchTokenConfig = COMMON.fetchTokenConfig;
+  const ensureCesiumBaseUrl = COMMON.ensureCesiumBaseUrl;
   const CONTAINER_ID = 'cesium-scenario';
 
   let viewer = null;
@@ -21,38 +22,7 @@
   let cloudCollection = null;
   let ready = false;
   let lastSkyOpts = null;
-  let rio = {
-    originLat: -23.05,
-    originLon: -43.15,
-    mPerDegLat: 110852,
-    mPerDegLon: 111320 * Math.cos(-23.05 * (Math.PI / 180))
-  };
-
-  async function fetchTokenConfig() {
-    let lastErr = null;
-    for (const url of TOKEN_URLS) {
-      try {
-        const res = await fetch(url, { credentials: 'same-origin' });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          lastErr = data.error || ('HTTP ' + res.status);
-          continue;
-        }
-        if (data.token) return data;
-        lastErr = 'token ausente na resposta';
-      } catch (e) {
-        lastErr = String(e && e.message ? e.message : e);
-      }
-    }
-    throw new Error(lastErr || 'Falha ao obter CESIUM_API_KEY');
-  }
-
-  function ensureCesiumBaseUrl() {
-    if (!window.CESIUM_BASE_URL) {
-      window.CESIUM_BASE_URL =
-        'https://cesium.com/downloads/cesiumjs/releases/' + CESIUM_RELEASE + '/Build/Cesium/';
-    }
-  }
+  let rio = Object.assign({}, COMMON.RIO_GEO_DEFAULT);
 
   /** Cesium trata `skyAtmosphere: true` / `skyBox: true` como a *instância* (boolean), não como flag. */
   function isSkyAtmosphereInstance(obj) {
