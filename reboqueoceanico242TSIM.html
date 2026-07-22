@@ -1363,7 +1363,8 @@ tug.mesh.add(tug.jet1, tug.jet2, tug.thrustResultArrow, tug.yawSenseArrow);
 
 /**
  * Aguagem (wash) dos propulsores ASD — partículas em cone separado por bocal
- * (uma esteira por propulsor, na posição de cada um), junto à superfície.
+ * (uma esteira por propulsor), saindo DIRETAMENTE DO POD (submerso, no eixo
+ * central da hélice) e aflorando suavemente ao longo do trajeto.
  * Comprimento ∝ potência, limitado a 2× o comprimento do rebocador.
  */
 const PROP_WASH = (() => {
@@ -1506,15 +1507,14 @@ const PROP_WASH = (() => {
         if (n <= 0) return acc;
 
         // Origem: posição mundo da MALHA da hélice (eixo central do propulsor,
-        // sem depender da cópia para jet.position) — fallback: o ArrowHelper
+        // sem depender da cópia para jet.position) — fallback: o ArrowHelper.
+        // Emite NA profundidade real do pod (submerso); a espuma sobe à
+        // superfície suavemente no update (flutuabilidade).
         anchorObj.getWorldPosition(_origin);
         // Direção do jato no espaço do casco → mundo (igual ArrowHelper)
         const thrustAngle = (azimuthDeg - 90) * Math.PI / 180;
         _dirLocal.set(-Math.cos(thrustAngle), 0, Math.sin(thrustAngle)).normalize();
         _axis.copy(_dirLocal).transformDirection(tug.mesh.matrixWorld).normalize();
-        // Mantém o jato junto à superfície
-        const wl = (typeof water !== 'undefined' && water) ? water.position.y : water_level;
-        _origin.y = wl + 0.15;
 
         const budget = Math.min(n, MAX - alive);
         for (let k = 0; k < budget; k++) spawnOne(_origin, _axis, power01);
@@ -1545,12 +1545,13 @@ const PROP_WASH = (() => {
             positions[i * 3] += velocities[i * 3] * dt;
             positions[i * 3 + 1] += velocities[i * 3 + 1] * dt;
             positions[i * 3 + 2] += velocities[i * 3 + 2] * dt;
-            // Espalha e amortece; cola suavemente à superfície (espuma)
+            // Espalha e amortece; espuma sobe à superfície SUAVEMENTE — o cone
+            // parte do pod (submerso) e aflora ao longo do trajeto, não de imediato
             velocities[i * 3] *= drag;
             velocities[i * 3 + 1] *= drag * 0.85;
             velocities[i * 3 + 2] *= drag;
             const targetY = wl + 0.08 + (1 - t) * 0.25;
-            positions[i * 3 + 1] += (targetY - positions[i * 3 + 1]) * Math.min(1, 4 * dt);
+            positions[i * 3 + 1] += (targetY - positions[i * 3 + 1]) * Math.min(1, 1.0 * dt);
 
             // Fade: pico cedo, cauda longa (vida 4,5–8 s)
             const fade = t < 0.12 ? (t / 0.12) : Math.pow(1 - (t - 0.12) / 0.88, 1.35);
