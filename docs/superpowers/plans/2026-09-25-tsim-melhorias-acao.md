@@ -180,6 +180,8 @@ Remover qualquer menção a 8765. Nota: `file://` não funciona; extensão `.htm
 
 ## Fase B — UX P1 (após A)
 
+**Status:** concluída (2026-09-25)
+
 **Goal:** Menos clutter; fluxo Rota óbvio; painéis didáticos escaneáveis.
 
 ### Task B1: Rota abre mapa + modo place
@@ -217,6 +219,8 @@ Remover qualquer menção a 8765. Nota: `file://` não funciona; extensão `.htm
 ---
 
 ## Fase C — Fidelidade pedagógica
+
+**Status:** concluída (2026-09-25)
 
 **Goal:** Mar e cabo ensinam o “porquê” do scope; demos deixam de “bater sozinhas” sem o instrutor saber.
 
@@ -258,6 +262,8 @@ Remover qualquer menção a 8765. Nota: `file://` não funciona; extensão `.htm
 ---
 
 ## Fase D — Propulsão, falhas, derrota
+
+**Status:** concluída (2026-09-25)
 
 **Goal:** Menos “escoteiro livre” enganador; falha de cabo tem consequência; waypoints servem passagem, não só teleporte.
 

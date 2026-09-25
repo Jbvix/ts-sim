@@ -367,7 +367,7 @@
     @media (max-width: 640px) {
       :root {
         --sim-rail-w: 0px;
-        --sim-rail-bottom-h: 4.25rem;
+        --sim-rail-bottom-h: 4.85rem;
       }
       #sidebar {
         top: auto;
@@ -412,7 +412,31 @@
         height: 3px;
         opacity: 1;
       }
-      .sim-rail[data-label]::after { display: none; }
+      .sim-rail[data-label]::after {
+        display: block;
+        position: static;
+        transform: none;
+        left: auto;
+        top: auto;
+        opacity: 1;
+        visibility: visible;
+        white-space: nowrap;
+        font-size: 0.52rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: #94a3b8;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+        max-width: 3.2rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.1;
+        margin-top: 0.1rem;
+      }
+      .sim-rail-active[data-label]::after { color: #e2e8f0; }
       main#sim-container {
         margin-left: 0;
         width: 100%;
@@ -1150,4 +1174,43 @@ hr { border-color: rgba(128, 170, 255, 0.2); margin-top: 10px; margin-bottom: 10
     bottom: 1.25rem;
   }
 }
+
+.sim-saiba-mais {
+  border: 1px solid rgba(71, 85, 105, 0.7);
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.55rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+.sim-saiba-mais > summary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #7dd3fc;
+  list-style: none;
+}
+.sim-saiba-mais > summary::-webkit-details-marker { display: none; }
+.sim-saiba-mais[open] > summary { margin-bottom: 0.45rem; }
+.sim-layout-presets {
+  align-items: center;
+  gap: 0.25rem;
+}
+.sim-layout-btn {
+  padding: 0.28rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.55);
+  color: #cbd5e1;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sim-layout-btn:hover,
+.sim-layout-btn.is-active {
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  background: rgba(14, 165, 233, 0.18);
+}
+
 

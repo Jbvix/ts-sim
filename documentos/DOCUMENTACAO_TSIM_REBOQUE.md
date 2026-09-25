@@ -84,6 +84,29 @@ A resistência total (casco, hélice aparente, mar) soma três termos interpolad
 
 ## 5. Cabo, catenária e forças no reboque
 
+### 5.1 Heave dinâmico nos fairleads (Phase C, v2.9)
+
+A partir da v2.9, o vão 3D (S3) e horizontal (S\_hz) usados por `computeTowlineForces` são calculados a partir de `getAttachmentPointsDynamic()` — que lê as bitas **com** o heave, pitch e roll actuais do mesh (provenientes de `updateVesselMotions`). Desta forma, Hs alto + scope curto faz S3 oscilar → dT/dt sobe → SURGE dispara sem o utilizador mexer no RPM.
+
+`getAttachmentPointsQuiescent()` mantém-se para `enforceTowlineConstraint()` e para estabilidade da catenária visual.
+
+### 5.2 Modo Demo vs Treino
+
+| Parâmetro | Demo | Treino |
+|-----------|------|--------|
+| `resistGlobal` | 0.42 | 1.0 |
+| `computeTowConvoyAssist` | ON | OFF |
+
+Toggle no painel **Ambiente** ou clicando na pill "Modo" no header.
+
+### 5.3 BP dinâmico vs SOG (Phase D, v2.9)
+
+A tração disponível declina com a velocidade do rebocador: `F_avail = F_bollard × max(0.15, 1 − 0.11 × SOG_kn)`. O BP nominal de 80 tf aplica-se a 0 nós; a velocidades mais altas, a força efectiva cai (curva pull). Escort free-running (>8 kn) fica com ~15% do BP — documentar separadamente como modo "Escort free" se necessário.
+
+### 5.4 Weak-link / fusível (Phase D)
+
+Quando a utilização MBL atinge 95%, o cabo "parte": todas as forças de reboque vão a zero e aparece o banner "PERDA DE REBOQUE". Botão "Reconectar cabo" restaura o estado.
+
 A função `computeTowlineForces(pTug, vTug, pShip, vShip, scope_m, spanFromFairleads)` (com argumento geométrico opcional) calcula:
 
 - Peso em linha do cabo em água: `wNpm` a partir de `wNpm_air` e `buoy_factor`.  
@@ -181,7 +204,9 @@ Q_{\text{total}} = Q(P_{\text{ef}}^{(1)}) + Q(P_{\text{ef}}^{(2)})
 
 ## 9. Tensão extrema (HUD)
 
-Em mar com onda, a «tensão extrema» adiciona um termo oscilatório simplificado (amplitude crescente com altura de onda e com referência a `towF.TensionN`, atenuado com comprimento de cabo), e suaviza com EMA.
+A partir da v2.9 (Phase C), a «tensão extrema» é dominada pelo **heave dinâmico** dos fairleads — o seno sintético anterior é **gated** (reduzido proporcionalmente ao heave real). Quando a amplitude de heave dos fairleads excede ~0.5 m, o seno cai a zero e a oscilação no HUD provém inteiramente da geometria do cabo sob onda.
+
+O termo oscilatório residual (para Hs baixo sem heave significativo) mantém a formulação original: amplitude crescente com altura de onda e com referência a `towF.TensionN`, atenuado com comprimento de cabo, e suavizado com EMA.
 
 ---
 
@@ -218,6 +243,22 @@ Em mar com onda, a «tensão extrema» adiciona um termo oscilatório simplifica
 - Modelo numérico simplificado: ordens de grandeza, não substitui ensaios, BP real ou curvas de hélice.  
 - Uma embarcação e cabo reais têm histerese, VPP, onda pego-fechado, etc., ausentes ou parcialmente abstraídos.  
 - Tectos (BP 80 tf, MBL, SOG) são **parâmetros de software** — podem ser revistos no código.
+- **BP vs SOG** (v2.9): a tração declina com a velocidade (`bpVsSogFactor`); escort free-running acima de ~8 kn fica com ~15% do BP — não é um modelo de hélice completo.
+- **Weak-link** (v2.9): fuse a 95% MBL é simplificação; em serviço real o freio/embraiagem tem dinâmica própria.
+- **Seguir derrota** (v2.9): heading hold para o próximo WP — não é autopilot com PID completo nem compensa corrente/vento laterais.
+- **Modo Demo** (v2.9): `resistGlobal = 0.42` + convoy assist são "fudge" para estabilidade em apresentações; o modo **Treino** remove esses auxiliares.
+
+### 10.6 Exercícios scored (v2.9)
+
+Três drills MVP em `assets/reboqueoceanico-drills.js`:
+1. **MSC Hs — Manter MBL**: com preset MSC, manter util. MBL < 75% durante 60 s.
+2. **Scope vs Clearance**: flecha ≥ 8 m e folga ≥ 15 m durante 45 s.
+3. **Resposta a SURGE**: sair de SURGE em < 15 s após detecção.
+
+### 10.7 Watchkeeping (v2.9)
+
+- **Sparkline de tensão**: canvas no header mostra últimos ~60 s de tensão (120 amostras @ 2 Hz).
+- **Checklist ambiental**: botão "Env ✓" compara Hs, vento e corrente actuais com o preset MSC (Hs ≤ 5 m, vento ≤ 20 m/s, corrente ≤ 0.5 m/s).
 
 ---
 

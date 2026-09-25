@@ -264,10 +264,26 @@
       const w = byGroup[pid];
       if (!w) return;
       if (w.classList.contains('hidden')) {
+        if (isMobileLayout()) {
+          Object.keys(byGroup).forEach((otherId) => {
+            if (otherId === pid) return;
+            const ow = byGroup[otherId];
+            if (!ow || ow.classList.contains('hidden')) return;
+            ow.classList.add('sim-float--min');
+          });
+        }
         w.classList.remove('hidden', 'sim-float--min');
         placeMobileDefault(w);
         bringFront(w);
       } else if (w.classList.contains('sim-float--min')) {
+        if (isMobileLayout()) {
+          Object.keys(byGroup).forEach((otherId) => {
+            if (otherId === pid) return;
+            const ow = byGroup[otherId];
+            if (!ow || ow.classList.contains('hidden')) return;
+            ow.classList.add('sim-float--min');
+          });
+        }
         w.classList.remove('sim-float--min');
         bringFront(w);
       } else if (isMobileLayout()) {
@@ -284,6 +300,39 @@
       syncRail();
     }
 
-    window.__simFloat = { openGroup, bringFront, byGroup, syncRail, placeMobileDefault, isMobileLayout };
+    function applyLayoutPreset(name) {
+      const presets = {
+        bridge: { open: ['towline', 'asd', 'vessel'], map: false },
+        planning: { open: ['route', 'env'], map: true },
+        teaching: { open: ['catGuide', 'towline', 'winch'], map: false }
+      };
+      const p = presets[name];
+      if (!p) return;
+      Object.keys(byGroup).forEach((pid) => {
+        const w = byGroup[pid];
+        if (w) {
+          w.classList.add('hidden');
+          w.classList.remove('sim-float--min');
+        }
+      });
+      p.open.forEach((g) => openGroup(g));
+      if (typeof window.__simSetGeoMapVisible === 'function') {
+        if (p.map) {
+          if (typeof window.__simEnsureCoastMap === 'function') {
+            window.__simEnsureCoastMap().then(() => window.__simSetGeoMapVisible(true));
+          } else {
+            window.__simSetGeoMapVisible(true);
+          }
+        } else {
+          window.__simSetGeoMapVisible(false);
+        }
+      }
+      if (name === 'planning' && window.__simRoute && window.__simRoute.setPlaceMode) {
+        window.__simRoute.setPlaceMode(true);
+      }
+      syncRail();
+    }
+
+    window.__simFloat = { openGroup, bringFront, byGroup, syncRail, placeMobileDefault, isMobileLayout, applyLayoutPreset };
     syncRail();
   })();

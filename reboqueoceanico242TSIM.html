@@ -155,8 +155,24 @@
               <span class="sim-ht-metric sim-ht-tow-dt"><span id="hdrTowDT">0</span><span class="sim-ht-unit">kN/s</span></span>
             </div>
             <span id="hdrTowState" class="sim-ht-pill ok">Seguro</span>
+            <canvas id="hdrTowSparkline" width="80" height="20" title="Tensão (últimos 60 s)" style="margin-top:2px;border-radius:3px;background:rgba(15,23,42,.5);"></canvas>
           </div>
         </div>
+        <div class="sim-ht-chip" id="hdrModoPill" title="Modo de simulação: Demo (assistido) ou Treino (realista)" style="cursor:pointer;user-select:none;">
+          <span class="sim-ht-label" style="font-size:9px;letter-spacing:.05em;">Modo</span>
+          <span id="hdrModoLabel" class="sim-ht-pill ok" style="font-size:10px;font-weight:700;padding:1px 8px;">Demo</span>
+        </div>
+        <button type="button" id="hdrEnvCheck" class="sim-ht-chip" title="Comparar ambiente actual com preset MSC" style="cursor:pointer;border:none;background:rgba(30,41,59,.6);font-family:inherit;color:#e2e8f0;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:600;">
+          Env ✓
+        </button>
+        <div id="hdrEnvCheckResult" style="display:none;position:fixed;top:72px;right:16px;z-index:900;width:280px;background:rgba(15,23,42,.96);border:1px solid rgba(56,189,248,.3);border-radius:10px;padding:12px 14px;font-size:11px;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.5);">
+          <div style="font-weight:700;color:#7dd3fc;margin-bottom:6px;">Checklist Ambiental (MSC)</div>
+          <div id="hdrEnvCheckBody"></div>
+          <button type="button" id="hdrEnvCheckClose" style="margin-top:8px;padding:3px 12px;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:#7dd3fc;border-radius:6px;font-size:10px;cursor:pointer;">Fechar</button>
+        </div>
+        <button type="button" id="hdrDrillsBtn" class="sim-ht-chip" title="Abrir exercícios de formação" style="cursor:pointer;border:none;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);font-family:inherit;color:#fbbf24;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:600;">
+          Exercícios
+        </button>
         
         <!-- Navigation -->
         <nav class="hidden xl:flex flex-wrap items-center justify-end gap-2 lg:gap-4 text-[11px] sm:text-sm font-medium shrink-0" aria-label="Atalhos do dashboard">
@@ -168,6 +184,11 @@
 
         <!-- CTA Button -->
         <div class="flex items-center gap-1 sm:gap-3 shrink-0">
+          <div class="sim-layout-presets hidden sm:flex" role="group" aria-label="Presets de layout">
+            <button type="button" class="sim-layout-btn" data-layout-preset="bridge" title="Telemetry + thrusters + towline">Bridge</button>
+            <button type="button" class="sim-layout-btn" data-layout-preset="planning" title="Mapa + rota + ambiente">Planning</button>
+            <button type="button" class="sim-layout-btn" data-layout-preset="teaching" title="Catenária + towline + guincho">Teaching</button>
+          </div>
           <a href="index.html" class="js-to-dashboard px-3 sm:px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-md hover:shadow-lg flex items-center gap-2" title="Vista catenária e KPIs">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             <span class="hidden sm:inline">Dashboard</span>
@@ -227,6 +248,18 @@
             <div class="control-row"><label>Altura Ondas (m):</label><input type="range" id="waveHeight" min="0" max="15" value="1" step="0.5"><span id="waveHeightValue">1</span></div>
             <div class="control-row"><label>Profundidade (m):</label><input type="range" id="seabedDepth" min="50" max="1000" value="50" step="5"><span id="seabedDepthValue">50</span></div>
             <div class="control-row"><label>Escala Beaufort:</label><span id="beaufortValue">F2</span></div>
+            <hr>
+            <div class="control-row" style="gap:8px;align-items:center;">
+              <label style="font-weight:600;">Modo simulação:</label>
+              <select id="simModeSelect" style="background:#1e293b;color:#e2e8f0;border:1px solid rgba(56,189,248,.35);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;font-family:inherit;">
+                <option value="demo">Demo (assistido)</option>
+                <option value="treino">Treino (realista)</option>
+              </select>
+            </div>
+            <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:0 0 8px;">
+              <strong>Demo</strong>: resist. reduzida (0.42) + assist comboio — estável para apresentações.<br>
+              <strong>Treino</strong>: resist. completa (1.0), assist OFF — exige governo ativo.
+            </p>
             <hr>
             <p class="text-[10px] font-bold uppercase tracking-wide" style="color:#7dd3fc;margin:0 0 6px;">Meteo · céu Cesium (cenário GE)</p>
             <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:0 0 8px;">Controla hora, visibilidade, nuvens, sol e lua no underlay Cesium. Não altera a física de vento/onda (sliders acima). Requer cenário GE activo.</p>
@@ -332,8 +365,12 @@
 
          <div id="winchPanel" class="panel hidden">
             <h4>Guincho e Cabo</h4>
-            <p class="text-[10px] leading-snug mb-1.5 border-b border-slate-600/50 pb-0" style="color:#8da4b7;"><strong>1 — Geometria da catenária (regime de serviço)</strong> — O peso do cabo na água dá <strong>flecha e seio</strong>; a resposta vem de <strong>flecha/seio</strong>, <strong>rotação do ângulo na boca</strong>, <strong>redistribuição do peso suspenso</strong> e <strong>troca entre energia cinética do comboio e energia potencial da curva</strong>. Esse é o <strong>amortecimento percebido</strong> no reboque: <em>não</em> é amortecedor viscoso puro nem aço a esticar como mola helicoidal — é a <strong>geometria da linha</strong> a absorver e devolver energia.</p>
-            <p class="text-[10px] leading-snug mb-2 border-b border-slate-600/50 pb-2" style="color:#8da4b7;"><strong>2 — Rigidez axial <span class="font-mono">EA</span> (condição limite)</strong> — Quando <span class="font-mono">S₃ &gt; L</span> (vão 3D maior que o cabo pago), o modelo precisa de um <strong>canal numérico</strong> para não colapsar a solução: aí entra o termo de alongamento com rigidez <span class="font-mono">EA</span> como <strong>fecho de regime esticado</strong>. Isto <em>não</em> é a explicação principal da “moleza” do tow; domina quando a catenária, na prática, <strong>quase deixou de existir</strong>. Com muito cabo no fundo, o atrito altera ainda o puxo horizontal.</p>
+            <p class="text-[10px] leading-snug mb-1.5" style="color:#8da4b7;">Catenária = amortecimento pela <strong>geometria</strong> (flecha/seio). <span class="font-mono">EA</span> só fecha o regime esticado quando S₃ &gt; L.</p>
+            <details class="sim-saiba-mais mb-2">
+              <summary>Saiba mais — geometria vs EA</summary>
+              <p class="text-[10px] leading-snug mb-1.5 border-b border-slate-600/50 pb-0" style="color:#8da4b7;"><strong>1 — Geometria da catenária (regime de serviço)</strong> — O peso do cabo na água dá <strong>flecha e seio</strong>; a resposta vem de <strong>flecha/seio</strong>, <strong>rotação do ângulo na boca</strong>, <strong>redistribuição do peso suspenso</strong> e <strong>troca entre energia cinética do comboio e energia potencial da curva</strong>. Esse é o <strong>amortecimento percebido</strong> no reboque: <em>não</em> é amortecedor viscoso puro nem aço a esticar como mola helicoidal — é a <strong>geometria da linha</strong> a absorver e devolver energia.</p>
+              <p class="text-[10px] leading-snug mb-2 border-b border-slate-600/50 pb-2" style="color:#8da4b7;"><strong>2 — Rigidez axial <span class="font-mono">EA</span> (condição limite)</strong> — Quando <span class="font-mono">S₃ &gt; L</span> (vão 3D maior que o cabo pago), o modelo precisa de um <strong>canal numérico</strong> para não colapsar a solução: aí entra o termo de alongamento com rigidez <span class="font-mono">EA</span> como <strong>fecho de regime esticado</strong>. Isto <em>não</em> é a explicação principal da “moleza” do tow; domina quando a catenária, na prática, <strong>quase deixou de existir</strong>. Com muito cabo no fundo, o atrito altera ainda o puxo horizontal.</p>
+            </details>
              <div class="control-row">
                 <label>Aparelho de reboque</label>
                 <span class="text-[11px] leading-tight" style="color:#9cc0d4;max-width:14rem;">Aparelho completo: cabo aço + <strong>shock-line em poliamida (nylon)</strong> + corrente + ferragens — peso e EA efetivos no modelo.</span>
@@ -379,8 +416,21 @@
 
         <div id="catenaryGuidePanel" class="panel hidden">
             <h4>Catenária, trancos e procedimento</h4>
-            <p class="text-[10px] leading-snug mb-1.5" style="color:#8da4b7;"><strong>Regime 1 — Dominado pela geometria da catenária</strong> — Com <strong>folga</strong>, o reboque “respira” pela curva: <strong>flecha e seio</strong>, <strong>ângulo na boca</strong>, <strong>redistribuição do peso suspenso</strong> e <strong>troca entre energia cinética do comboio e energia potencial da curva</strong>. Esse é o <strong>amortecimento percebido</strong> no serviço (não um amortecedor viscoso puro, nem aço como mola helicoidal) — a <strong>linha</strong>, na geometria, a amortecer e devolver energia.</p>
-            <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;"><strong>Regime 2 — Dominado pela rigidez axial (<span class="font-mono">EA</span>)</strong> — Em <strong>condição limite</strong> com <span class="font-mono">S₃ &gt; L</span>, o código adiciona <strong>alongamento elástico axial (EA)</strong> e interpola com <span class="font-mono">w</span> para <strong>fechar numericamente</strong> o regime em que a catenária praticamente <strong>deixou de existir</strong>. O <span class="font-mono">EA</span> é <em>fecho</em> desse esticado — <strong>não</strong> a explicação principal da “moleza” do tow. Suavização de <span class="font-mono">w</span> e teto dT/dt no modelo alteram a <strong>ordem no tempo</strong> entre contributos. Trancos: nesse <strong>limite</strong> ou com carga/mar bruscos. <strong>Guia didático</strong> — operação: plano, SMS/DOF, carta.</p>
+            <p class="text-[10px] leading-snug mb-1.5" style="color:#8da4b7;">Folga → o cabo “respira” pela curva. Limite S₃&gt;L → fecho com <span class="font-mono">EA</span>. Monitore dT/dt e o header Cabo.</p>
+            <details class="sim-saiba-mais mb-2">
+              <summary>Saiba mais — regimes e procedimento</summary>
+              <p class="text-[10px] leading-snug mb-1.5" style="color:#8da4b7;"><strong>Regime 1 — Dominado pela geometria da catenária</strong> — Com <strong>folga</strong>, o reboque “respira” pela curva: <strong>flecha e seio</strong>, <strong>ângulo na boca</strong>, <strong>redistribuição do peso suspenso</strong> e <strong>troca entre energia cinética do comboio e energia potencial da curva</strong>. Esse é o <strong>amortecimento percebido</strong> no serviço (não um amortecedor viscoso puro, nem aço como mola helicoidal) — a <strong>linha</strong>, na geometria, a amortecer e devolver energia.</p>
+              <p class="text-[10px] leading-snug mb-2" style="color:#8da4b7;"><strong>Regime 2 — Dominado pela rigidez axial (<span class="font-mono">EA</span>)</strong> — Em <strong>condição limite</strong> com <span class="font-mono">S₃ &gt; L</span>, o código adiciona <strong>alongamento elástico axial (EA)</strong> e interpola com <span class="font-mono">w</span> para <strong>fechar numericamente</strong> o regime em que a catenária praticamente <strong>deixou de existir</strong>. O <span class="font-mono">EA</span> é <em>fecho</em> desse esticado — <strong>não</strong> a explicação principal da “moleza” do tow. Suavização de <span class="font-mono">w</span> e teto dT/dt no modelo alteram a <strong>ordem no tempo</strong> entre contributos. Trancos: nesse <strong>limite</strong> ou com carga/mar bruscos. <strong>Guia didático</strong> — operação: plano, SMS/DOF, carta.</p>
+              <p class="text-[9px] font-semibold mb-1" style="color:#7dd3fc;">Procedimento (prevenir tranco, manter catenária)</p>
+              <ol class="list-decimal pl-4 space-y-1.5 text-[10px] leading-relaxed mb-2" style="color:#cbd5e1;">
+                <li><strong>Antes de acelerar o comboio</strong> — Confirme <strong>cabo pago L</strong> &gt; vão 3D entre amarras S₃ (margem: dezenas de metros em reboque oceânico, conforme plano e o valor de <strong>Folga</strong> exibida aqui e no Guincho).</li>
+                <li><strong>Manter catenária</strong> — Evite operar de forma contínua em <strong>Reboque (esticado)</strong> ou com <strong>w</strong> elevado (muito <strong>fecho EA</strong> no limite <span class="font-mono">S₃ &gt; L</span>). Lance mais cabo (guincho) <strong>ou</strong> reduza a velocidade relativa que “fecha” o vão, até o estado voltar a <strong>Catenária (folgado)</strong>.</li>
+                <li><strong>Evitar trancos</strong> — Varie <strong>RPM de comando</strong> e o <strong>comprimento pago</strong> em <strong>passos suaves</strong>; evite 650→máx. em segundos. Aproxime <strong>SOG</strong> e tração de forma a não excitar a <strong>transição geometria (curva) ↔ esticado com EA (modelo)</strong> (monitorize <strong>dT/dt</strong> e o painel Towline Safety).</li>
+                <li><strong>Mar e fundo</strong> — Ondas e trecho de cabo no fundo (Lb) adicionam ruído à tração. Para perceber só a <strong>curva de equilíbrio</strong>, use mar mais calmo (Ambiente) e profundidade coerente com o reboque em curso.</li>
+                <li><strong>Cabo muito pago (L &gt; ~300 m)</strong> — O modelo aplica suavizações; mantenha o mesmo cuidado com mudanças bruscas de carga. Se notar pico, priorize <strong>folga</strong> e <strong>RPM</strong> contínuos, não “salto” de comando.</li>
+                <li><strong>Reboque em curso</strong> — Reveja a cada manobra: S₃, L, tensão, vento e corrente; ajuste guincho e governo com antecedência a fechos de vão (mapa, vista 3D, KPIs). Em caso de dúvida, reduza a energia de fechamento (velocidade / empuxo) antes de forçar o cabo.</li>
+              </ol>
+            </details>
             <div class="mb-2 rounded-md border border-slate-500/50 p-2" style="background:rgba(0,0,0,0.2);">
                 <div class="control-row mb-0">
                     <label for="catModelPreset" class="font-semibold">Preset do modelo</label>
@@ -411,15 +461,6 @@
             <p id="cat-guide-cable-hint" class="text-[10px] leading-snug mb-2 rounded border border-sky-500/30 px-2 py-1.5" style="color:#bae6fd;background:rgba(14,165,233,0.08);">—</p>
             <p class="text-[9px] font-semibold mb-0.5" style="color:#7dd3fc;">Sugestões imediatas</p>
             <ul id="cat-guide-tips" class="list-disc pl-4 space-y-1 text-[10px] leading-relaxed mb-3" style="color:#e2e8f0;"><li>—</li></ul>
-            <p class="text-[9px] font-semibold mb-1" style="color:#7dd3fc;">Procedimento (prevenir tranco, manter catenária)</p>
-            <ol class="list-decimal pl-4 space-y-1.5 text-[10px] leading-relaxed" style="color:#cbd5e1;">
-                <li><strong>Antes de acelerar o comboio</strong> — Confirme <strong>cabo pago L</strong> &gt; vão 3D entre amarras S₃ (margem: dezenas de metros em reboque oceânico, conforme plano e o valor de <strong>Folga</strong> exibida aqui e no Guincho).</li>
-                <li><strong>Manter catenária</strong> — Evite operar de forma contínua em <strong>Reboque (esticado)</strong> ou com <strong>w</strong> elevado (muito <strong>fecho EA</strong> no limite <span class="font-mono">S₃ &gt; L</span>). Lance mais cabo (guincho) <strong>ou</strong> reduza a velocidade relativa que “fecha” o vão, até o estado voltar a <strong>Catenária (folgado)</strong>.</li>
-                <li><strong>Evitar trancos</strong> — Varie <strong>RPM de comando</strong> e o <strong>comprimento pago</strong> em <strong>passos suaves</strong>; evite 650→máx. em segundos. Aproxime <strong>SOG</strong> e tração de forma a não excitar a <strong>transição geometria (curva) ↔ esticado com EA (modelo)</strong> (monitorize <strong>dT/dt</strong> e o painel Towline Safety).</li>
-                <li><strong>Mar e fundo</strong> — Ondas e trecho de cabo no fundo (Lb) adicionam ruído à tração. Para perceber só a <strong>curva de equilíbrio</strong>, use mar mais calmo (Ambiente) e profundidade coerente com o reboque em curso.</li>
-                <li><strong>Cabo muito pago (L &gt; ~300 m)</strong> — O modelo aplica suavizações; mantenha o mesmo cuidado com mudanças bruscas de carga. Se notar pico, priorize <strong>folga</strong> e <strong>RPM</strong> contínuos, não “salto” de comando.</li>
-                <li><strong>Reboque em curso</strong> — Reveja a cada manobra: S₃, L, tensão, vento e corrente; ajuste guincho e governo com antecedência a fechos de vão (mapa, vista 3D, KPIs). Em caso de dúvida, reduza a energia de fechamento (velocidade / empuxo) antes de forçar o cabo.</li>
-            </ol>
             <div class="resize-handle"></div>
         </div>
 
@@ -445,6 +486,12 @@
             <input type="file" id="routeGpxInput" accept=".gpx,application/gpx+xml,text/xml" class="sr-only" tabindex="-1" aria-hidden="true">
             <p id="routeStatus" class="route-status" aria-live="polite">—</p>
             <ul id="routeWaypointList" class="route-wp-list" aria-label="Lista de waypoints"></ul>
+            <hr>
+            <div class="control-row" style="gap:8px;align-items:center;">
+              <label style="font-weight:600;font-size:11px;">Seguir derrota:</label>
+              <button type="button" id="routeFollowToggle" aria-pressed="false" style="padding:3px 10px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;background:rgba(30,41,59,.6);color:#94a3b8;border:1px solid rgba(148,163,184,.2);">OFF</button>
+            </div>
+            <p class="text-[10px] leading-snug" style="color:#8da4b7;margin:2px 0 0;">Ajusta heading do rebocador para o próximo WP (não é autopilot completo).</p>
             <div class="resize-handle"></div>
         </div>
         
@@ -492,6 +539,12 @@
     </div>
 
     <!-- MAIN: vista 3D + fila de sobreposições; scripts ficam fora do overlay -->
+    <!-- Banner perda de reboque (weak-link / brake trip) -->
+    <div id="towLossBanner" style="display:none;position:fixed;top:68px;left:50%;transform:translateX(-50%);z-index:950;background:rgba(220,38,38,.92);color:#fff;font-family:Inter,system-ui,sans-serif;font-size:14px;font-weight:700;padding:10px 24px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.5);text-align:center;backdrop-filter:blur(6px);pointer-events:auto;">
+      PERDA DE REBOQUE — cabo partido / fusível disparado
+      <button type="button" id="towLossReset" style="display:block;margin:8px auto 0;padding:4px 18px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Reconectar cabo</button>
+    </div>
+
     <main id="sim-container" class="flex-1 relative z-0 w-full h-screen min-w-0 overflow-hidden isolate">
         <!-- Underlay GE Photorealistic (Cesium); pointer-events none — OrbitControls fica no canvas Three -->
         <div id="cesium-scenario" aria-hidden="true"></div>
@@ -648,6 +701,7 @@
   <script src="assets/reboqueoceanico-cesium-scenario.js"></script>
   <script src="assets/reboqueoceanico-float.js"></script>
   <script src="assets/reboqueoceanico-route.js"></script>
+  <script src="assets/reboqueoceanico-drills.js"></script>
 <script type="importmap">
         {
             "imports": {
@@ -1876,6 +1930,115 @@ const uiControls = {
     catModelPreset: { el: document.getElementById('catModelPreset') }
 };
 
+// ========================================================================
+// Phase C+D — Modo Demo/Treino, BP vs SOG, Weak-link, Sparkline, Env Check
+// ========================================================================
+window._simCableRef = cable;
+window._lastTowF = {};
+let _simMode = 'demo'; // 'demo' | 'treino'
+let _towLost = false;   // weak-link tripped
+const _tensionSparkline = new Float32Array(120); // ~60 s @ ~2 Hz sampling
+let _sparkIdx = 0, _sparkCount = 0, _sparkTimer = 0;
+
+// --- BP vs SOG: thrust declines with tug speed ---
+// At 0 kn → full BP; at ~8 kn → ~30% of BP; clamped.
+// Pull curve: F_avail = F_bollard × max(0.15, 1 − k·SOG)
+const BP_VS_SOG_K = 0.11; // /kn decline rate
+const BP_VS_SOG_FLOOR = 0.15;
+function bpVsSogFactor(sogKn) {
+    return Math.max(BP_VS_SOG_FLOOR, 1 - BP_VS_SOG_K * Math.abs(sogKn));
+}
+
+// --- Weak-link threshold: util MBL at which fuse trips ---
+const WEAKLINK_UTIL_MBL = 0.95;
+
+// --- Demo/Treino toggle wiring ---
+function applySimMode(mode) {
+    _simMode = mode;
+    const label = document.getElementById('hdrModoLabel');
+    if (label) {
+        label.textContent = mode === 'demo' ? 'Demo' : 'Treino';
+        label.className = 'sim-ht-pill ' + (mode === 'demo' ? 'ok' : 'warn');
+    }
+    const sel = document.getElementById('simModeSelect');
+    if (sel && sel.value !== mode) sel.value = mode;
+}
+
+// Wire Phase C+D UI (module already runs after DOM ready)
+{
+    const sel = document.getElementById('simModeSelect');
+    if (sel) sel.addEventListener('change', () => applySimMode(sel.value));
+    const pill = document.getElementById('hdrModoPill');
+    if (pill) pill.addEventListener('click', () => applySimMode(_simMode === 'demo' ? 'treino' : 'demo'));
+    // Env checklist
+    const envBtn = document.getElementById('hdrEnvCheck');
+    const envRes = document.getElementById('hdrEnvCheckResult');
+    const envClose = document.getElementById('hdrEnvCheckClose');
+    if (envBtn) envBtn.addEventListener('click', () => {
+        const body = document.getElementById('hdrEnvCheckBody');
+        if (!body) return;
+        const hs = simParams.waveHeight, ws = simParams.windSpeed, cs = simParams.currentSpeed;
+        const lines = [];
+        lines.push(checkLine('Hs ≤ 5 m', hs, 5, 'm'));
+        lines.push(checkLine('Vento ≤ 20 m/s', ws, 20, 'm/s'));
+        lines.push(checkLine('Corrente ≤ 0.5 m/s', cs, 0.5, 'm/s'));
+        body.innerHTML = lines.join('');
+        envRes.style.display = 'block';
+    });
+    if (envClose) envClose.addEventListener('click', () => { envRes.style.display = 'none'; });
+    // Drills button
+    const drillsBtn = document.getElementById('hdrDrillsBtn');
+    if (drillsBtn) drillsBtn.addEventListener('click', () => {
+        if (window.__simDrills) window.__simDrills.open();
+    });
+    // Weak-link reset
+    const towResetBtn = document.getElementById('towLossReset');
+    if (towResetBtn) towResetBtn.addEventListener('click', () => {
+        _towLost = false;
+        document.getElementById('towLossBanner').style.display = 'none';
+    });
+    // Route follow toggle
+    const rfBtn = document.getElementById('routeFollowToggle');
+    if (rfBtn) rfBtn.addEventListener('click', () => {
+        const on = rfBtn.getAttribute('aria-pressed') !== 'true';
+        rfBtn.setAttribute('aria-pressed', String(on));
+        rfBtn.textContent = on ? 'ON' : 'OFF';
+        rfBtn.style.color = on ? '#4ade80' : '#94a3b8';
+        rfBtn.style.borderColor = on ? 'rgba(74,222,128,.4)' : 'rgba(148,163,184,.2)';
+        if (window.__simRoute) window.__simRoute._followActive = on;
+    });
+}
+
+function checkLine(label, val, limit, unit) {
+    const ok = val <= limit;
+    return '<div style="display:flex;gap:6px;align-items:center;margin:3px 0;">' +
+        '<span style="color:' + (ok ? '#4ade80' : '#f87171') + ';font-weight:700;">' + (ok ? '✓' : '✗') + '</span>' +
+        '<span>' + label + ': <strong>' + val.toFixed(1) + ' ' + unit + '</strong></span></div>';
+}
+
+// --- Sparkline renderer ---
+function drawTensionSparkline() {
+    const cv = document.getElementById('hdrTowSparkline');
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    const w = cv.width, h = cv.height;
+    ctx.clearRect(0, 0, w, h);
+    if (_sparkCount < 2) return;
+    const n = Math.min(_sparkCount, _tensionSparkline.length);
+    let maxV = 10;
+    for (let i = 0; i < n; i++) maxV = Math.max(maxV, _tensionSparkline[i]);
+    ctx.beginPath();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < n; i++) {
+        const idx = (_sparkIdx - n + i + _tensionSparkline.length) % _tensionSparkline.length;
+        const x = (i / (n - 1)) * w;
+        const y = h - (_tensionSparkline[idx] / maxV) * (h - 2) - 1;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+
 // --- Funções Utilitárias ---
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 const map = (value, x1, x2, y1, y2) => {
@@ -2762,6 +2925,10 @@ function wireAsdThrusterMinimize() {
                 }
             });
         }
+        // Mobile: dock colapsado por defeito
+        if (window.matchMedia('(max-width: 640px)').matches) {
+            apply(true);
+        }
     });
 }
 
@@ -2849,6 +3016,21 @@ function wireGeoMapPanelChrome() {
     header.addEventListener('pointercancel', endDrag);
 }
 
+window.__simSetGeoMapVisible = setGeoMapVisible;
+window.__simEnsureCoastMap = ensureCoastMapInited;
+
+document.querySelectorAll('[data-layout-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        const name = btn.getAttribute('data-layout-preset');
+        if (window.__simFloat && window.__simFloat.applyLayoutPreset) {
+            window.__simFloat.applyLayoutPreset(name);
+        }
+        document.querySelectorAll('[data-layout-preset]').forEach((b) => {
+            b.classList.toggle('is-active', b === btn);
+        });
+    });
+});
+
 document.querySelectorAll('.sim-rail').forEach((btn) => {
     btn.addEventListener('click', () => {
         if (btn.dataset.mapToggle === 'true') {
@@ -2866,6 +3048,18 @@ document.querySelectorAll('.sim-rail').forEach((btn) => {
         if (g === 'winch' || g === 'towline' || g === 'catGuide' || g === 'vessel' || g === 'env' || g === 'asd' || g === 'twinSafety') clearPendingBuoyPick();
         if (window.__simFloat && window.__simFloat.openGroup) {
             window.__simFloat.openGroup(g);
+        }
+        if (g === 'route') {
+            ensureCoastMapInited().then(() => {
+                setGeoMapVisible(true);
+                if (window.__simRoute && typeof window.__simRoute.setPlaceMode === 'function') {
+                    window.__simRoute.setPlaceMode(true);
+                }
+                const st = document.getElementById('routeStatus');
+                if (st && (!window.__simRoute || !window.__simRoute.getWaypoints || !window.__simRoute.getWaypoints().length)) {
+                    st.textContent = 'Clique no mapa para adicionar waypoint';
+                }
+            }).catch(() => { /* */ });
         }
     });
 });
@@ -3873,11 +4067,14 @@ function calculateThrust(tugAngle) {
     let t1ForceMag = t1PowerKW * PROP_N_PER_KW;
     let t2ForceMag = t2PowerKW * PROP_N_PER_KW;
 
-    // Limite de tração à bolina (BP = 80 tf)
+    // Limite de tração à bolina (BP = 80 tf), escalado pelo factor BP vs SOG
     const BPmaxN = 80 * 9.81 * 1000;
+    const tugSogKn = (tug.velocity ? tug.velocity.length() : 0) * 1.94384;
+    const sogFactor = bpVsSogFactor(tugSogKn);
+    const BPeffN = BPmaxN * sogFactor;
     const FpairMag = t1ForceMag + t2ForceMag;
-    if (FpairMag > BPmaxN) {
-        const bpScale = BPmaxN / FpairMag;
+    if (FpairMag > BPeffN) {
+        const bpScale = BPeffN / FpairMag;
         t1ForceMag *= bpScale;
         t2ForceMag *= bpScale;
     }
@@ -4056,6 +4253,25 @@ function getAttachmentPointsQuiescent() {
     _attachQuietFrame = _simFrameId;
     _attachQuietCache = p;
     return p;
+}
+
+// --- getAttachmentPointsDynamic: bitas COM heave/pitch/roll actual do mesh ---
+// O mesh já tem o heave de updateVesselMotions; basta ler localToWorld sem
+// resetar rotações. Cache por frame como a versão quiescent.
+let _attachDynFrame = -1;
+let _attachDynCache = null;
+function getAttachmentPointsDynamic() {
+    if (!ship.mesh.geometry.parameters.depth) return { shipAttachPoint: new THREE.Vector3(), tugAttachPoint: new THREE.Vector3() };
+    if (_attachDynFrame === _simFrameId && _attachDynCache) return _attachDynCache;
+    ship.mesh.updateMatrixWorld(true);
+    tug.mesh.updateMatrixWorld(true);
+    const shipAttachPoint = new THREE.Vector3(0, ship.mesh.geometry.parameters.height / 2, -ship.mesh.geometry.parameters.depth / 2);
+    ship.mesh.localToWorld(shipAttachPoint);
+    const tugAttachPoint = new THREE.Vector3(0, tug.mesh.geometry.parameters.height / 2, tug.mesh.geometry.parameters.depth / 2);
+    tug.mesh.localToWorld(tugAttachPoint);
+    _attachDynFrame = _simFrameId;
+    _attachDynCache = { shipAttachPoint, tugAttachPoint };
+    return _attachDynCache;
 }
 
 /** Fator menor que 1: o ASD em reboque não usa a área proa×calado a 100%; calibra ordem 3–6 n */
@@ -4267,7 +4483,8 @@ function calculateTotalShipResistance() {
     const rsRatio = interpolate(beaufort, seaStateResistanceCurve, 'beaufort', 'val');
     const rs = rsRatio * ship.mass * 0.00022;
 
-    let totalResistanceMagnitude = (rh + rp + rs) * SHIP_TOW_SPEED.resistGlobal;
+    const activeResistGlobal = (_simMode === 'treino') ? 1.0 : SHIP_TOW_SPEED.resistGlobal;
+    let totalResistanceMagnitude = (rh + rp + rs) * activeResistGlobal;
     ship.totalResistance = totalResistanceMagnitude;
 
     // Decompõe a resistência isotrópica de referência em eixos do casco; multiplica sway.
@@ -4425,8 +4642,9 @@ function updatePhysics() {
     updateThrustValidationArrows(thrustForce, thrustTorque);
     const dragForceTug = calculateDragForce(tug);
 
-    // Corda 3D e vão em planta (XZ) entre bitas — geometria *calma* (sem onda) para regime/reação; o calado entra, o heave não
-    const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsQuiescent();
+    // Vão 3D entre bitas — geometria DINÂMICA (com heave) para o solver de forças.
+    // O heave do mesh faz S3 oscilar com Hs → dT/dt sobe sem mexer RPM (spec Phase C).
+    const { shipAttachPoint, tugAttachPoint } = getAttachmentPointsDynamic();
     const dxa = shipAttachPoint.x - tugAttachPoint.x;
     const dza = shipAttachPoint.z - tugAttachPoint.z;
     const S_hz = Math.hypot(dxa, dza);
@@ -4510,7 +4728,7 @@ function updatePhysics() {
     }
 
     // Chame o novo módulo de segurança
-    if (window.TowSafety) { window.TowSafety.update(dt, towF.TensionN); }
+    if (window.TowSafety) { window.TowSafety.update(dt, _towLost ? 0 : towF.TensionN); }
     
     // Orçamento ambiental (mesmo local usado no rebocador)
     const windForceOnTug = new WindForceStrategy().calculate(tug, simParams);
@@ -4565,18 +4783,20 @@ function updatePhysics() {
         shipForce.add(strategy.calculate(ship, simParams));
     });
     // Tração no ponto de amarra (braço p/ guinada + massa do cabo suspenso acoplada a m_eff)
-    shipForce.add(forceTow);
+    if (!_towLost) shipForce.add(forceTow);
     {
         const lcR = (towF.sag > 0.12) ? (cable.length / Math.max(0.01, towF.sag)) : null;
         const waterC = 18 - simParams.waveHeight * 0.45;
-        shipForce.add(computeTowConvoyAssist({
-            tugVelocity: tug.velocity,
-            shipVelocity: ship.velocity,
-            towDirUnit: dirF,
-            towlineTensionN: towF.TensionN || 0,
-            lcRatio: lcR,
-            waterClearanceM: waterC
-        }));
+        if (_simMode !== 'treino') {
+            shipForce.add(computeTowConvoyAssist({
+                tugVelocity: tug.velocity,
+                shipVelocity: ship.velocity,
+                towDirUnit: dirF,
+                towlineTensionN: towF.TensionN || 0,
+                lcRatio: lcR,
+                waterClearanceM: waterC
+            }));
+        }
     }
     // Leme do navio (a meio): força lateral + estabilidade de rumo
     const rudderFx = computeShipRudderForces();
@@ -4586,7 +4806,10 @@ function updatePhysics() {
     const tugForce = new THREE.Vector3();
     // Monta o orçamento de forças do rebocador (vento e corrente já calculados acima)
     tugForce.add(thrustForce).add(dragForceTug).add(windForceOnTug).add(currentForceTug);
-    tugForce.add(towF.F_onTug); // Aplica a reação do cabo de reboque no rebocador
+    // Weak-link: se o cabo partiu, forças de reboque são zero
+    if (!_towLost) {
+        tugForce.add(towF.F_onTug);
+    }
     
     // Integração: surge com massa aparente (navio + fração de cabo suspenso)
     ship.velocity.add(shipForce.clone().divideScalar(mShipEff).multiplyScalar(dt));
@@ -4731,6 +4954,15 @@ function updatePhysics() {
             const V = Math.hypot(tug.velocity.x, tug.velocity.z);
             const Nv = midF * 0.06 * tug.mass * Math.max(8, tl) * Math.min(1.4, 0.35 + V * 0.25);
             yawTorqueNet -= Nv * vSway;
+        }
+    }
+
+    // Route follow (Phase D): override heading hold psi toward next WP
+    if (window.__simRoute && window.__simRoute._followActive && tug.headingHold) {
+        const _rfHdg = window.__simRoute.getFollowHeadingRad(tug.position.x, tug.position.z);
+        if (_rfHdg != null) {
+            tug.headingHold.active = true;
+            tug.headingHold.psi = _rfHdg;
         }
     }
 
@@ -5210,25 +5442,65 @@ function updateUI() {
     setCtrlText(uiControls.shipTotalResistance, (ship.totalResistance / 1000).toFixed(1));
     setCtrlText(uiControls.beaufort, 'F' + getBeaufortFromWaveHeight(simParams.waveHeight));
 
-    // Trancos (ondas) na “Tensão extrema”: atenua com cabo longo; usa tração de referência (N), não a variável morta cableTension
+    // Trancos (ondas) na “Tensão extrema”: gated pelo heave dinâmico (Phase C).
     let waveInducedTension = 0;
-    if (simParams.waveHeight > 0.5) {
+    let _hGate = 1.0;
+    try {
+        const _dp = getAttachmentPointsDynamic();
+        const _qp = getAttachmentPointsQuiescent();
+        const hAmp = Math.max(
+            Math.abs(_dp.shipAttachPoint.y - _qp.shipAttachPoint.y),
+            Math.abs(_dp.tugAttachPoint.y - _qp.tugAttachPoint.y)
+        );
+        _hGate = Math.max(0, 1 - hAmp / 0.5);
+    } catch (_e) { /* */ }
+    if (simParams.waveHeight > 0.5 && _hGate > 0.01) {
         const h = simParams.waveHeight;
         const tRefN = Math.max(8e3, 0.42 * (towF.TensionN || 0));
         const Lm = Math.max(40, cable.length);
         const attenL = 1 / (1 + Lm / 380);
         const baseAmp = tRefN * 0.006 * h * h * attenL;
         const capAmp = tRefN * 0.055 * attenL;
-        const amplitude = Math.min(baseAmp, capAmp);
+        const amplitude = Math.min(baseAmp, capAmp) * _hGate;
         const waveFrequency = (0.28 + 0.1 * Math.min(h, 5)) * (0.4 + 0.6 * attenL);
         waveInducedTension = amplitude * Math.abs(Math.sin(clock.getElapsedTime() * waveFrequency));
     }
-    const extremeRaw = towF.TensionN + waveInducedTension;
+    const extremeRaw = (_towLost ? 0 : (towF.TensionN || 0)) + waveInducedTension;
     const kEma = 0.065;
     if (!Number.isFinite(_extremeTensionEma) || _extremeTensionEma <= 0) _extremeTensionEma = extremeRaw;
     _extremeTensionEma += (extremeRaw - _extremeTensionEma) * kEma;
     extremeTension = _extremeTensionEma;
     setCtrlText(uiControls.extremeTension, (extremeTension / 1000).toFixed(1));
+
+    // --- Weak-link trip check (Phase D) ---
+    if (!_towLost) {
+        const _mblC = (window.TowSafety && window.TowSafety.cable && window.TowSafety.cable.MBL > 0) ? window.TowSafety.cable.MBL : 2.45e6;
+        const _uMBL = _mblC > 0 ? ((towF.TensionN || 0) / _mblC) : 0;
+        if (_uMBL >= WEAKLINK_UTIL_MBL) {
+            _towLost = true;
+            const banner = document.getElementById('towLossBanner');
+            if (banner) banner.style.display = 'block';
+        }
+    }
+
+    // --- Sparkline sampling (~2 Hz) ---
+    _sparkTimer += (typeof window._towSimDt === 'number' ? window._towSimDt : 0.016);
+    if (_sparkTimer >= 0.5) {
+        _sparkTimer = 0;
+        _tensionSparkline[_sparkIdx % _tensionSparkline.length] = ((towF.TensionN || 0) / 1000);
+        _sparkIdx++;
+        _sparkCount = Math.min(_sparkCount + 1, _tensionSparkline.length);
+        drawTensionSparkline();
+    }
+
+    // Export for drills
+    window._lastTowF = towF;
+
+    // Drills tick
+    if (window.__simDrills && window.__simDrills.isRunning()) {
+        window.__simDrills.tick(typeof window._towSimDt === 'number' ? window._towSimDt : 0.016);
+    }
+
     updateCatenaryGuide();
 }
 // Atualiza a direção e o comprimento das setas que representam vento e corrente
@@ -5979,6 +6251,13 @@ window.__simDebugFloat = () => {
         }
     };
 };
+
+// Wire drills (Phase C)
+if (window.__simDrills && typeof window.__simDrills.init === 'function') {
+    window.__simDrills.init({
+        applyEnvPreset: typeof applyEnvPreset === 'function' ? applyEnvPreset : null
+    });
+}
 
 if (window.__simRoute && typeof window.__simRoute.init === 'function') {
     window.__simRoute.init({

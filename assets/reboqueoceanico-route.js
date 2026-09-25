@@ -434,6 +434,32 @@
     setStatus('Origem ENU: RJ (−23.05, −43.15)');
   }
 
+  // --- Route follow (Phase D): set tug heading toward next WP ---
+  let _followActive = false;
+  let _followWpIdx = 0;
+  const FOLLOW_ARRIVE_M = 60;
+
+  function findNextWaypoint(tugX, tugZ) {
+    if (!waypoints.length) return null;
+    if (_followWpIdx >= waypoints.length) _followWpIdx = 0;
+    var w = waypoints[_followWpIdx];
+    var dx = w.x - tugX, dz = w.z - tugZ;
+    if (Math.hypot(dx, dz) < FOLLOW_ARRIVE_M) {
+      _followWpIdx = (_followWpIdx + 1) % waypoints.length;
+      w = waypoints[_followWpIdx];
+    }
+    return w;
+  }
+
+  function getFollowHeadingRad(tugX, tugZ) {
+    if (!_followActive || !waypoints.length) return null;
+    var w = findNextWaypoint(tugX, tugZ);
+    if (!w) return null;
+    var dx = w.x - tugX, dz = w.z - tugZ;
+    if (Math.hypot(dx, dz) < 1) return null;
+    return Math.atan2(dx, dz);
+  }
+
   window.__simRoute = {
     init,
     attachLeafletMap,
@@ -444,6 +470,9 @@
     importGpxText,
     getWaypoints: () => waypoints.slice(),
     clearWaypoints,
-    addWaypoint
+    addWaypoint,
+    get _followActive() { return _followActive; },
+    set _followActive(v) { _followActive = !!v; _followWpIdx = 0; },
+    getFollowHeadingRad
   };
 })();
