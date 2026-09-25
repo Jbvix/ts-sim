@@ -103,7 +103,12 @@
         root.setAttribute('aria-busy', 'false');
         window.setTimeout(() => {
           root.classList.add('sim-splash--done');
-          window.setTimeout(() => { try { root.remove(); } catch (_) { /* */ } }, 700);
+          window.setTimeout(() => {
+            try { root.remove(); } catch (_) { /* */ }
+            try {
+              if (typeof window.__simOnSplashDone === 'function') window.__simOnSplashDone();
+            } catch (_) { /* */ }
+          }, 700);
         }, 420);
       }
       set(2, 'A iniciar T‑Sim…', 'boot');
@@ -139,6 +144,17 @@
             <div class="sim-ht-row">
               <span class="sim-ht-metric"><span id="hdrShipSpeed">0.00</span><span class="sim-ht-unit">n</span></span>
             </div>
+          </div>
+          <div class="sim-ht-chip sim-ht-tow" id="hdrTowChip" title="Cabo: tensão, util. MBL, dT/dt — mesmos valores do Towline Safety">
+            <span class="sim-ht-label">Cabo</span>
+            <div class="sim-ht-row">
+              <span class="sim-ht-metric"><span id="hdrTowT">0.0</span><span class="sim-ht-unit">kN</span></span>
+              <span class="sim-ht-sep" aria-hidden="true">·</span>
+              <span class="sim-ht-metric"><span id="hdrTowU">0</span><span class="sim-ht-unit">%MBL</span></span>
+              <span class="sim-ht-sep sim-ht-tow-dt-sep" aria-hidden="true">·</span>
+              <span class="sim-ht-metric sim-ht-tow-dt"><span id="hdrTowDT">0</span><span class="sim-ht-unit">kN/s</span></span>
+            </div>
+            <span id="hdrTowState" class="sim-ht-pill ok">Seguro</span>
           </div>
         </div>
         
@@ -569,6 +585,24 @@
     </main>
   </div>
   <div id="sim-float-root" aria-live="polite"></div>
+  <div id="ops-checklist" class="ops-checklist hidden" role="dialog" aria-modal="true" aria-labelledby="ops-checklist-title" hidden>
+    <div class="ops-checklist-card">
+      <h2 id="ops-checklist-title" class="ops-checklist-title">Arranque operacional</h2>
+      <p class="ops-checklist-lead">Siga estes passos na primeira utilização (pode saltar a qualquer momento).</p>
+      <ol class="ops-checklist-steps">
+        <li><button type="button" class="ops-checklist-step" data-ops-step="engines">1. Partida dos motores</button></li>
+        <li><button type="button" class="ops-checklist-step" data-ops-step="clutch">2. Acoplar transmissão</button></li>
+        <li><button type="button" class="ops-checklist-step" data-ops-step="rpm">3. Subir RPM ≥ 650</button></li>
+        <li><button type="button" class="ops-checklist-step" data-ops-step="winch">4. Pagar cabo (Guincho)</button></li>
+        <li><button type="button" class="ops-checklist-step" data-ops-step="towline">5. Confirmar Cabo no header / Towline</button></li>
+      </ol>
+      <div class="ops-checklist-actions">
+        <button type="button" id="ops-checklist-start" class="ops-checklist-btn ops-checklist-btn-primary">Começar</button>
+        <button type="button" id="ops-checklist-dismiss" class="ops-checklist-btn">Não mostrar de novo</button>
+      </div>
+    </div>
+  </div>
+  <div id="sim-geo-fallback-toast" class="sim-geo-toast hidden" role="status" aria-live="polite" hidden></div>
   <div id="geo-mapa-wrap" class="hidden" role="complementary" aria-label="Mapa de contexto — OpenSeaMap ou GE Cesium (Photorealistic)" aria-hidden="true">
     <div id="geo-mapa-header" class="geo-mapa-drag" title="Arrastar para mover · puxar para baixo (mobile) = recolher">
       <div class="geo-mapa-header-main">
@@ -913,7 +947,7 @@ function getCatModelPreset() {
       else                                          line.material.color.set(0xff0000); // vermelho
       line.material.needsUpdate = true;
     },
-    // Atualiza os valores exibidos no painel do HUD
+    // Atualiza os valores exibidos no painel do HUD (+ espelho no header #hdrTow*)
     updateHUD(tN, utilMBL, utilWLL, surge, anom){
       const tEl = document.getElementById('towHudT');
       const uEl = document.getElementById('towHudU');
@@ -922,19 +956,40 @@ function getCatModelPreset() {
       const tyEl= document.getElementById('towHudType');
       const stEl= document.getElementById('towHudState');
       const hud = document.getElementById('towHud');
-      if (!tEl) return;
-      tEl.textContent  = (tN/1000).toFixed(1) + ' kN';
-      uEl.textContent  = anom ? '—' : `${Math.min(999, Math.max(0, Math.round(utilMBL * 100)))}%`;
-      uwEl.textContent = anom ? '—' : `${Math.min(999, Math.max(0, Math.round(utilWLL * 100)))}%`;
-      dtEl.textContent = (this.dTdt/1000).toFixed(0) + ' kN/s';
-      tyEl.textContent = this.cable.name;
-      if (hud) hud.classList.toggle('surge', !!surge);
+      const tKn = (tN / 1000).toFixed(1);
+      const uPct = anom ? '—' : `${Math.min(999, Math.max(0, Math.round(utilMBL * 100)))}`;
+      const dtKn = (this.dTdt / 1000).toFixed(0);
+      if (tEl) {
+        tEl.textContent  = tKn + ' kN';
+        if (uEl) uEl.textContent  = anom ? '—' : `${uPct}%`;
+        if (uwEl) uwEl.textContent = anom ? '—' : `${Math.min(999, Math.max(0, Math.round(utilWLL * 100)))}%`;
+        if (dtEl) dtEl.textContent = dtKn + ' kN/s';
+        if (tyEl) tyEl.textContent = this.cable.name;
+        if (hud) hud.classList.toggle('surge', !!surge);
+      }
+      const hdrT = document.getElementById('hdrTowT');
+      const hdrU = document.getElementById('hdrTowU');
+      const hdrDT = document.getElementById('hdrTowDT');
+      const hdrSt = document.getElementById('hdrTowState');
+      const hdrChip = document.getElementById('hdrTowChip');
+      if (hdrT) hdrT.textContent = tKn;
+      if (hdrU) hdrU.textContent = uPct;
+      if (hdrDT) hdrDT.textContent = dtKn;
+      if (hdrChip) hdrChip.classList.toggle('surge', !!surge);
+      const setHdrPill = (cls, label) => {
+        if (!hdrSt) return;
+        hdrSt.className = 'sim-ht-pill ' + cls;
+        hdrSt.textContent = label;
+      };
       if (anom) {
-        stEl.innerHTML = '<span class="pill danger" title="Tensão fora de faixa (erro numérico ou geometria incompatível)">Anomalia</span>';
+        if (stEl) stEl.innerHTML = '<span class="pill danger" title="Tensão fora de faixa (erro numérico ou geometria incompatível)">Anomalia</span>';
+        setHdrPill('danger', 'Anomalia');
         return;
       }
       const pillClass = utilMBL < this.thresholds.mbl.safe ? 'ok' : utilMBL < this.thresholds.mbl.warn ? 'warn' : 'danger';
-      stEl.innerHTML = `<span class="pill ${pillClass}">${surge ? 'SURGE' : (pillClass==='ok'?'Seguro': pillClass==='warn'?'Atenção':'Limite')}</span>`;
+      const stateLabel = surge ? 'SURGE' : (pillClass === 'ok' ? 'Seguro' : pillClass === 'warn' ? 'Atenção' : 'Limite');
+      if (stEl) stEl.innerHTML = `<span class="pill ${pillClass}">${stateLabel}</span>`;
+      setHdrPill(pillClass, stateLabel);
     },
     // Função principal do módulo, chamada a cada quadro para atualizar a lógica de segurança
     update(dt, tensionN){
@@ -2814,6 +2869,82 @@ document.querySelectorAll('.sim-rail').forEach((btn) => {
         }
     });
 });
+
+// —— Checklist 1.ª utilização (Fase A) ——
+(function wireOpsChecklist() {
+    const KEY = 'tsim.opsChecklist.v1';
+    const root = document.getElementById('ops-checklist');
+    if (!root) return;
+
+    function clearHighlights() {
+        document.querySelectorAll('.ops-checklist-target').forEach((el) => {
+            el.classList.remove('ops-checklist-target');
+        });
+    }
+
+    function highlight(el) {
+        clearHighlights();
+        if (!el) return;
+        el.classList.add('ops-checklist-target');
+        try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) { /* */ }
+        window.setTimeout(() => el.classList.remove('ops-checklist-target'), 4500);
+    }
+
+    function openGroup(g) {
+        if (window.__simFloat && window.__simFloat.openGroup) window.__simFloat.openGroup(g);
+    }
+
+    function hideChecklist() {
+        root.classList.add('hidden');
+        root.hidden = true;
+        clearHighlights();
+    }
+
+    function showChecklist() {
+        let dismissed = false;
+        try { dismissed = localStorage.getItem(KEY) === 'dismissed'; } catch (_) { /* */ }
+        if (dismissed) return;
+        root.hidden = false;
+        root.classList.remove('hidden');
+    }
+
+    function runStep(step) {
+        if (step === 'engines') {
+            openGroup('asd');
+            highlight(document.getElementById('engineStartStop'));
+        } else if (step === 'clutch') {
+            openGroup('asd');
+            highlight(document.getElementById('asdDriveEngage'));
+        } else if (step === 'rpm') {
+            openGroup('asd');
+            highlight(document.getElementById('thruster1RPM'));
+        } else if (step === 'winch') {
+            openGroup('winch');
+            highlight(document.getElementById('cableLength') || document.querySelector('#winchPanel input[type="range"]'));
+        } else if (step === 'towline') {
+            openGroup('towline');
+            highlight(document.getElementById('hdrTowChip') || document.getElementById('towHud'));
+        }
+    }
+
+    root.querySelectorAll('[data-ops-step]').forEach((btn) => {
+        btn.addEventListener('click', () => runStep(btn.getAttribute('data-ops-step')));
+    });
+    const startBtn = document.getElementById('ops-checklist-start');
+    const dismissBtn = document.getElementById('ops-checklist-dismiss');
+    if (startBtn) startBtn.addEventListener('click', () => hideChecklist());
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+            try { localStorage.setItem(KEY, 'dismissed'); } catch (_) { /* */ }
+            hideChecklist();
+        });
+    }
+
+    window.__simOnSplashDone = function () {
+        showChecklist();
+    };
+    window.__simShowOpsChecklist = showChecklist;
+})();
 
 // --- 7. LÓGICA DE PRESETS E INICIALIZAÇÃO ---
 const VESSEL_GLB_PATHS = {
@@ -5430,6 +5561,7 @@ async function setCoastProvider(mode, opts) {
             if (!ok) {
                 console.warn('[T-Sim] GE Cesium indisponível — a usar OpenSeaMap');
                 initLeafletMap();
+                showGeoFallbackToast('Sem token Cesium — a usar OpenSeaMap (mapa 2D).');
             }
         } else {
             if (window.__simCesiumCoast && window.__simCesiumCoast.destroy) {
@@ -5491,10 +5623,12 @@ async function initScenarioGeUnderlay() {
             console.info('[T-Sim] underlay GE + órbita comboio (ENU globo); órbita livre = posicionamento');
         } else {
             applyScenarioGeVisuals(false);
+            showGeoFallbackToast('Sem token Cesium — cenário GE indisponível; a usar OpenSeaMap (2D).');
         }
     } catch (err) {
         console.warn('[T-Sim] cenário GE falhou:', err);
         applyScenarioGeVisuals(false);
+        showGeoFallbackToast('Sem token Cesium — cenário GE indisponível; a usar OpenSeaMap (2D).');
     }
 }
 
@@ -5542,6 +5676,22 @@ window.addEventListener('resize', onWindowResize, false);
 let _simAnimErrStreak = 0;
 let _simPaused = false;
 const SIM_ANIM_ERR_PAUSE_THRESHOLD = 60;
+
+function showGeoFallbackToast(reason) {
+    try {
+        if (sessionStorage.getItem('tsim.geoFallbackToast.v1') === '1') return;
+        sessionStorage.setItem('tsim.geoFallbackToast.v1', '1');
+    } catch (_) { /* */ }
+    const el = document.getElementById('sim-geo-fallback-toast');
+    if (!el) return;
+    el.hidden = false;
+    el.classList.remove('hidden');
+    el.textContent = reason || 'Sem token Cesium — a usar OpenSeaMap (mapa 2D).';
+    window.setTimeout(() => {
+        el.classList.add('hidden');
+        el.hidden = true;
+    }, 8000);
+}
 
 function showSimErrorBanner(err) {
     if (document.getElementById('sim-error-banner')) return;

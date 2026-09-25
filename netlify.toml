@@ -17,6 +17,17 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+# Entrada curta do simulador 3D
+[[redirects]]
+  from = "/sim"
+  to = "/reboqueoceanico242TSIM.html"
+  status = 200
+
+[[redirects]]
+  from = "/sim/"
+  to = "/reboqueoceanico242TSIM.html"
+  status = 200
+
 # Página de entrada: raiz
 [[headers]]
   for = "/*.html"

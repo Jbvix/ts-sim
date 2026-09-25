@@ -36,10 +36,17 @@ O *deploy* na Netlify executa `npm ci && npm run build:css` (ver `netlify.toml`)
 
 `npm install` e `npm run build:css` (uma vez, ou após mudar utilitários Tailwind).
 
-O simulador **não funciona via `file://`** (usa ES modules/import maps) — é preciso servir por HTTP:
+O simulador **não funciona via `file://`** (usa ES modules/import maps) — é preciso servir por HTTP.
 
-- **Rápido (sem cenário GE/Cesium):** `servir-local.bat` / `servir-local.ps1` (ou `npm run serve`) e abrir <http://127.0.0.1:8080/reboqueoceanico242TSIM.html>. Sem a function `/api/cesium-token`, o simulador cai automaticamente no mapa OpenSeaMap/Leaflet.
-- **Completo (com cenário GE):** `npm run dev` (Netlify CLI; pede login na 1.ª vez) com um `.env` contendo `CESIUM_API_KEY` (e opcionalmente `GOOGLE_MAPS_API_KEY`) — ver `.env.example`.
+| Objetivo | Comando | URL |
+|----------|---------|-----|
+| Rápido (mapa OpenSeaMap, sem GE) | `npm run serve` (ou `servir-local.ps1` / `.bat`) | [http://127.0.0.1:8080/reboqueoceanico242TSIM.html](http://127.0.0.1:8080/reboqueoceanico242TSIM.html) ou [http://127.0.0.1:8080/sim/](http://127.0.0.1:8080/sim/) |
+| Completo (cenário GE/Cesium) | `npm run dev` (Netlify CLI; login na 1.ª vez) + `.env` com `CESIUM_API_KEY` | URL do Netlify Dev (ver terminal); em produção: `https://<site>/sim` |
+| Dashboard | mesmo servidor | [http://127.0.0.1:8080/](http://127.0.0.1:8080/) → `index.html` |
+
+Sem a function `/api/cesium-token`, o simulador mostra um aviso e usa OpenSeaMap/Leaflet. Ver `.env.example` para `CESIUM_API_KEY` (e opcionalmente `GOOGLE_MAPS_API_KEY`).
+
+> **Nota:** a porta local deste repo é **8080** (não 8765). No `python -m http.server` use o caminho com `.html` ou `/sim/`.
 
 Validação do solver de catenária (espelho Python): `python tools/validate_catenary_rest.py` (exit code ≠ 0 em falha).
 

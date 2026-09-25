@@ -54,13 +54,15 @@ A (HUD + checklist + URL) ──► B (mobile/rota/layouts)
 
 ## Fase A — UX P0 (fazer primeiro)
 
+**Status:** concluída (2026-09-25)
+
 **Goal:** Operador vê risco de cabo sem abrir painéis; sabe como arrancar; abre o sim por um URL estável.
 
 **Acceptance (fase completa):**
-1. Header mostra tensão kN, %MBL (ou pill estado), dT/dt; pulsa em SURGE.
-2. Após splash (1.ª visita), checklist dismissível com 5 passos; `localStorage` respeitado.
-3. `/sim` e `/reboqueoceanico242TSIM.html` abrem o mesmo sim na Netlify; README cita só 8080 + `npm run dev`.
-4. Sem token Cesium: toast/banner “Sem token Cesium — mapa 2D (OpenSeaMap)”.
+1. [x] Header mostra tensão kN, %MBL (ou pill estado), dT/dt; pulsa em SURGE.
+2. [x] Após splash (1.ª visita), checklist dismissível com 5 passos; `localStorage` respeitado.
+3. [x] `/sim` e `/reboqueoceanico242TSIM.html` abrem o mesmo sim na Netlify; README cita só 8080 + `npm run dev`.
+4. [x] Sem token Cesium: toast/banner “Sem token Cesium — mapa 2D (OpenSeaMap)”.
 
 ### Task A1: Strip de segurança do cabo no header
 
@@ -95,7 +97,7 @@ A (HUD + checklist + URL) ──► B (mobile/rota/layouts)
 
 - [ ] **Step 4:** Teste manual: abrir Towline, variar scope/Hs até SURGE — header e painel devem coincidir.
 
-- [ ] **Step 5:** Commit `feat: show towline safety strip in sim header`
+- [x] **Step 5:** Commit `feat: show towline safety strip in sim header`
 
 ### Task A2: Checklist de 1.ª utilização
 
